@@ -1,0 +1,21 @@
+localhost {
+    @iam path /api/v1/auth/* /api/v1/users/* /api/v1/roles/* /api/v1/permissions/*
+    handle @iam {
+        reverse_proxy localhost:{env.IAM_PORT}
+    }
+
+    @catalog path /api/v1/catalog/*
+    handle @catalog {
+        reverse_proxy localhost:{env.CATALOG_PORT}
+    }
+
+    @sales path /api/v1/sales/*
+    handle @sales {
+        reverse_proxy localhost:{env.SALES_PORT}
+    }
+
+    @inventory path /api/v1/inventory/*
+    handle @inventory {
+        reverse_proxy localhost:{env.INVENTORY_PORT}
+    }
+}
