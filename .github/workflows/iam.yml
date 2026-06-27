@@ -1,4 +1,4 @@
-name: IAM Service
+name: IAM CI
 
 on:
   push:
@@ -33,11 +33,23 @@ jobs:
           name: iam-coverage
           path: services/iam/coverage.out
 
-  build-and-push:
+  build:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development')
     needs: [test]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
-      - name: Build Docker image
-        run: docker build -t iam-service:${{ github.sha }} -f services/iam/Dockerfile services/iam
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push Docker image
+        run: |
+          IMAGE=ghcr.io/${{ github.repository }}/iam-service
+          docker build -t $IMAGE:${{ github.sha }} -f services/iam/Dockerfile services/iam
+          docker push $IMAGE:${{ github.sha }}
