@@ -1,0 +1,55 @@
+name: IAM Service
+
+on:
+  push:
+    paths:
+      - "services/iam/**"
+      - ".github/workflows/iam.yml"
+  pull_request:
+    branches:
+      - main
+      - development
+    paths:
+      - "services/iam/**"
+      - ".github/workflows/iam.yml"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/iam/go.mod
+      - name: Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: services/iam
+
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/iam
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/iam/go.mod
+      - name: Test
+        run: go test ./... -race -coverprofile=coverage.out
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: iam-coverage
+          path: services/iam/coverage.out
+
+  build-and-push:
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development')
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t iam-service:${{ github.sha }} -f services/iam/Dockerfile services/iam
