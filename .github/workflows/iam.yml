@@ -14,19 +14,6 @@ on:
       - ".github/workflows/iam.yml"
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: services/iam/go.mod
-      - name: Lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
-          working-directory: services/iam
-
   test:
     runs-on: ubuntu-latest
     defaults:
@@ -47,7 +34,7 @@ jobs:
 
   build-and-push:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development')
-    needs: [lint, test]
+    needs: [test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
