@@ -1,0 +1,14 @@
+- name: Deploy IAM service
+  hosts: all
+  become: yes
+  vars:
+    image_tag: "{{ lookup('env', 'IMAGE_TAG') | default('latest', true) }}"
+  tasks:
+    - name: Pull and run IAM container
+      community.docker.docker_container:
+        name: iam-service
+        image: ghcr.io/saleforge/pos/iam-service:{{ image_tag }}
+        state: started
+        restart_policy: always
+        ports:
+          - "8080:8080"

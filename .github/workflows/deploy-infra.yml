@@ -1,0 +1,38 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches:
+      - development
+    paths:
+      - "deploy/ansible/**"
+      - ".github/workflows/deploy-infra.yml"
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: webfactory/ssh-agent@v0.9
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+      - name: Install Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+      - name: Create inventory
+        run: |
+          mkdir -p deploy/ansible/inventory/development
+          cat > deploy/ansible/inventory/development/hosts.yml <<EOF
+          all:
+            hosts:
+              dev-server:
+                ansible_host: ${{ secrets.DEV_SERVER_IP }}
+                ansible_user: ${{ secrets.DEV_SERVER_USER }}
+                ansible_become: yes
+                ansible_become_password: ${{ secrets.DEV_SUDO_PASSWORD }}
+          EOF
+      - name: Apply playbook
+        run: |
+          ansible-playbook -i deploy/ansible/inventory/development/hosts.yml \
+            deploy/ansible/playbooks/site.yml
