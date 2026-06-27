@@ -24,6 +24,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: services/iam/go.mod
+          cache-dependency-path: services/iam/go.sum
       - name: Test
         run: go test ./... -race -coverprofile=coverage.out
       - name: Upload coverage
