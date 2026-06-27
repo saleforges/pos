@@ -4,6 +4,7 @@ import (
 	"context"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/saleforge/pos/services/iam/internal/domain"
@@ -628,10 +629,10 @@ func (uc *AuthUsecase) publishEvent(ctx context.Context, eventName string, paylo
 	uc.eventPublisher.Publish(ctx, eventName, payload)
 }
 
-var idCounter int64
+var idCounter atomic.Int64
 
 func generateID() string {
-	idCounter++
+	idCounter.Add(1)
 	b := make([]byte, 8)
 	now := time.Now().UnixNano()
 	for i := 0; i < 8; i++ {
