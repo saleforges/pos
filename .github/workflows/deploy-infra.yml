@@ -36,3 +36,5 @@ jobs:
         run: |
           ansible-playbook -i deploy/ansible/inventory/development/hosts.yml \
             deploy/ansible/playbooks/site.yml
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
