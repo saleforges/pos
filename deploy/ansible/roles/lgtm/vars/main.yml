@@ -1,0 +1,2 @@
+lgtm_dir: /opt/pos/lgtm
+lgtm_config_src: "{{ playbook_dir }}/../../lgtm"

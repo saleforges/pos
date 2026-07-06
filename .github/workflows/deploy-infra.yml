@@ -20,6 +20,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ansible
+          ansible-galaxy collection install -r deploy/ansible/requirements.yml
       - name: Create inventory
         run: |
           mkdir -p deploy/ansible/inventory/development
@@ -32,9 +33,18 @@ jobs:
                 ansible_become: yes
                 ansible_become_password: ${{ secrets.DEV_SUDO_PASSWORD }}
           EOF
+      - name: Write vault vars
+        run: |
+          cat > /tmp/vault-extra.yml << EOV
+          vault_postgres_password: "${{ secrets.POSTGRES_PASSWORD }}"
+          vault_jwt_key_id: "${{ secrets.JWT_KEY_ID }}"
+          vault_jwt_private_key_pem: |
+            ${{ secrets.JWT_PRIVATE_KEY_PEM }}
+          EOV
       - name: Apply playbook
         run: |
           ansible-playbook -i deploy/ansible/inventory/development/hosts.yml \
-            deploy/ansible/playbooks/site.yml
+            deploy/ansible/playbooks/site.yml \
+            --extra-vars "@/tmp/vault-extra.yml"
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"

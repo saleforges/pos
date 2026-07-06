@@ -1,19 +1,21 @@
 - name: Provision development server
   hosts: all
   become: yes
+  vars_files:
+    - ../vars/vault.yml
   tasks:
-    - name: Install required packages
-      apt:
-        name:
-          - docker.io
-          - docker-compose-v2
-        state: present
-        update_cache: yes
-      tags: [docker]
-
-    - name: Start and enable Docker
-      systemd:
+    - name: Install Docker
+      ansible.builtin.import_role:
         name: docker
-        state: started
-        enabled: yes
-      tags: [docker]
+
+    - name: Run PostgreSQL
+      ansible.builtin.import_role:
+        name: postgres
+
+    - name: Run Redis
+      ansible.builtin.import_role:
+        name: redis
+
+    - name: Run LGTM stack
+      ansible.builtin.import_role:
+        name: lgtm

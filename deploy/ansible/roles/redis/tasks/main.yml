@@ -1,0 +1,22 @@
+- name: Ensure data directory exists
+  file:
+    path: "{{ redis_data_dir }}"
+    state: directory
+    owner: 999
+    group: 999
+
+- name: Run Redis container
+  community.docker.docker_container:
+    name: pos-redis
+    image: "{{ redis_image }}"
+    state: started
+    restart_policy: always
+    ports:
+      - "{{ redis_port }}:6379"
+    command: >
+      redis-server
+      {% if redis_password %}--requirepass {{ redis_password }}{% endif %}
+    volumes:
+      - "{{ redis_data_dir }}:/data"
+    networks:
+      - name: pos

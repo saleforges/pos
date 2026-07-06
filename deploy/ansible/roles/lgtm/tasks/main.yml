@@ -1,0 +1,21 @@
+- name: Create docker network
+  community.docker.docker_network:
+    name: pos
+    state: present
+
+- name: Ensure LGTM directory exists
+  file:
+    path: "{{ lgtm_dir }}"
+    state: directory
+
+- name: Copy LGTM config
+  copy:
+    src: "{{ lgtm_config_src }}/"
+    dest: "{{ lgtm_dir }}/"
+    mode: preserve
+
+- name: Deploy LGTM stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ lgtm_dir }}"
+    state: present
+    pull: always
