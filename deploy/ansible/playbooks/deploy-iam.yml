@@ -4,10 +4,20 @@
   vars_files:
     - ../vars/vault.yml
   vars:
+    ghcr_username: "{{ vault_ghcr_username | default('') }}"
+    ghcr_token: "{{ vault_ghcr_token | default('') }}"
     jwt_private_key: "{{ vault_jwt_private_key_pem }}"
     jwt_key_id: "{{ vault_jwt_key_id | default('iam-key-1') }}"
     db_url: "postgres://pos:{{ vault_postgres_password }}@pos-postgres:5432/pos?sslmode=disable"
   tasks:
+    - name: Login to GHCR
+      community.docker.docker_login:
+        registry_url: https://ghcr.io
+        username: "{{ ghcr_username }}"
+        password: "{{ ghcr_token }}"
+      when: ghcr_username != '' and ghcr_token != ''
+      no_log: true
+
     - name: Pull and run IAM container
       community.docker.docker_container:
         name: iam-service

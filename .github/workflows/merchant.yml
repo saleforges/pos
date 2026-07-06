@@ -97,9 +97,13 @@ jobs:
                 ansible_become_password: ${{ secrets.DEV_SUDO_PASSWORD }}
           EOF
       - name: Write vault vars
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cat > /tmp/vault-extra.yml << EOV
           vault_postgres_password: "${{ secrets.POSTGRES_PASSWORD }}"
+          vault_ghcr_username: "${{ github.actor }}"
+          vault_ghcr_token: "$GHCR_TOKEN"
           EOV
       - name: Deploy Merchant service
         run: |
