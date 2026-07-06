@@ -1,0 +1,26 @@
+- name: Ensure Traefik config directory exists
+  file:
+    path: "{{ traefik_config_dir }}"
+    state: directory
+
+- name: Deploy Traefik static config
+  template:
+    src: traefik.yml.j2
+    dest: "{{ traefik_config_dir }}/traefik.yml"
+    mode: "0644"
+
+- name: Deploy Traefik container
+  community.docker.docker_container:
+    name: pos-traefik
+    image: "{{ traefik_image }}"
+    state: started
+    restart_policy: always
+    pull: true
+    ports:
+      - "{{ traefik_http_port }}:{{ traefik_http_port }}"
+      - "{{ traefik_dashboard_port }}:{{ traefik_dashboard_port }}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - "{{ traefik_config_dir }}/traefik.yml:/etc/traefik/traefik.yml:ro"
+    networks:
+      - name: pos

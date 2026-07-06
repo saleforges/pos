@@ -1,0 +1,27 @@
+- name: Deploy Merchant service
+  hosts: all
+  become: yes
+  vars_files:
+    - ../vars/vault.yml
+  vars:
+    db_url: "postgres://pos:{{ vault_postgres_password }}@pos-postgres:5432/pos?sslmode=disable"
+    iam_base_url: "http://iam-service:8080"
+  tasks:
+    - name: Pull and run Merchant container
+      community.docker.docker_container:
+        name: merchant-service
+        image: ghcr.io/saleforge/pos/merchant-service:{{ image_tag }}
+        state: started
+        restart_policy: always
+        pull: true
+        env:
+          MERCHANT_PORT: ":8081"
+          DATABASE_URL: "{{ db_url }}"
+          IAM_BASE_URL: "{{ iam_base_url }}"
+        networks:
+          - name: pos
+        labels:
+          traefik.enable: "true"
+          traefik.http.routers.merchant.rule: "PathPrefix(`/api/v1/merchants`, `/api/v1/branches`, `/api/v1/staff`)"
+          traefik.http.routers.merchant.entrypoints: "web"
+          traefik.http.services.merchant.loadbalancer.server.port: "8081"
