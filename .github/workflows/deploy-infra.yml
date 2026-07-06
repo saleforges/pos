@@ -25,7 +25,6 @@ jobs:
         run: |
           mkdir -p deploy/ansible/inventory/development
           cat > deploy/ansible/inventory/development/hosts.yml <<EOF
-          plugin: yaml
           all:
             hosts:
               dev-server:
@@ -51,3 +50,5 @@ jobs:
             --extra-vars "@/tmp/vault-extra.yml"
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"
+          ANSIBLE_INVENTORY_ENABLED: "yaml"
+          ANSIBLE_ROLES_PATH: "deploy/ansible/roles"

@@ -26,6 +26,9 @@ Thumbs.db
 vendor/
 *-server
 
+# Keys / certs
+*.pem
+
 # Logs
 *.log
 deploy/caddy/.env
