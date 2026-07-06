@@ -27,3 +27,11 @@
     state: present
     pull: always
     recreate: always
+
+- name: Force recreate Grafana container
+  ansible.builtin.shell:
+    cmd: |
+      docker rm -f pos-grafana 2>/dev/null || true
+      docker compose -f {{ lgtm_dir }}/docker-compose.yml up -d --force-recreate grafana
+  args:
+    chdir: "{{ lgtm_dir }}"
