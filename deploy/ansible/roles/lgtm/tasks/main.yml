@@ -14,6 +14,13 @@
     dest: "{{ lgtm_dir }}/"
     mode: preserve
 
+- name: Create LGTM .env file
+  ansible.builtin.copy:
+    dest: "{{ lgtm_dir }}/.env"
+    content: |
+      GF_ADMIN_PASSWORD={{ vault_grafana_admin_password }}
+    mode: "0600"
+
 - name: Deploy LGTM stack
   community.docker.docker_compose_v2:
     project_src: "{{ lgtm_dir }}"
