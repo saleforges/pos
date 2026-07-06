@@ -19,8 +19,9 @@
 
 - name: Fix broken dpkg packages
   ansible.builtin.shell:
-    cmd: dpkg --configure -a
-  ignore_errors: yes
+    cmd: |
+      dpkg --configure -a || true
+      apt-get install -f -y || true
   changed_when: false
 
 - name: Install Docker packages
@@ -33,6 +34,7 @@
       - docker-compose-plugin
     state: present
     update_cache: yes
+    dpkg_options: 'force-confdef,force-confold,force-overwrite'
 
 - name: Start and enable Docker
   systemd:
