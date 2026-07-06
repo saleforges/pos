@@ -5,7 +5,7 @@ on:
     branches:
       - development
     paths:
-      - "deploy/ansible/**"
+      - "deploy/**"
       - ".github/workflows/deploy-infra.yml"
 
 jobs:
