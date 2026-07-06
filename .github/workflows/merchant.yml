@@ -1,6 +1,12 @@
 name: Merchant CI
 
 on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag (default: commit SHA)"
+        required: false
+        type: string
   push:
     paths:
       - "services/internal/merchant/**"
@@ -98,7 +104,7 @@ jobs:
           ansible-playbook -i deploy/ansible/inventory/development/hosts.yml \
             deploy/ansible/playbooks/deploy-merchant.yml \
             --extra-vars "@/tmp/vault-extra.yml" \
-            -e image_tag=${{ github.sha }}
+            -e image_tag=${{ inputs.image_tag || github.sha }}
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"
           ANSIBLE_INVENTORY_ENABLED: "yaml"
