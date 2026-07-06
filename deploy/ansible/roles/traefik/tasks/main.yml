@@ -16,14 +16,20 @@
   register: traefik_config
   notify: restart traefik
 
-- name: Deploy Traefik container
+- name: Remove existing Traefik container
+  community.docker.docker_container:
+    name: pos-traefik
+    state: absent
+    force_absent: true
+
+- name: Create Traefik container
   community.docker.docker_container:
     name: pos-traefik
     image: "{{ traefik_image }}"
     state: started
     restart_policy: always
     pull: true
-    user: root
+    privileged: true
     ports:
       - "{{ traefik_http_port }}:{{ traefik_http_port }}"
       - "{{ traefik_dashboard_port }}:{{ traefik_dashboard_port }}"
