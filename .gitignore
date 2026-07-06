@@ -24,6 +24,7 @@ Thumbs.db
 
 # Go
 vendor/
+*-server
 
 # Logs
 *.log

@@ -3,14 +3,22 @@ name: IAM CI
 on:
   push:
     paths:
-      - "services/iam/**"
+      - "services/internal/iam/**"
+      - "services/cmd/iam/**"
+      - "services/go.mod"
+      - "services/go.sum"
+      - "services/Dockerfile.iam"
       - ".github/workflows/iam.yml"
   pull_request:
     branches:
       - main
       - development
     paths:
-      - "services/iam/**"
+      - "services/internal/iam/**"
+      - "services/cmd/iam/**"
+      - "services/go.mod"
+      - "services/go.sum"
+      - "services/Dockerfile.iam"
       - ".github/workflows/iam.yml"
 
 jobs:
@@ -18,20 +26,20 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: services/iam
+        working-directory: services
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version-file: services/iam/go.mod
-          cache-dependency-path: services/iam/go.sum
+          go-version-file: services/go.mod
+          cache-dependency-path: services/go.sum
       - name: Test
         run: go test ./... -race -coverprofile=coverage.out
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
           name: iam-coverage
-          path: services/iam/coverage.out
+          path: services/coverage.out
 
   build:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development')
@@ -51,5 +59,5 @@ jobs:
       - name: Build and push Docker image
         run: |
           IMAGE=ghcr.io/${{ github.repository }}/iam-service
-          docker build -t $IMAGE:${{ github.sha }} -f services/iam/Dockerfile services/iam
+          docker build -t $IMAGE:${{ github.sha }} -f services/Dockerfile.iam services
           docker push $IMAGE:${{ github.sha }}
