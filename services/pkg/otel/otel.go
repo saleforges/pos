@@ -2,6 +2,7 @@ package otel
 
 import (
 	"context"
+	"sync/atomic"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -15,9 +16,33 @@ import (
 )
 
 var (
-	Tracer trace.Tracer = otel.GetTracerProvider().Tracer("")
-	Meter  metric.Meter = otel.GetMeterProvider().Meter("")
+	tracer atomic.Pointer[trace.Tracer]
+	meter  atomic.Pointer[metric.Meter]
 )
+
+func tracerProvider() trace.Tracer {
+	t := tracer.Load()
+	if t != nil {
+		return *t
+	}
+	return otel.GetTracerProvider().Tracer("")
+}
+
+func meterProvider() metric.Meter {
+	m := meter.Load()
+	if m != nil {
+		return *m
+	}
+	return otel.GetMeterProvider().Meter("")
+}
+
+func setTracer(t trace.Tracer) {
+	tracer.Store(&t)
+}
+
+func setMeter(m metric.Meter) {
+	meter.Store(&m)
+}
 
 type Config struct {
 	ServiceName  string
@@ -70,8 +95,8 @@ func Init(ctx context.Context, cfg Config) (func(context.Context) error, error) 
 		propagation.Baggage{},
 	))
 
-	Tracer = tp.Tracer(cfg.ServiceName)
-	Meter = mp.Meter(cfg.ServiceName)
+	setTracer(tp.Tracer(cfg.ServiceName))
+	setMeter(mp.Meter(cfg.ServiceName))
 
 	return func(ctx context.Context) error {
 		if err := tp.Shutdown(ctx); err != nil {

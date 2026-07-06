@@ -25,7 +25,7 @@ func TracingMiddleware() echo.MiddlewareFunc {
 				routePath = req.URL.Path
 			}
 
-			ctx, span := Tracer.Start(ctx, routePath,
+			ctx, span := tracerProvider().Start(ctx, routePath,
 				trace.WithAttributes(
 					attribute.String("http.method", req.Method),
 					attribute.String("http.route", routePath),
@@ -55,7 +55,7 @@ func TracingMiddleware() echo.MiddlewareFunc {
 }
 
 func GetTracer() trace.Tracer {
-	return Tracer
+	return tracerProvider()
 }
 
 func LoggingMiddleware() echo.MiddlewareFunc {
