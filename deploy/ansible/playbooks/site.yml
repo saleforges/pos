@@ -11,6 +11,8 @@
     - name: Run PostgreSQL
       ansible.builtin.import_role:
         name: postgres
+      vars:
+        postgres_password: "{{ vault_postgres_password }}"
 
     - name: Run Redis
       ansible.builtin.import_role:
