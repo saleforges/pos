@@ -79,8 +79,6 @@ services:
       traefik.http.routers.grafana.rule: "PathPrefix(`/grafana`)"
       traefik.http.routers.grafana.entrypoints: "web"
       traefik.http.services.grafana.loadbalancer.server.port: "3000"
-      traefik.http.middlewares.grafana-strip.stripprefix.prefixes: "/grafana"
-      traefik.http.routers.grafana.middlewares: "grafana-strip"
 
   # ========== Log Agent ==========
   promtail:

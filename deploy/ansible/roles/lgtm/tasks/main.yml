@@ -26,3 +26,4 @@
     project_src: "{{ lgtm_dir }}"
     state: present
     pull: always
+    recreate: always
