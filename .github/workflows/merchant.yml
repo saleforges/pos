@@ -11,6 +11,7 @@ on:
     paths:
       - "services/internal/merchant/**"
       - "services/cmd/merchant/**"
+      - "services/pkg/**"
       - "services/go.mod"
       - "services/go.sum"
       - "services/Dockerfile.merchant"
@@ -21,6 +22,7 @@ on:
       - development
     paths:
       - "services/internal/merchant/**"
+      - "services/pkg/**"
       - "services/cmd/merchant/**"
       - "services/go.mod"
       - "services/go.sum"
