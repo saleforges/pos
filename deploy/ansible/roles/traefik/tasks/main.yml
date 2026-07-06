@@ -3,7 +3,7 @@
     path: "{{ traefik_config_dir }}"
     state: directory
 
-- name: Ensure Traefik dynamic config directory exists
+- name: Ensure dynamic config directory exists
   file:
     path: "{{ traefik_config_dir }}/dynamic"
     state: directory
@@ -16,26 +16,6 @@
   register: traefik_config
   notify: restart traefik
 
-- name: Deploy Traefik dynamic config
-  copy:
-    dest: "{{ traefik_config_dir }}/dynamic/grafana.yml"
-    content: |
-      http:
-        routers:
-          grafana:
-            rule: "PathPrefix(`/grafana`)"
-            entrypoints:
-              - web
-            service: grafana
-        services:
-          grafana:
-            loadBalancer:
-              servers:
-                - url: "http://pos-grafana:3000"
-    mode: "0644"
-  register: traefik_dynamic_config
-  notify: restart traefik
-
 - name: Deploy Traefik container
   community.docker.docker_container:
     name: pos-traefik
@@ -43,12 +23,12 @@
     state: started
     restart_policy: always
     pull: true
+    user: root
     ports:
       - "{{ traefik_http_port }}:{{ traefik_http_port }}"
       - "{{ traefik_dashboard_port }}:{{ traefik_dashboard_port }}"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - "{{ traefik_config_dir }}/traefik.yml:/etc/traefik/traefik.yml:ro"
-      - "{{ traefik_config_dir }}/dynamic:/etc/traefik/dynamic:ro"
     networks:
       - name: pos
