@@ -4,6 +4,8 @@ api:
 entryPoints:
   web:
     address: ":{{ traefik_http_port }}"
+  traefik:
+    address: ":{{ traefik_dashboard_port }}"
 
 providers:
   docker:

@@ -8,6 +8,7 @@
     src: traefik.yml.j2
     dest: "{{ traefik_config_dir }}/traefik.yml"
     mode: "0644"
+  register: traefik_config
 
 - name: Deploy Traefik container
   community.docker.docker_container:
@@ -24,3 +25,7 @@
       - "{{ traefik_config_dir }}/traefik.yml:/etc/traefik/traefik.yml:ro"
     networks:
       - name: pos
+
+- name: Restart Traefik container on config change
+  ansible.builtin.shell: docker restart pos-traefik
+  when: traefik_config.changed
