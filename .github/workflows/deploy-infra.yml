@@ -25,6 +25,7 @@ jobs:
         run: |
           mkdir -p deploy/ansible/inventory/development
           cat > deploy/ansible/inventory/development/hosts.yml <<EOF
+          plugin: yaml
           all:
             hosts:
               dev-server:

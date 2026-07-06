@@ -1,25 +1,25 @@
-name: IAM CI
+name: Merchant CI
 
 on:
   push:
     paths:
-      - "services/internal/iam/**"
-      - "services/cmd/iam/**"
+      - "services/internal/merchant/**"
+      - "services/cmd/merchant/**"
       - "services/go.mod"
       - "services/go.sum"
-      - "services/Dockerfile.iam"
-      - ".github/workflows/iam.yml"
+      - "services/Dockerfile.merchant"
+      - ".github/workflows/merchant.yml"
   pull_request:
     branches:
       - main
       - development
     paths:
-      - "services/internal/iam/**"
-      - "services/cmd/iam/**"
+      - "services/internal/merchant/**"
+      - "services/cmd/merchant/**"
       - "services/go.mod"
       - "services/go.sum"
-      - "services/Dockerfile.iam"
-      - ".github/workflows/iam.yml"
+      - "services/Dockerfile.merchant"
+      - ".github/workflows/merchant.yml"
 
 jobs:
   test:
@@ -38,7 +38,7 @@ jobs:
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
-          name: iam-coverage
+          name: merchant-coverage
           path: services/coverage.out
 
   build:
@@ -58,8 +58,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push Docker image
         run: |
-          IMAGE=ghcr.io/${{ github.repository }}/iam-service
-          docker build -t $IMAGE:${{ github.sha }} -f services/Dockerfile.iam services
+          IMAGE=ghcr.io/${{ github.repository }}/merchant-service
+          docker build -t $IMAGE:${{ github.sha }} -f services/Dockerfile.merchant services
           docker push $IMAGE:${{ github.sha }}
 
   deploy-dev:
@@ -90,19 +90,14 @@ jobs:
                 ansible_become_password: ${{ secrets.DEV_SUDO_PASSWORD }}
           EOF
       - name: Write vault vars
-        env:
-          JWT_PRIVATE_KEY_PEM: ${{ secrets.JWT_PRIVATE_KEY_PEM }}
         run: |
           cat > /tmp/vault-extra.yml << EOV
           vault_postgres_password: "${{ secrets.POSTGRES_PASSWORD }}"
-          vault_jwt_key_id: "${{ secrets.JWT_KEY_ID }}"
           EOV
-          echo 'vault_jwt_private_key_pem: |' >> /tmp/vault-extra.yml
-          echo "$JWT_PRIVATE_KEY_PEM" | sed 's/^/  /' >> /tmp/vault-extra.yml
-      - name: Deploy IAM service
+      - name: Deploy Merchant service
         run: |
           ansible-playbook -i deploy/ansible/inventory/development/hosts.yml \
-            deploy/ansible/playbooks/deploy-iam.yml \
+            deploy/ansible/playbooks/deploy-merchant.yml \
             --extra-vars "@/tmp/vault-extra.yml" \
             -e image_tag=${{ github.sha }}
         env:
