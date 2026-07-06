@@ -21,7 +21,7 @@
       GF_ADMIN_PASSWORD={{ vault_grafana_admin_password }}
     mode: "0600"
 
-- name: Reset Grafana container and volume
+- name: Recreate Grafana container with fresh volume
   ansible.builtin.shell:
     cmd: |
       docker rm -f pos-grafana 2>/dev/null || true

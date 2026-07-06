@@ -5,7 +5,7 @@
     owner: 999
     group: 999
 
-- name: Fix PostgreSQL data directory permissions
+- name: Set PostgreSQL data directory ownership
   ansible.builtin.shell:
     cmd: >
       docker rm -f pos-postgres 2>/dev/null || true;

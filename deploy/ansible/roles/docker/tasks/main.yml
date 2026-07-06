@@ -17,7 +17,7 @@
     repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable
     state: present
 
-- name: Fix broken dpkg packages
+- name: Configure dpkg package state
   ansible.builtin.shell:
     cmd: |
       dpkg --configure -a || true
