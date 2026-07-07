@@ -20,7 +20,7 @@
   community.docker.docker_container:
     name: pos-traefik
     state: absent
-    force_absent: true
+    force_kill: yes
 
 - name: Create Traefik container
   community.docker.docker_container:
