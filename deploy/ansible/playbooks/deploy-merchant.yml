@@ -30,8 +30,3 @@
           IAM_BASE_URL: "{{ iam_base_url }}"
         networks:
           - name: pos
-        labels:
-          traefik.enable: "true"
-          traefik.http.routers.merchant.rule: "Host(`api-dev.saleforges.com`) && PathPrefix(`/api/v1/merchants`, `/api/v1/branches`, `/api/v1/staff`)"
-          traefik.http.routers.merchant.entrypoints: "web"
-          traefik.http.services.merchant.loadbalancer.server.port: "8081"

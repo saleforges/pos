@@ -22,6 +22,9 @@
       ansible.builtin.import_role:
         name: lgtm
 
-    - name: Deploy Traefik reverse proxy
+    - name: Deploy Caddy reverse proxy
       ansible.builtin.import_role:
-        name: traefik
+        name: caddy
+      vars:
+        caddy_grafana_domain: grafana.saleforges.com
+        caddy_api_domain: api-dev.saleforges.com

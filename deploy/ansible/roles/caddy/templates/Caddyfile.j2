@@ -1,0 +1,15 @@
+{{ caddy_grafana_domain }} {
+    reverse_proxy pos-grafana:3000
+}
+
+{{ caddy_api_domain }} {
+    @iam path /api/v1/auth/* /api/v1/users/* /api/v1/roles/* /api/v1/permissions/*
+    handle @iam {
+        reverse_proxy iam-service:8080
+    }
+
+    @merchant path /api/v1/merchants/* /api/v1/branches/* /api/v1/staff/*
+    handle @merchant {
+        reverse_proxy merchant-service:8081
+    }
+}

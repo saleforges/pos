@@ -73,11 +73,6 @@ services:
       - grafana-data:/var/lib/grafana
     networks:
       - pos
-    labels:
-      traefik.enable: "true"
-      traefik.http.routers.grafana.rule: "Host(`grafana.saleforges.com`)"
-      traefik.http.routers.grafana.entrypoints: "web"
-      traefik.http.services.grafana.loadbalancer.server.port: "3000"
 
   # ========== Log Agent ==========
   promtail:
