@@ -1,8 +1,13 @@
 meta {
   name: List Merchants
-  method: GET
+  type: http
+  seq: 2
+}
+
+get {
   url: {{base_url}}/api/v1/merchants
-  params: query
+  body: none
+  auth: bearer
 }
 
 params:query {
@@ -10,7 +15,6 @@ params:query {
   limit: 20
 }
 
-auth {
-  type: bearer
+auth:bearer {
   token: {{access_token}}
 }

@@ -1,10 +1,15 @@
 meta {
   name: Remove Permission
-  method: DELETE
-  url: {{base_url}}/api/v1/roles/:name/permissions/:permissionId
+  type: http
+  seq: 7
 }
 
-auth {
-  type: bearer
+delete {
+  url: {{base_url}}/api/v1/roles/:name/permissions/:permissionId
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
   token: {{access_token}}
 }

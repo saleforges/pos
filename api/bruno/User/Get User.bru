@@ -1,10 +1,15 @@
 meta {
   name: Get User
-  method: GET
-  url: {{base_url}}/api/v1/users/:id
+  type: http
+  seq: 3
 }
 
-auth {
-  type: bearer
+get {
+  url: {{base_url}}/api/v1/users/:id
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
   token: {{access_token}}
 }

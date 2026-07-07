@@ -1,8 +1,13 @@
 meta {
   name: Login
-  method: POST
+  type: http
+  seq: 2
+}
+
+post {
   url: {{base_url}}/api/v1/auth/login
   body: json
+  auth: none
 }
 
 headers {
@@ -16,9 +21,8 @@ body:json {
   }
 }
 
-script.post-response {
-  if (res.status === 200) {
-    bru.setVar("access_token", res.body.access_token);
-    bru.setVar("refresh_token", res.body.refresh_token);
-  }
+script:post-response {
+  bru.setVar("access_token", res.body.access_token);
+  bru.setVar("refresh_token", res.body.refresh_token);
 }
+

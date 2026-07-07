@@ -1,10 +1,15 @@
 meta {
   name: Delete User
-  method: DELETE
-  url: {{base_url}}/api/v1/users/:id
+  type: http
+  seq: 5
 }
 
-auth {
-  type: bearer
+delete {
+  url: {{base_url}}/api/v1/users/:id
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
   token: {{access_token}}
 }

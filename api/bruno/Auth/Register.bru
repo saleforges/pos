@@ -1,8 +1,13 @@
 meta {
   name: Register
-  method: POST
+  type: http
+  seq: 1
+}
+
+post {
   url: {{base_url}}/api/v1/auth/register
   body: json
+  auth: none
 }
 
 headers {
@@ -18,9 +23,8 @@ body:json {
   }
 }
 
-script.post-response {
-  if (res.status === 201) {
-    bru.setVar("access_token", res.body.access_token);
-    bru.setVar("refresh_token", res.body.refresh_token);
-  }
+script:post-response {
+  bru.setVar("access_token", res.body.access_token);
+  bru.setVar("refresh_token", res.body.refresh_token);
 }
+

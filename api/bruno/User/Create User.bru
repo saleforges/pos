@@ -1,16 +1,20 @@
 meta {
   name: Create User
-  method: POST
+  type: http
+  seq: 2
+}
+
+post {
   url: {{base_url}}/api/v1/users
   body: json
+  auth: bearer
 }
 
 headers {
   Content-Type: application/json
 }
 
-auth {
-  type: bearer
+auth:bearer {
   token: {{access_token}}
 }
 

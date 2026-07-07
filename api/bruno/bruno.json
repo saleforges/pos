@@ -2,9 +2,9 @@
   "version": "1",
   "name": "POS Service API",
   "type": "collection",
-  "ignore": [],
-  "presets": {
-    "requestType": "http",
-    "requestUrl": "{{base_url}}"
-  }
+  "ignore": [
+    ".git",
+    "node_modules",
+    "*.test.js"
+  ]
 }

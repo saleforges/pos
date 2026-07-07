@@ -1,10 +1,15 @@
 meta {
   name: List Roles
-  method: GET
-  url: {{base_url}}/api/v1/roles
+  type: http
+  seq: 1
 }
 
-auth {
-  type: bearer
+get {
+  url: {{base_url}}/api/v1/roles
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
   token: {{access_token}}
 }

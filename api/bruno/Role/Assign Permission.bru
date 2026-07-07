@@ -1,16 +1,20 @@
 meta {
   name: Assign Permission
-  method: POST
+  type: http
+  seq: 6
+}
+
+post {
   url: {{base_url}}/api/v1/roles/:name/permissions
   body: json
+  auth: bearer
 }
 
 headers {
   Content-Type: application/json
 }
 
-auth {
-  type: bearer
+auth:bearer {
   token: {{access_token}}
 }
 

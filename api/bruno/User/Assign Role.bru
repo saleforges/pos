@@ -1,16 +1,20 @@
 meta {
   name: Assign Role
-  method: POST
+  type: http
+  seq: 6
+}
+
+post {
   url: {{base_url}}/api/v1/users/:id/roles
   body: json
+  auth: bearer
 }
 
 headers {
   Content-Type: application/json
 }
 
-auth {
-  type: bearer
+auth:bearer {
   token: {{access_token}}
 }
 

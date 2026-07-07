@@ -1,10 +1,15 @@
 meta {
   name: Delete Role
-  method: DELETE
-  url: {{base_url}}/api/v1/roles/:name
+  type: http
+  seq: 5
 }
 
-auth {
-  type: bearer
+delete {
+  url: {{base_url}}/api/v1/roles/:name
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
   token: {{access_token}}
 }

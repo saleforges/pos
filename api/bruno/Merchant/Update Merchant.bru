@@ -1,16 +1,20 @@
 meta {
   name: Update Merchant
-  method: PATCH
+  type: http
+  seq: 4
+}
+
+patch {
   url: {{base_url}}/api/v1/merchants/:id
   body: json
+  auth: bearer
 }
 
 headers {
   Content-Type: application/json
 }
 
-auth {
-  type: bearer
+auth:bearer {
   token: {{access_token}}
 }
 
