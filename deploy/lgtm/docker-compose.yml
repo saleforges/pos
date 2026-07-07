@@ -81,6 +81,7 @@ services:
     volumes:
       - ./config/promtail:/etc/promtail
       - ./logs:/logs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     command: -config.file=/etc/promtail/config.yml
     networks:
       - pos

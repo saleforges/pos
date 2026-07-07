@@ -8,6 +8,7 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/usecase"
+	"github.com/saleforge/pos/services/pkg/logger"
 )
 
 func (h *AuthHandler) Register(c echo.Context) error {
@@ -33,6 +34,7 @@ func (h *AuthHandler) Register(c echo.Context) error {
 		if err == domain.ErrUserAlreadyExists || err == domain.ErrInvalidRole {
 			return writeError(c, http.StatusConflict, err)
 		}
+		logger.Error("register failed", "error", err.Error())
 		return writeError(c, http.StatusInternalServerError, err)
 	}
 
