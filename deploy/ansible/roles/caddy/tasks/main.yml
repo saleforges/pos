@@ -11,6 +11,13 @@
   register: caddy_config
   notify: restart caddy
 
+- name: Remove old Traefik container (port conflict)
+  community.docker.docker_container:
+    name: pos-traefik
+    state: absent
+    force_kill: yes
+  ignore_errors: yes
+
 - name: Remove existing Caddy container
   community.docker.docker_container:
     name: pos-caddy
