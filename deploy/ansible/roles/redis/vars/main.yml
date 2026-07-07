@@ -1,0 +1,5 @@
+redis_image: redis:7-alpine
+redis_port: 6379
+redis_data_dir: /data/redis
+redis_password: "{{ vault_redis_password | default('') }}"
+

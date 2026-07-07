@@ -1,0 +1,8 @@
+vault_postgres_password: "password"
+vault_grafana_admin_password: "admin123"
+vault_jwt_private_key_pem: |
+  -----BEGIN PRIVATE KEY-----
+  MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDYwRk6pzqIi5YT
+  ...
+  -----END PRIVATE KEY-----
+vault_jwt_key_id: "iam-key-1"

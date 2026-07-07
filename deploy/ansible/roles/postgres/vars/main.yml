@@ -1,0 +1,5 @@
+postgres_image: postgres:17-alpine
+postgres_port: 5432
+postgres_data_dir: /data/postgres
+postgres_db: pos
+postgres_user: pos

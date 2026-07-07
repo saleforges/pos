@@ -5,7 +5,7 @@ on:
     branches:
       - development
     paths:
-      - "deploy/ansible/**"
+      - "deploy/**"
       - ".github/workflows/deploy-infra.yml"
 
 jobs:
@@ -20,6 +20,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y ansible
+          ansible-galaxy collection install -r deploy/ansible/requirements.yml
       - name: Create inventory
         run: |
           mkdir -p deploy/ansible/inventory/development
@@ -32,9 +33,22 @@ jobs:
                 ansible_become: yes
                 ansible_become_password: ${{ secrets.DEV_SUDO_PASSWORD }}
           EOF
+      - name: Write vault vars
+        env:
+          JWT_PRIVATE_KEY_PEM: ${{ secrets.JWT_PRIVATE_KEY_PEM }}
+        run: |
+          cat > /tmp/vault-extra.yml << EOV
+          vault_postgres_password: "${{ secrets.POSTGRES_PASSWORD }}"
+          vault_jwt_key_id: "${{ secrets.JWT_KEY_ID }}"
+          EOV
+          echo 'vault_jwt_private_key_pem: |' >> /tmp/vault-extra.yml
+          echo "$JWT_PRIVATE_KEY_PEM" | sed 's/^/  /' >> /tmp/vault-extra.yml
       - name: Apply playbook
         run: |
           ansible-playbook -i deploy/ansible/inventory/development/hosts.yml \
-            deploy/ansible/playbooks/site.yml
+            deploy/ansible/playbooks/site.yml \
+            --extra-vars "@/tmp/vault-extra.yml"
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"
+          ANSIBLE_INVENTORY_ENABLED: "yaml"
+          ANSIBLE_ROLES_PATH: "deploy/ansible/roles"

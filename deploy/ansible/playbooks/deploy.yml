@@ -1,0 +1,48 @@
+- name: Deploy all services
+  hosts: all
+  become: yes
+  vars_files:
+    - ../vars/vault.yml
+  vars:
+    db_url: "postgres://pos:{{ vault_postgres_password }}@pos-postgres:5432/pos?sslmode=disable"
+    jwt_private_key: "{{ vault_jwt_private_key_pem }}"
+    jwt_key_id: "{{ vault_jwt_key_id | default('iam-key-1') }}"
+  tasks:
+    - name: Deploy IAM service
+      community.docker.docker_container:
+        name: iam-service
+        image: ghcr.io/saleforge/pos/iam-service:{{ image_tag }}
+        state: started
+        restart_policy: always
+        pull: true
+        env:
+          HTTP_ADDR: ":8080"
+          JWT_PRIVATE_KEY_PEM: "{{ jwt_private_key }}"
+          JWT_KEY_ID: "{{ jwt_key_id }}"
+          DATABASE_URL: "{{ db_url }}"
+        networks:
+          - name: pos
+        labels:
+          traefik.enable: "true"
+          traefik.http.routers.iam.rule: "PathPrefix(`/api/v1/auth`, `/api/v1/users`, `/api/v1/roles`, `/api/v1/permissions`)"
+          traefik.http.routers.iam.entrypoints: "web"
+          traefik.http.services.iam.loadbalancer.server.port: "8080"
+
+    - name: Deploy Merchant service
+      community.docker.docker_container:
+        name: merchant-service
+        image: ghcr.io/saleforge/pos/merchant-service:{{ image_tag }}
+        state: started
+        restart_policy: always
+        pull: true
+        env:
+          MERCHANT_PORT: ":8081"
+          DATABASE_URL: "{{ db_url }}"
+          IAM_BASE_URL: "http://iam-service:8080"
+        networks:
+          - name: pos
+        labels:
+          traefik.enable: "true"
+          traefik.http.routers.merchant.rule: "PathPrefix(`/api/v1/merchants`, `/api/v1/branches`, `/api/v1/staff`)"
+          traefik.http.routers.merchant.entrypoints: "web"
+          traefik.http.services.merchant.loadbalancer.server.port: "8081"

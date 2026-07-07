@@ -1,0 +1,41 @@
+- name: Ensure Caddy config directory exists
+  ansible.builtin.file:
+    path: "{{ caddy_config_dir }}"
+    state: directory
+
+- name: Deploy Caddyfile
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: "{{ caddy_config_dir }}/Caddyfile"
+    mode: "0644"
+  register: caddy_config
+  notify: restart caddy
+
+- name: Remove old Traefik container (port conflict)
+  community.docker.docker_container:
+    name: pos-traefik
+    state: absent
+    force_kill: yes
+  ignore_errors: yes
+
+- name: Remove existing Caddy container
+  community.docker.docker_container:
+    name: pos-caddy
+    state: absent
+    force_kill: yes
+
+- name: Create Caddy container
+  community.docker.docker_container:
+    name: pos-caddy
+    image: "{{ caddy_image }}"
+    state: started
+    restart_policy: always
+    pull: true
+    ports:
+      - "{{ caddy_http_port }}:{{ caddy_http_port }}"
+      - "{{ caddy_https_port }}:{{ caddy_https_port }}"
+    volumes:
+      - "{{ caddy_config_dir }}/Caddyfile:/etc/caddy/Caddyfile:ro"
+      - caddy-data:/data
+    networks:
+      - name: pos

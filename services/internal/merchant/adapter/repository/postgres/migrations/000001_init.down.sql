@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS staff;
+DROP TABLE IF EXISTS branches;
+DROP TABLE IF EXISTS merchants;

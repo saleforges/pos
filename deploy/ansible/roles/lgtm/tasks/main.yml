@@ -1,0 +1,35 @@
+- name: Create docker network
+  community.docker.docker_network:
+    name: pos
+    state: present
+
+- name: Ensure LGTM directory exists
+  file:
+    path: "{{ lgtm_dir }}"
+    state: directory
+
+- name: Copy LGTM config
+  copy:
+    src: "{{ lgtm_config_src }}/"
+    dest: "{{ lgtm_dir }}/"
+    mode: preserve
+
+- name: Create LGTM .env file
+  ansible.builtin.copy:
+    dest: "{{ lgtm_dir }}/.env"
+    content: |
+      GF_ADMIN_PASSWORD={{ vault_grafana_admin_password }}
+    mode: "0600"
+
+- name: Recreate Grafana container with fresh volume
+  ansible.builtin.shell:
+    cmd: |
+      docker rm -f pos-grafana 2>/dev/null || true
+      docker volume rm lgtm_grafana-data 2>/dev/null || true
+  changed_when: false
+
+- name: Deploy LGTM stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ lgtm_dir }}"
+    state: present
+    pull: always
