@@ -7,7 +7,7 @@
 
 - name: Run Redis container
   community.docker.docker_container:
-    name: pos-redis
+    name: redis
     image: "{{ redis_image }}"
     state: started
     restart_policy: always

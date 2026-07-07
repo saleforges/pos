@@ -24,7 +24,7 @@
 - name: Recreate Grafana container with fresh volume
   ansible.builtin.shell:
     cmd: |
-      docker rm -f pos-grafana 2>/dev/null || true
+      docker rm -f grafana 2>/dev/null || true
       docker volume rm lgtm_grafana-data 2>/dev/null || true
   changed_when: false
 

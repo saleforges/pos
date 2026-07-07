@@ -1,2 +1,2 @@
 - name: restart caddy
-  ansible.builtin.shell: docker restart pos-caddy
+  ansible.builtin.shell: docker restart caddy

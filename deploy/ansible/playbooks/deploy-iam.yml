@@ -8,7 +8,7 @@
     ghcr_token: "{{ vault_ghcr_token | default('') }}"
     jwt_private_key: "{{ vault_jwt_private_key_pem }}"
     jwt_key_id: "{{ vault_jwt_key_id | default('iam-key-1') }}"
-    db_url: "postgres://pos:{{ vault_postgres_password }}@pos-postgres:5432/pos?sslmode=disable"
+    db_url: "postgres://pos:{{ vault_postgres_password }}@postgres:5432/pos?sslmode=disable"
   tasks:
     - name: Login to GHCR
       community.docker.docker_login:

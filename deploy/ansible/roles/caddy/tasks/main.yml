@@ -13,20 +13,20 @@
 
 - name: Remove old Traefik container (port conflict)
   community.docker.docker_container:
-    name: pos-traefik
+    name: traefik
     state: absent
     force_kill: yes
   ignore_errors: yes
 
 - name: Remove existing Caddy container
   community.docker.docker_container:
-    name: pos-caddy
+    name: caddy
     state: absent
     force_kill: yes
 
 - name: Create Caddy container
   community.docker.docker_container:
-    name: pos-caddy
+    name: caddy
     image: "{{ caddy_image }}"
     state: started
     restart_policy: always
