@@ -1,0 +1,10 @@
+meta {
+  name: Remove Role
+  method: DELETE
+  url: {{base_url}}/api/v1/users/:id/roles/:roleId
+}
+
+auth {
+  type: bearer
+  token: {{access_token}}
+}

@@ -1,0 +1,21 @@
+meta {
+  name: Assign Permission
+  method: POST
+  url: {{base_url}}/api/v1/roles/:name/permissions
+  body: json
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth {
+  type: bearer
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "permission": "reports.read"
+  }
+}

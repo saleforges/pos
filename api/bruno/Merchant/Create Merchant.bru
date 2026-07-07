@@ -1,0 +1,32 @@
+meta {
+  name: Create Merchant
+  method: POST
+  url: {{base_url}}/api/v1/merchants
+  body: json
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth {
+  type: bearer
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "name": "Toko Saya",
+    "legal_name": "PT Toko Saya",
+    "address": "Jl. Contoh No. 123",
+    "phone": "08123456789",
+    "email": "toko@merchant.com",
+    "tax_id": "12.345.678.9-012.345",
+    "settings": {
+      "tax_rate": 11,
+      "currency": "IDR",
+      "timezone": "Asia/Jakarta",
+      "low_stock_threshold": 5
+    }
+  }
+}

@@ -1,0 +1,16 @@
+meta {
+  name: List Merchants
+  method: GET
+  url: {{base_url}}/api/v1/merchants
+  params: query
+}
+
+params:query {
+  offset: 0
+  limit: 20
+}
+
+auth {
+  type: bearer
+  token: {{access_token}}
+}

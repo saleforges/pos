@@ -1,0 +1,25 @@
+meta {
+  name: Update Merchant
+  method: PATCH
+  url: {{base_url}}/api/v1/merchants/:id
+  body: json
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth {
+  type: bearer
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "name": "Toko Saya Updated",
+    "phone": "08123456799",
+    "settings": {
+      "tax_rate": 12
+    }
+  }
+}

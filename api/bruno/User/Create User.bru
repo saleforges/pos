@@ -1,0 +1,24 @@
+meta {
+  name: Create User
+  method: POST
+  url: {{base_url}}/api/v1/users
+  body: json
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth {
+  type: bearer
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "username": "newuser",
+    "email": "newuser@test.com",
+    "password": "Test123!",
+    "roles": ["viewer"]
+  }
+}

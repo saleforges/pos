@@ -1,0 +1,22 @@
+meta {
+  name: Update User
+  method: PATCH
+  url: {{base_url}}/api/v1/users/:id
+  body: json
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth {
+  type: bearer
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "email": "updated@test.com",
+    "status": "active"
+  }
+}

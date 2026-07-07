@@ -1,0 +1,21 @@
+meta {
+  name: Update Role
+  method: PATCH
+  url: {{base_url}}/api/v1/roles/:name
+  body: json
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth {
+  type: bearer
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "description": "Updated description"
+  }
+}

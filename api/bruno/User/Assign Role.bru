@@ -1,0 +1,21 @@
+meta {
+  name: Assign Role
+  method: POST
+  url: {{base_url}}/api/v1/users/:id/roles
+  body: json
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth {
+  type: bearer
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "role": "admin"
+  }
+}

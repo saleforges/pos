@@ -1,0 +1,10 @@
+meta {
+  name: Remove Permission
+  method: DELETE
+  url: {{base_url}}/api/v1/roles/:name/permissions/:permissionId
+}
+
+auth {
+  type: bearer
+  token: {{access_token}}
+}
