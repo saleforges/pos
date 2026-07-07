@@ -23,6 +23,7 @@ func main() {
 	logger.Info("starting merchant service", "addr", addr)
 	app, err := bootstrap.New(bootstrap.Config{
 		DatabaseURL:  os.Getenv("DATABASE_URL"),
+		IAMBaseURL:   os.Getenv("IAM_BASE_URL"),
 		OtelEndpoint: os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 	})
 	if err != nil {
