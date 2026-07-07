@@ -5,11 +5,6 @@
     owner: 999
     group: 999
 
-- name: Remove old Redis container
-  ansible.builtin.shell:
-    cmd: docker rm -f pos-redis 2>/dev/null || true
-  changed_when: false
-
 - name: Run Redis container
   community.docker.docker_container:
     name: redis
