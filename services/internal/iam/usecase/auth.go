@@ -91,8 +91,8 @@ type RegisterResult struct {
 }
 
 type AuthResult struct {
-	User  domain.User
-	Token string
+	User domain.User
+	port.TokenPair
 }
 
 type LoginInput struct {
@@ -225,13 +225,19 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 		return nil, domain.ErrInternal
 	}
 
-	token, err := uc.tokenSigner.SignAccessToken(port.TokenClaims{
+	accessToken, err := uc.tokenSigner.SignAccessToken(port.TokenClaims{
 		UserID:      user.ID,
 		Roles:       user.Roles,
 		Permissions: permissions,
 	})
 	if err != nil {
-		logger.Error("register: sign token failed", "error", err.Error())
+		logger.Error("register: sign access token failed", "error", err.Error())
+		return nil, domain.ErrInternal
+	}
+
+	refreshToken, err := uc.tokenSigner.SignRefreshToken(user.ID)
+	if err != nil {
+		logger.Error("register: sign refresh token failed", "error", err.Error())
 		return nil, domain.ErrInternal
 	}
 
@@ -242,7 +248,14 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 		"roles":    user.Roles,
 	})
 
-	return &AuthResult{User: *user, Token: token}, nil
+	return &AuthResult{
+		User: *user,
+		TokenPair: port.TokenPair{
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+			ExpiresIn:    900,
+		},
+	}, nil
 }
 
 func (uc *AuthUsecase) Login(ctx context.Context, input LoginInput) (*LoginResult, error) {

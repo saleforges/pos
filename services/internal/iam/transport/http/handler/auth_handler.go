@@ -39,8 +39,9 @@ func (h *AuthHandler) Register(c echo.Context) error {
 	}
 
 	return writeJSON(c, http.StatusCreated, authResponse{
-		AccessToken: result.Token,
-		ExpiresIn:   900,
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
+		ExpiresIn:    result.ExpiresIn,
 		User: userResponse{
 			ID:       result.User.ID,
 			Username: result.User.Username,
