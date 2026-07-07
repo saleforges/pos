@@ -461,8 +461,11 @@ func TestAuthUsecase_Register(t *testing.T) {
 			if result == nil {
 				t.Fatal("expected result, got nil")
 			}
-			if result.Token == "" {
-				t.Error("expected non-empty token")
+			if result.AccessToken == "" {
+				t.Error("expected non-empty access token")
+			}
+			if result.RefreshToken == "" {
+				t.Error("expected non-empty refresh token")
 			}
 			if result.User.Username != tt.input.Username {
 				t.Errorf("expected username %s, got %s", tt.input.Username, result.User.Username)
