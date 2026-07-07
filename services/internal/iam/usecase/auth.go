@@ -10,6 +10,7 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/port/repository"
+	"github.com/saleforge/pos/services/pkg/logger"
 )
 
 type AuthUsecase struct {
@@ -193,6 +194,7 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 
 	hashed, err := uc.passwordHasher.Hash(input.Password)
 	if err != nil {
+		logger.Error("register: password hash failed", "error", err.Error())
 		return nil, domain.ErrInternal
 	}
 
@@ -209,11 +211,13 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 	}
 
 	if err := uc.userRepo.Create(ctx, user); err != nil {
+		logger.Error("register: create user failed", "error", err.Error())
 		return nil, domain.ErrInternal
 	}
 
 	permissions, err := uc.collectPermissions(ctx, user.Roles)
 	if err != nil {
+		logger.Error("register: collect permissions failed", "error", err.Error())
 		return nil, domain.ErrInternal
 	}
 
@@ -223,6 +227,7 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 		Permissions: permissions,
 	})
 	if err != nil {
+		logger.Error("register: sign token failed", "error", err.Error())
 		return nil, domain.ErrInternal
 	}
 

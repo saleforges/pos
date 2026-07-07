@@ -26,6 +26,7 @@ func main() {
 		JWTPrivateKeyPEM: getEnv("JWT_PRIVATE_KEY_PEM", ""),
 		JWTKeyID:         getEnv("JWT_KEY_ID", "iam-key-1"),
 		DatabaseURL:      os.Getenv("DATABASE_URL"),
+		OtelEndpoint:     os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 	})
 	if err != nil {
 		logger.Error("bootstrap failed", "error", err.Error())

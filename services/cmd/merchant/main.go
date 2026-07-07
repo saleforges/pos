@@ -22,7 +22,8 @@ func main() {
 	addr := getEnv("MERCHANT_PORT", ":8081")
 	logger.Info("starting merchant service", "addr", addr)
 	app, err := bootstrap.New(bootstrap.Config{
-		DatabaseURL: os.Getenv("DATABASE_URL"),
+		DatabaseURL:  os.Getenv("DATABASE_URL"),
+		OtelEndpoint: os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 	})
 	if err != nil {
 		logger.Error("bootstrap failed", "error", err.Error())

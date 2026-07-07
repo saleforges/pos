@@ -30,5 +30,6 @@
           JWT_PRIVATE_KEY_PEM: "{{ jwt_private_key }}"
           JWT_KEY_ID: "{{ jwt_key_id }}"
           DATABASE_URL: "{{ db_url }}"
+          OTEL_EXPORTER_OTLP_ENDPOINT: "tempo:4317"
         networks:
           - name: pos

@@ -16,8 +16,9 @@ import (
 )
 
 type Config struct {
-	DatabaseURL string
-	IAMBaseURL  string
+	DatabaseURL  string
+	IAMBaseURL   string
+	OtelEndpoint string
 }
 
 type App struct {
@@ -33,10 +34,11 @@ func New(cfg Config) (*App, error) {
 	tokenValidator := iam.NewTokenValidator(iamBaseURL)
 
 	otelShutdown, err := otel.Init(context.Background(), otel.Config{
-		ServiceName: "merchant-service",
-		Environment: "development",
-		UseGRPC:     true,
-		Insecure:    true,
+		ServiceName:  "merchant-service",
+		Environment:  "development",
+		OtelEndpoint: cfg.OtelEndpoint,
+		UseGRPC:      true,
+		Insecure:     true,
 	})
 	if err != nil {
 		logger.Warn("failed to init otel, continuing without tracing", "error", err.Error())

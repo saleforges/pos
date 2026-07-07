@@ -19,6 +19,7 @@ type Config struct {
 	JWTPrivateKeyPEM string
 	JWTKeyID         string
 	DatabaseURL      string
+	OtelEndpoint     string
 }
 
 type App struct {
@@ -34,10 +35,11 @@ func (n *noopEventPublisher) Publish(_ context.Context, _ string, _ interface{})
 
 func New(cfg Config) (*App, error) {
 	otelShutdown, err := otel.Init(context.Background(), otel.Config{
-		ServiceName: "iam-service",
-		Environment: "development",
-		UseGRPC:     true,
-		Insecure:    true,
+		ServiceName:  "iam-service",
+		Environment:  "development",
+		OtelEndpoint: cfg.OtelEndpoint,
+		UseGRPC:      true,
+		Insecure:     true,
 	})
 	if err != nil {
 		logger.Warn("failed to init otel, continuing without tracing", "error", err.Error())

@@ -28,5 +28,6 @@
           MERCHANT_PORT: ":8081"
           DATABASE_URL: "{{ db_url }}"
           IAM_BASE_URL: "{{ iam_base_url }}"
+          OTEL_EXPORTER_OTLP_ENDPOINT: "tempo:4317"
         networks:
           - name: pos
