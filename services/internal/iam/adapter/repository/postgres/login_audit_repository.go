@@ -4,15 +4,15 @@ import (
 	"context"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/saleforge/pos/services/pkg/otel"
 	"github.com/saleforge/pos/services/internal/iam/domain"
 )
 
 type LoginAuditRepository struct {
-	pool *pgxpool.Pool
+	pool *otel.TracedPool
 }
 
-func NewLoginAuditRepository(pool *pgxpool.Pool) *LoginAuditRepository {
+func NewLoginAuditRepository(pool *otel.TracedPool) *LoginAuditRepository {
 	return &LoginAuditRepository{pool: pool}
 }
 

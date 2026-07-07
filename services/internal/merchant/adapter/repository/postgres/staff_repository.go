@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/saleforge/pos/services/internal/merchant/domain"
+	"github.com/saleforge/pos/services/pkg/otel"
 )
 
 type StaffRepository struct {
-	pool *pgxpool.Pool
+	pool *otel.TracedPool
 }
 
-func NewStaffRepository(pool *pgxpool.Pool) *StaffRepository {
+func NewStaffRepository(pool *otel.TracedPool) *StaffRepository {
 	return &StaffRepository{pool: pool}
 }
 

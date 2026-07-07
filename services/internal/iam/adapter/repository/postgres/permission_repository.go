@@ -4,15 +4,15 @@ import (
 	"context"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/saleforge/pos/services/pkg/otel"
 	"github.com/saleforge/pos/services/internal/iam/domain"
 )
 
 type PermissionRepository struct {
-	pool *pgxpool.Pool
+	pool *otel.TracedPool
 }
 
-func NewPermissionRepository(pool *pgxpool.Pool) *PermissionRepository {
+func NewPermissionRepository(pool *otel.TracedPool) *PermissionRepository {
 	return &PermissionRepository{pool: pool}
 }
 

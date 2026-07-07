@@ -4,9 +4,10 @@ import (
 	"context"
 	"time"
 
-	"github.com/saleforge/pos/services/pkg/id"
 	"github.com/saleforge/pos/services/internal/merchant/domain"
 	"github.com/saleforge/pos/services/internal/merchant/port/repository"
+	"github.com/saleforge/pos/services/pkg/id"
+	"github.com/saleforge/pos/services/pkg/otel"
 )
 
 type MerchantUsecase interface {
@@ -50,6 +51,9 @@ type UpdateMerchantInput struct {
 }
 
 func (uc *merchantUsecase) CreateMerchant(ctx context.Context, input CreateMerchantInput) (*domain.Merchant, error) {
+	ctx, span := otel.StartSpan(ctx, "merchant.CreateMerchant")
+	defer span.End()
+
 	if input.Name == "" || input.Email == "" {
 		return nil, domain.ErrInvalidMerchant
 	}
@@ -89,6 +93,9 @@ func (uc *merchantUsecase) GetMerchant(ctx context.Context, id string) (*domain.
 }
 
 func (uc *merchantUsecase) ListMerchants(ctx context.Context, offset, limit int) ([]domain.Merchant, error) {
+	ctx, span := otel.StartSpan(ctx, "merchant.ListMerchants")
+	defer span.End()
+
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}

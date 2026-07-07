@@ -1,6 +1,7 @@
 package otel
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -12,6 +13,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"github.com/saleforge/pos/services/pkg/logger"
 )
+
+func StartSpan(ctx context.Context, name string, attrs ...attribute.KeyValue) (context.Context, trace.Span) {
+	return tracerProvider().Start(ctx, name, trace.WithAttributes(attrs...))
+}
 
 func TracingMiddleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {

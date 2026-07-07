@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/saleforge/pos/services/internal/merchant/domain"
+	"github.com/saleforge/pos/services/pkg/otel"
 )
 
 type MerchantRepository struct {
-	pool *pgxpool.Pool
+	pool *otel.TracedPool
 }
 
-func NewMerchantRepository(pool *pgxpool.Pool) *MerchantRepository {
+func NewMerchantRepository(pool *otel.TracedPool) *MerchantRepository {
 	return &MerchantRepository{pool: pool}
 }
 

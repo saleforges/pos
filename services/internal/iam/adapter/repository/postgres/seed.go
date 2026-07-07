@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/saleforge/pos/services/pkg/otel"
 )
 
 var defaultPermissions = []string{
@@ -59,7 +59,7 @@ var defaultRoles = []struct {
 	},
 }
 
-func SeedData(ctx context.Context, pool *pgxpool.Pool) error {
+func SeedData(ctx context.Context, pool *otel.TracedPool) error {
 	now := time.Now().UTC()
 
 	for _, p := range defaultPermissions {

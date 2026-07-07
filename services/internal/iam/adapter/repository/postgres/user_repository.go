@@ -5,15 +5,15 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/saleforge/pos/services/pkg/otel"
 	"github.com/saleforge/pos/services/internal/iam/domain"
 )
 
 type UserRepository struct {
-	pool *pgxpool.Pool
+	pool *otel.TracedPool
 }
 
-func NewUserRepository(pool *pgxpool.Pool) *UserRepository {
+func NewUserRepository(pool *otel.TracedPool) *UserRepository {
 	return &UserRepository{pool: pool}
 }
 
@@ -29,7 +29,7 @@ func scanUser(row pgx.Row) (*domain.User, error) {
 	return &u, nil
 }
 
-func loadUserRoles(ctx context.Context, pool *pgxpool.Pool, userID string) ([]string, error) {
+func loadUserRoles(ctx context.Context, pool *otel.TracedPool, userID string) ([]string, error) {
 	rows, err := pool.Query(ctx, `SELECT role_name FROM user_roles WHERE user_id = $1 ORDER BY role_name`, userID)
 	if err != nil {
 		return nil, err
@@ -175,14 +175,14 @@ func (r *UserRepository) RemoveRole(ctx context.Context, userID, roleName string
 }
 
 type RoleRepository struct {
-	pool *pgxpool.Pool
+	pool *otel.TracedPool
 }
 
-func NewRoleRepository(pool *pgxpool.Pool) *RoleRepository {
+func NewRoleRepository(pool *otel.TracedPool) *RoleRepository {
 	return &RoleRepository{pool: pool}
 }
 
-func loadRolePermissions(ctx context.Context, pool *pgxpool.Pool, roleName string) ([]domain.Permission, error) {
+func loadRolePermissions(ctx context.Context, pool *otel.TracedPool, roleName string) ([]domain.Permission, error) {
 	rows, err := pool.Query(ctx,
 		`SELECT permission_name FROM role_permissions WHERE role_name = $1 ORDER BY permission_name`, roleName,
 	)

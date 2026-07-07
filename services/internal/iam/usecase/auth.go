@@ -11,6 +11,7 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/port/repository"
 	"github.com/saleforge/pos/services/pkg/logger"
+	"github.com/saleforge/pos/services/pkg/otel"
 )
 
 type AuthUsecase struct {
@@ -165,6 +166,9 @@ func validatePassword(password string) error {
 }
 
 func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*AuthResult, error) {
+	ctx, span := otel.StartSpan(ctx, "auth.Register")
+	defer span.End()
+
 	if err := validatePassword(input.Password); err != nil {
 		return nil, err
 	}
@@ -242,6 +246,9 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 }
 
 func (uc *AuthUsecase) Login(ctx context.Context, input LoginInput) (*LoginResult, error) {
+	ctx, span := otel.StartSpan(ctx, "auth.Login")
+	defer span.End()
+
 	user, err := uc.userRepo.GetByUsername(ctx, input.Username)
 	if err != nil {
 		uc.auditLogin(ctx, "", input.Username, false, input.IPAddress, input.UserAgent, "user not found")

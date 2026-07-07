@@ -10,12 +10,13 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/saleforge/pos/services/pkg/logger"
+	"github.com/saleforge/pos/services/pkg/otel"
 )
 
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
-func Connect(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
+func Connect(ctx context.Context, databaseURL string) (*otel.TracedPool, error) {
 	pool, err := pgxpool.New(ctx, databaseURL)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to database: %w", err)
@@ -26,7 +27,7 @@ func Connect(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("unable to ping database: %w", err)
 	}
 
-	return pool, nil
+	return otel.NewTracedPool(pool), nil
 }
 
 func RunMigrations(databaseURL string) error {

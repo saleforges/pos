@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/saleforge/pos/services/internal/merchant/domain"
+	"github.com/saleforge/pos/services/pkg/otel"
 )
 
 type BranchRepository struct {
-	pool *pgxpool.Pool
+	pool *otel.TracedPool
 }
 
-func NewBranchRepository(pool *pgxpool.Pool) *BranchRepository {
+func NewBranchRepository(pool *otel.TracedPool) *BranchRepository {
 	return &BranchRepository{pool: pool}
 }
 

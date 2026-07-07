@@ -7,15 +7,15 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/saleforge/pos/services/pkg/otel"
 	"github.com/saleforge/pos/services/internal/iam/domain"
 )
 
 type RefreshTokenRepository struct {
-	pool *pgxpool.Pool
+	pool *otel.TracedPool
 }
 
-func NewRefreshTokenRepository(pool *pgxpool.Pool) *RefreshTokenRepository {
+func NewRefreshTokenRepository(pool *otel.TracedPool) *RefreshTokenRepository {
 	return &RefreshTokenRepository{pool: pool}
 }
 
