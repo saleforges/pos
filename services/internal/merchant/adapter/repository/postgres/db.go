@@ -9,6 +9,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/saleforge/pos/services/pkg/logger"
 )
 
 //go:embed migrations/*.sql
@@ -41,6 +42,24 @@ func RunMigrations(databaseURL string) error {
 
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	if err == migrate.ErrNoChange {
+		pool, poolErr := pgxpool.New(context.Background(), databaseURL)
+		if poolErr == nil {
+			var exists bool
+			poolErr = pool.QueryRow(context.Background(),
+				"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'merchants')",
+			).Scan(&exists)
+			if poolErr == nil && !exists {
+				logger.Warn("migration tracking corrupted, forcing re-run")
+				m.Force(-1)
+				if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+					return fmt.Errorf("failed to re-run migrations: %w", err)
+				}
+			}
+			pool.Close()
+		}
 	}
 
 	srcErr, dbErr := m.Close()
