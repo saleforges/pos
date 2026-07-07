@@ -41,11 +41,12 @@ func RunMigrations(databaseURL string) error {
 		return fmt.Errorf("failed to create migrate instance: %w", err)
 	}
 
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("failed to run migrations: %w", err)
+	upErr := m.Up()
+	if upErr != nil && upErr != migrate.ErrNoChange {
+		return fmt.Errorf("failed to run migrations: %w", upErr)
 	}
 
-	if err == migrate.ErrNoChange {
+	if upErr == migrate.ErrNoChange {
 		pool, poolErr := pgxpool.New(context.Background(), databaseURL)
 		if poolErr == nil {
 			var exists bool
