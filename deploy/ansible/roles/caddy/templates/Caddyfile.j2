@@ -3,18 +3,21 @@
 }
 
 {{ caddy_api_domain }} {
-    @iam path /api/v1/auth* /api/v1/users* /api/v1/roles* /api/v1/permissions*
+    @iam path /v1/auth* /v1/users* /v1/roles* /v1/permissions*
     handle @iam {
+        rewrite * /api{path}
         reverse_proxy iam-service:8080
     }
 
-    @merchant path /api/v1/merchants* /api/v1/branches* /api/v1/staff*
+    @merchant path /v1/merchants* /v1/branches* /v1/staff*
     handle @merchant {
+        rewrite * /api{path}
         reverse_proxy merchant-service:8081
     }
 
-    @catalog path /api/v1/catalog*
+    @catalog path /v1/catalog*
     handle @catalog {
+        rewrite * /api{path}
         reverse_proxy catalog-service:8082
     }
 }
