@@ -1,0 +1,40 @@
+meta {
+  name: Product Create
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{catalog_base_url}}/api/v1/merchants/{{merchant_id}}/products
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "category_id": "{{catalog_id}}",
+    "name": "Es Teh Manis",
+    "sku": "ETM-001",
+    "barcode": "8991234567890",
+    "description": "Teh manis dengan es batu",
+    "price": 5000,
+    "cost": 2000,
+    "tax_rate": 11,
+    "unit": "pcs",
+    "image_url": ""
+  }
+}
+
+script:post-response {
+  if (res.body.data && res.body.data.id) {
+    bru.setVar("product_id", res.body.data.id);
+  }
+}

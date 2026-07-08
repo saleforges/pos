@@ -1,5 +1,5 @@
 meta {
-  name: List Variants
+  name: Variant List
   type: http
   seq: 12
 }
@@ -7,9 +7,9 @@ meta {
 get {
   url: {{catalog_base_url}}/api/v1/merchants/{{merchant_id}}/products/{{product_id}}/variants
   body: none
-  auth: none
+  auth: bearer
 }
 
-headers {
-  Authorization: Bearer {{access_token}}
+auth:bearer {
+  token: {{access_token}}
 }

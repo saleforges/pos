@@ -1,0 +1,26 @@
+meta {
+  name: Image Upload
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{catalog_base_url}}/api/v1/merchants/{{merchant_id}}/images
+  body: multipartForm
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:multipart-form {
+  file: @file(/path/to/image.jpg)
+  folder: products
+}
+
+script:post-response {
+  if (res.body.data && res.body.data.url) {
+    bru.setVar("image_url", res.body.data.url);
+  }
+}

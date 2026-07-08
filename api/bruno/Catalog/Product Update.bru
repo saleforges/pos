@@ -1,5 +1,5 @@
 meta {
-  name: Update Product
+  name: Product Update
   type: http
   seq: 9
 }
@@ -7,18 +7,20 @@ meta {
 put {
   url: {{catalog_base_url}}/api/v1/merchants/{{merchant_id}}/products/{{product_id}}
   body: json
-  auth: none
+  auth: bearer
 }
 
 headers {
   Content-Type: application/json
-  Authorization: Bearer {{access_token}}
+}
+
+auth:bearer {
+  token: {{access_token}}
 }
 
 body:json {
   {
-    "name": "Nasi Goreng Spesial",
-    "price": 30000,
-    "unit": "porsi"
+    "price": 5500,
+    "description": "Teh manis dengan es batu segar"
   }
 }

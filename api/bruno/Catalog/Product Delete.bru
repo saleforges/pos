@@ -1,15 +1,15 @@
 meta {
-  name: Get Product
+  name: Product Delete
   type: http
-  seq: 8
+  seq: 10
 }
 
-get {
+delete {
   url: {{catalog_base_url}}/api/v1/merchants/{{merchant_id}}/products/{{product_id}}
   body: none
-  auth: none
+  auth: bearer
 }
 
-headers {
-  Authorization: Bearer {{access_token}}
+auth:bearer {
+  token: {{access_token}}
 }

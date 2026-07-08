@@ -6,6 +6,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/catalog/adapter/repository/memory"
 	"github.com/saleforge/pos/services/internal/catalog/adapter/repository/postgres"
+	minioadapter "github.com/saleforge/pos/services/internal/catalog/adapter/storage/minio"
 	"github.com/saleforge/pos/services/internal/catalog/port/repository"
 	httptransport "github.com/saleforge/pos/services/internal/catalog/transport/http"
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/handler"
@@ -17,6 +18,7 @@ import (
 type Config struct {
 	DatabaseURL  string
 	OtelEndpoint string
+	Minio        minioadapter.Config
 }
 
 type App struct {
@@ -70,7 +72,19 @@ func New(cfg Config) (*App, error) {
 	prodHandler := handler.NewProductHandler(prodUC)
 	varHandler := handler.NewVariantHandler(varUC)
 
-	router := httptransport.NewRouter(catHandler, prodHandler, varHandler)
+	var imgHandler *handler.ImageHandler
+	if cfg.Minio.Endpoint != "" {
+		store, err := minioadapter.New(cfg.Minio)
+		if err != nil {
+			return nil, err
+		}
+		imgHandler = handler.NewImageHandler(store)
+		logger.Info("minio storage enabled")
+	} else {
+		logger.Warn("minio not configured, image upload disabled")
+	}
+
+	router := httptransport.NewRouter(catHandler, prodHandler, varHandler, imgHandler)
 
 	return &App{router: router, otelShutdown: otelShutdown}, nil
 }

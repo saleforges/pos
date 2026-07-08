@@ -1,5 +1,5 @@
 meta {
-  name: Delete Category
+  name: Category Delete
   type: http
   seq: 5
 }
@@ -7,9 +7,9 @@ meta {
 delete {
   url: {{catalog_base_url}}/api/v1/merchants/{{merchant_id}}/categories/{{catalog_id}}
   body: none
-  auth: none
+  auth: bearer
 }
 
-headers {
-  Authorization: Bearer {{access_token}}
+auth:bearer {
+  token: {{access_token}}
 }

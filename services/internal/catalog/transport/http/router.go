@@ -13,6 +13,7 @@ func NewRouter(
 	catHandler *handler.CategoryHandler,
 	prodHandler *handler.ProductHandler,
 	varHandler *handler.VariantHandler,
+	imgHandler *handler.ImageHandler,
 ) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
@@ -49,6 +50,11 @@ func NewRouter(
 	prod.GET("/:productID/variants", varHandler.ListByProduct)
 	prod.PUT("/variants/:id", varHandler.Update)
 	prod.DELETE("/variants/:id", varHandler.Delete)
+
+	if imgHandler != nil {
+		img := api.Group("/merchants/:merchantID/images")
+		img.POST("", imgHandler.Upload)
+	}
 
 	return e
 }

@@ -1,0 +1,21 @@
+meta {
+  name: Product List
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{catalog_base_url}}/api/v1/merchants/{{merchant_id}}/products
+  body: none
+  auth: bearer
+}
+
+params:query {
+  search: 
+  offset: 0
+  limit: 20
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

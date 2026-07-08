@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
+	minioadapter "github.com/saleforge/pos/services/internal/catalog/adapter/storage/minio"
 	"github.com/saleforge/pos/services/internal/catalog/bootstrap"
 	"github.com/saleforge/pos/services/pkg/logger"
 )
@@ -25,6 +26,14 @@ func main() {
 	app, err := bootstrap.New(bootstrap.Config{
 		DatabaseURL:  os.Getenv("DATABASE_URL"),
 		OtelEndpoint: os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+		Minio: minioadapter.Config{
+			Endpoint:  os.Getenv("MINIO_ENDPOINT"),
+			AccessKey: os.Getenv("MINIO_ACCESS_KEY"),
+			SecretKey: os.Getenv("MINIO_SECRET_KEY"),
+			Bucket:    getEnv("MINIO_BUCKET", "catalog-dev"),
+			PublicURL: getEnv("MINIO_PUBLIC_URL", "https://minio.saleforges.com"),
+			UseSSL:    os.Getenv("MINIO_USE_SSL") == "true",
+		},
 	})
 	if err != nil {
 		logger.Error("bootstrap failed", "error", err.Error())
