@@ -1,0 +1,25 @@
+meta {
+  name: Update Category
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{catalog_base_url}}/api/v1/merchants/{{merchant_id}}/categories/{{catalog_id}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{access_token}}
+}
+
+body:json {
+  {
+    "name": "Makanan & Minuman",
+    "slug": "makanan-minuman",
+    "description": "Gabungan makanan dan minuman",
+    "sort_order": 1
+  }
+}

@@ -1,0 +1,33 @@
+meta {
+  name: Create Variant
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{catalog_base_url}}/api/v1/merchants/{{merchant_id}}/products/{{product_id}}/variants
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Authorization: Bearer {{access_token}}
+}
+
+body:json {
+  {
+    "name": "Reguler",
+    "sku": "NG-001-R",
+    "barcode": "",
+    "price": 25000,
+    "cost": 15000,
+    "sort_order": 1
+  }
+}
+
+script:post-response {
+  if (res.body.id) {
+    bru.setVar("variant_id", res.body.id);
+  }
+}

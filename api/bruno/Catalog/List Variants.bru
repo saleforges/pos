@@ -1,0 +1,15 @@
+meta {
+  name: List Variants
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{catalog_base_url}}/api/v1/merchants/{{merchant_id}}/products/{{product_id}}/variants
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{access_token}}
+}
