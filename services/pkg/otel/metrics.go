@@ -29,7 +29,13 @@ var (
 )
 
 func init() {
-	prometheus.MustRegister(HTTPRequestsTotal, HTTPRequestDuration, HTTPRequestsInFlight)
+	prometheus.MustRegister(
+		HTTPRequestsTotal,
+		HTTPRequestDuration,
+		HTTPRequestsInFlight,
+		prometheus.NewGoCollector(),
+		prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}),
+	)
 }
 
 func MetricsHandler() http.Handler {
