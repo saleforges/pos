@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/auth_provider.dart';
+import '../../../pos/presentation/screens/pos_screen.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
   bool _obscurePassword = true;
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -24,17 +26,32 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
-
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, '/pos');
-    }
+    await ref.read(authProvider.notifier).login(
+      _usernameController.text.trim(),
+      _passwordController.text,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+
+    ref.listen<AuthState>(authProvider, (previous, next) {
+      if (next.status == AuthStatus.authenticated) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const PosScreen()),
+        );
+      } else if (next.status == AuthStatus.error && next.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(next.error!),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    });
+
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
@@ -70,19 +87,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 48),
                   TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
+                    controller: _usernameController,
                     decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined),
+                      labelText: 'Username',
+                      prefixIcon: Icon(Icons.person_outlined),
                       border: OutlineInputBorder(),
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Email is required';
-                      }
-                      if (!value.contains('@')) {
-                        return 'Invalid email';
+                        return 'Username is required';
                       }
                       return null;
                     },
@@ -112,16 +125,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       if (value == null || value.isEmpty) {
                         return 'Password is required';
                       }
-                      if (value.length < 6) {
-                        return 'Password must be at least 6 characters';
-                      }
                       return null;
                     },
                   ),
                   const SizedBox(height: 24),
                   FilledButton(
-                    onPressed: _isLoading ? null : _handleLogin,
-                    child: _isLoading
+                    onPressed: authState.status == AuthStatus.loading
+                        ? null
+                        : _handleLogin,
+                    child: authState.status == AuthStatus.loading
                         ? const SizedBox(
                             height: 20,
                             width: 20,
