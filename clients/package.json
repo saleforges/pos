@@ -1,0 +1,17 @@
+{
+  "name": "pos-clients",
+  "private": true,
+  "workspaces": [
+    "backoffice",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint"
+  },
+  "devDependencies": {
+    "turbo": "^2.10.4"
+  },
+  "packageManager": "bun@1.3.0"
+}

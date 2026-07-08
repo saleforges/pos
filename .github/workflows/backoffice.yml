@@ -13,6 +13,10 @@ on:
       - development
     paths:
       - "clients/backoffice/**"
+      - "clients/packages/**"
+      - "clients/package.json"
+      - "clients/bun.lock"
+      - "clients/turbo.json"
       - ".github/workflows/backoffice.yml"
   pull_request:
     branches:
@@ -20,6 +24,10 @@ on:
       - development
     paths:
       - "clients/backoffice/**"
+      - "clients/packages/**"
+      - "clients/package.json"
+      - "clients/bun.lock"
+      - "clients/turbo.json"
       - ".github/workflows/backoffice.yml"
 
 concurrency:
@@ -32,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: clients/backoffice
+        working-directory: clients
     steps:
       - uses: actions/checkout@v4
 
@@ -42,9 +50,9 @@ jobs:
 
       - run: bun install --frozen-lockfile
 
-      - run: bun run lint
+      - run: bunx turbo run lint --filter=backoffice
 
-      - run: bun run build
+      - run: bunx turbo run build --filter=backoffice
 
   build-and-push:
     name: Build & Push Docker Image
@@ -67,7 +75,7 @@ jobs:
       - name: Build and push Docker image
         run: |
           IMAGE=ghcr.io/${{ github.repository }}/backoffice
-          docker build -t $IMAGE:${{ github.sha }} clients/backoffice
+          docker build -f clients/backoffice/Dockerfile -t $IMAGE:${{ github.sha }} clients
           docker push $IMAGE:${{ github.sha }}
 
   deploy-dev:
