@@ -107,6 +107,31 @@ services:
     networks:
       - pos
 
+  # ========== Redis Metrics ==========
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis-exporter
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    ports:
+      - "9121:9121"
+    networks:
+      - pos
+
+  # ========== System Metrics ==========
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    command:
+      - --path.rootfs=/host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    networks:
+      - pos
+
 volumes:
   mimir-data:
   tempo-data:
