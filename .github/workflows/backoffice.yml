@@ -1,17 +1,26 @@
 name: Backoffice CI/CD
 
 on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag (default: commit SHA)"
+        required: false
+        type: string
   push:
+    branches:
+      - main
+      - development
     paths:
-      - 'clients/backoffice/**'
-      - '.github/workflows/backoffice.yml'
+      - "clients/backoffice/**"
+      - ".github/workflows/backoffice.yml"
   pull_request:
     branches:
       - main
       - development
     paths:
-      - 'clients/backoffice/**'
-      - '.github/workflows/backoffice.yml'
+      - "clients/backoffice/**"
+      - ".github/workflows/backoffice.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -19,7 +28,7 @@ concurrency:
 
 jobs:
   quality:
-    name: Lint & Type Check
+    name: Lint & Build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -45,13 +54,10 @@ jobs:
     permissions:
       contents: read
       packages: write
-    defaults:
-      run:
-        working-directory: clients/backoffice
     steps:
       - uses: actions/checkout@v4
 
-      - name: Log in to GitHub Container Registry
+      - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -59,10 +65,57 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v6
+        run: |
+          IMAGE=ghcr.io/${{ github.repository }}/backoffice
+          docker build -t $IMAGE:${{ github.sha }} clients/backoffice
+          docker push $IMAGE:${{ github.sha }}
+
+  deploy-dev:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/development'
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: webfactory/ssh-agent@v0.10.0
         with:
-          context: clients/backoffice
-          push: true
-          tags: |
-            ghcr.io/saleforge/pos/backoffice:latest
-            ghcr.io/saleforge/pos/backoffice:${{ github.sha }}
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Install Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+          ansible-galaxy collection install -r deploy/ansible/requirements.yml
+
+      - name: Create inventory
+        run: |
+          mkdir -p deploy/ansible/inventory/development
+          cat > deploy/ansible/inventory/development/hosts.yml <<EOF
+          all:
+            hosts:
+              dev-server:
+                ansible_host: ${{ secrets.DEV_SERVER_IP }}
+                ansible_user: ${{ secrets.DEV_SERVER_USER }}
+                ansible_become: yes
+                ansible_become_password: ${{ secrets.DEV_SUDO_PASSWORD }}
+          EOF
+
+      - name: Write vault vars
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat > /tmp/vault-extra.yml << EOV
+          vault_ghcr_username: "${{ github.actor }}"
+          vault_ghcr_token: "$GHCR_TOKEN"
+          EOV
+
+      - name: Deploy Backoffice
+        run: |
+          ansible-playbook -i deploy/ansible/inventory/development/hosts.yml \
+            deploy/ansible/playbooks/deploy-backoffice.yml \
+            --extra-vars "@/tmp/vault-extra.yml" \
+            -e image_tag=${{ inputs.image_tag || github.sha }}
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+          ANSIBLE_INVENTORY_ENABLED: "yaml"
+          ANSIBLE_ROLES_PATH: "deploy/ansible/roles"

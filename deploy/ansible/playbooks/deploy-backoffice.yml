@@ -1,7 +1,20 @@
 - name: Deploy Backoffice
   hosts: all
   become: yes
+  vars_files:
+    - ../vars/vault.yml
+  vars:
+    ghcr_username: "{{ vault_ghcr_username | default('') }}"
+    ghcr_token: "{{ vault_ghcr_token | default('') }}"
   tasks:
+    - name: Login to GHCR
+      community.docker.docker_login:
+        registry_url: https://ghcr.io
+        username: "{{ ghcr_username }}"
+        password: "{{ ghcr_token }}"
+      when: ghcr_username != '' and ghcr_token != ''
+      no_log: true
+
     - name: Pull and run Backoffice container
       community.docker.docker_container:
         name: backoffice
