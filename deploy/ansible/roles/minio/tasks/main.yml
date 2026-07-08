@@ -1,0 +1,38 @@
+- name: Ensure data directory exists
+  file:
+    path: "{{ minio_data_dir }}"
+    state: directory
+
+- name: Run MinIO container
+  community.docker.docker_container:
+    name: minio
+    image: "{{ minio_image }}"
+    command: server /data --console-address ":9001"
+    state: started
+    restart_policy: unless-stopped
+    ports:
+      - "{{ minio_api_port }}:9000"
+      - "{{ minio_console_port }}:9001"
+    env:
+      MINIO_ROOT_USER: "{{ minio_root_user }}"
+      MINIO_ROOT_PASSWORD: "{{ minio_root_password }}"
+    volumes:
+      - "{{ minio_data_dir }}:/data"
+    networks:
+      - name: pos
+
+- name: Create bucket and set public-read policy
+  community.docker.docker_container:
+    name: mc-init
+    image: quay.io/minio/mc:latest
+    entrypoint: |
+      /bin/sh -c "
+        sleep 3 &&
+        mc alias set pos http://minio:9000 {{ minio_root_user }} {{ minio_root_password }} &&
+        mc mb pos/{{ minio_bucket }} --ignore-existing &&
+        mc anonymous set public pos/{{ minio_bucket }}
+      "
+    networks:
+      - name: pos
+    state: started
+    auto_remove: yes
