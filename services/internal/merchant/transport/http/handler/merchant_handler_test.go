@@ -72,14 +72,14 @@ func TestMerchantHandler_Create(t *testing.T) {
 			body:       `{invalid}`,
 			mock:       &mockMerchantSvc{},
 			wantStatus: http.StatusBadRequest,
-			wantBody:   `"error":"invalid request body"`,
+			wantBody:   `"message":"invalid request body"`,
 		},
 		{
 			name:       "missing required fields",
 			body:       `{"name":""}`,
 			mock:       &mockMerchantSvc{},
 			wantStatus: http.StatusBadRequest,
-			wantBody:   `"error":"missing required fields"`,
+			wantBody:   `"message":"missing required fields"`,
 		},
 		{
 			name: "internal error",
@@ -90,7 +90,7 @@ func TestMerchantHandler_Create(t *testing.T) {
 				},
 			},
 			wantStatus: http.StatusInternalServerError,
-			wantBody:   `"error":"MCH500: internal error"`,
+			wantBody:   `"message":"MCH500: internal error"`,
 		},
 	}
 
@@ -150,7 +150,7 @@ func TestMerchantHandler_Get(t *testing.T) {
 				},
 			},
 			wantStatus: http.StatusNotFound,
-			wantBody:   `"error":"MCH001: merchant not found"`,
+			wantBody:   `"message":"MCH001: merchant not found"`,
 		},
 	}
 
@@ -208,12 +208,15 @@ func TestMerchantHandler_List(t *testing.T) {
 		t.Errorf("expected status %d, got %d", http.StatusOK, rec.Code)
 	}
 
-	var merchants []domain.Merchant
-	if err := json.Unmarshal(rec.Body.Bytes(), &merchants); err != nil {
+	var wrap struct {
+		Message string            `json:"message"`
+		Data    []domain.Merchant `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &wrap); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}
-	if len(merchants) != 2 {
-		t.Errorf("expected 2 merchants, got %d", len(merchants))
+	if len(wrap.Data) != 2 {
+		t.Errorf("expected 2 merchants, got %d", len(wrap.Data))
 	}
 }
 
@@ -246,7 +249,7 @@ func TestMerchantHandler_Update(t *testing.T) {
 			body:       `{bad}`,
 			mock:       &mockMerchantSvc{},
 			wantStatus: http.StatusBadRequest,
-			wantBody:   `"error":"invalid request body"`,
+			wantBody:   `"message":"invalid request body"`,
 		},
 		{
 			name: "not found",
@@ -258,7 +261,7 @@ func TestMerchantHandler_Update(t *testing.T) {
 				},
 			},
 			wantStatus: http.StatusNotFound,
-			wantBody:   `"error":"MCH001: merchant not found"`,
+			wantBody:   `"message":"MCH001: merchant not found"`,
 		},
 	}
 

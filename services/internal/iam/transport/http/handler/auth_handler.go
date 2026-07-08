@@ -25,7 +25,6 @@ func (h *AuthHandler) Register(c echo.Context) error {
 		Username: req.Username,
 		Email:    req.Email,
 		Password: req.Password,
-		Roles:    req.Roles,
 	})
 	if err != nil {
 		if err == domain.ErrPasswordPolicy {
@@ -123,7 +122,7 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 		return writeError(c, http.StatusInternalServerError, err)
 	}
 
-	return writeJSON(c, http.StatusOK, map[string]string{"message": "logged out successfully"})
+	return writeJSON(c, http.StatusOK, nil)
 }
 
 func (h *AuthHandler) Introspect(c echo.Context) error {
@@ -153,5 +152,12 @@ func (h *AuthHandler) Me(c echo.Context) error {
 		return writeError(c, http.StatusUnauthorized, errUnauthorized)
 	}
 
-	return writeJSON(c, http.StatusOK, toUserResponse(*user))
+	merchants, _ := h.authUsecase.ListStaff(c.Request().Context(), claims.UserID)
+	if merchants == nil {
+		merchants = []domain.StaffInfo{}
+	}
+
+	u := toUserResponse(*user)
+	u.Merchants = merchants
+	return writeJSON(c, http.StatusOK, u)
 }

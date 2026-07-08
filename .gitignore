@@ -26,6 +26,10 @@ Thumbs.db
 vendor/
 *-server
 
+# Compiled binaries
+services/iam
+services/catalog
+
 # Keys / certs
 *.pem
 

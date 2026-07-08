@@ -14,15 +14,15 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/port"
 )
 
+type apiResponse struct {
+	Message string          `json:"message"`
+	Data    json.RawMessage `json:"data"`
+}
+
 type authResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
-	User         struct {
-		ID       string   `json:"id"`
-		Username string   `json:"username"`
-		Email    string   `json:"email"`
-		Roles    []string `json:"roles"`
-	} `json:"user"`
+	ExpiresIn    int    `json:"expires_in"`
 }
 
 func TestApp_HTTPFlow(t *testing.T) {
@@ -44,9 +44,17 @@ func TestApp_HTTPFlow(t *testing.T) {
 		t.Fatalf("expected status %d, got %d", http.StatusCreated, registerRec.Code)
 	}
 
-	var regResp authResponse
-	if err := json.NewDecoder(registerRec.Body).Decode(&regResp); err != nil {
+	var wrap apiResponse
+	if err := json.NewDecoder(registerRec.Body).Decode(&wrap); err != nil {
 		t.Fatalf("decode register response: %v", err)
+	}
+	if wrap.Message != "success" {
+		t.Fatalf("expected success message, got %q", wrap.Message)
+	}
+
+	var regResp authResponse
+	if err := json.Unmarshal(wrap.Data, &regResp); err != nil {
+		t.Fatalf("decode auth data: %v", err)
 	}
 	if regResp.AccessToken == "" {
 		t.Fatal("expected access token in register response")

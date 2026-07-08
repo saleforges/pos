@@ -29,10 +29,13 @@ type introspectRequest struct {
 }
 
 type introspectResponse struct {
-	Active      bool     `json:"active"`
-	UserID      string   `json:"user_id"`
-	Roles       []string `json:"roles"`
-	Permissions []string `json:"permissions"`
+	Active       bool     `json:"active"`
+	UserID       string   `json:"user_id"`
+	UserType     string   `json:"user_type"`
+	Roles        []string `json:"roles"`
+	MerchantID   string   `json:"merchant_id"`
+	MerchantRole string   `json:"merchant_role"`
+	Permissions  []string `json:"permissions"`
 }
 
 func (v *tokenValidator) Validate(tokenString string) (*port.TokenClaims, error) {
@@ -62,8 +65,11 @@ func (v *tokenValidator) Validate(tokenString string) (*port.TokenClaims, error)
 	}
 
 	return &port.TokenClaims{
-		UserID:      result.UserID,
-		Roles:       result.Roles,
-		Permissions: result.Permissions,
+		UserID:       result.UserID,
+		UserType:     result.UserType,
+		Roles:        result.Roles,
+		MerchantID:   result.MerchantID,
+		MerchantRole: result.MerchantRole,
+		Permissions:  result.Permissions,
 	}, nil
 }

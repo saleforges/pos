@@ -18,13 +18,11 @@ body:json {
   {
     "username": "{{username}}",
     "email": "{{email}}",
-    "password": "{{password}}",
-    "roles": ["viewer"]
+    "password": "{{password}}"
   }
 }
 
 script:post-response {
-  bru.setVar("access_token", res.body.access_token);
-  bru.setVar("refresh_token", res.body.refresh_token);
+  bru.setVar("access_token", res.body.data.access_token);
+  bru.setVar("refresh_token", res.body.data.refresh_token);
 }
-

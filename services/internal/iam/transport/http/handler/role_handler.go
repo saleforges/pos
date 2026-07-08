@@ -78,7 +78,7 @@ func (h *AuthHandler) DeleteRole(c echo.Context) error {
 		return writeError(c, http.StatusConflict, domain.ErrInvalidRole)
 	}
 
-	return writeJSON(c, http.StatusOK, map[string]string{"message": "role deleted"})
+	return writeJSON(c, http.StatusOK, nil)
 }
 
 func (h *AuthHandler) AssignRole(c echo.Context) error {
@@ -96,7 +96,7 @@ func (h *AuthHandler) AssignRole(c echo.Context) error {
 		return writeError(c, http.StatusInternalServerError, err)
 	}
 
-	return writeJSON(c, http.StatusOK, map[string]string{"message": "role assigned"})
+	return writeJSON(c, http.StatusOK, nil)
 }
 
 func (h *AuthHandler) RemoveRole(c echo.Context) error {
@@ -104,7 +104,7 @@ func (h *AuthHandler) RemoveRole(c echo.Context) error {
 		return writeError(c, http.StatusNotFound, err)
 	}
 
-	return writeJSON(c, http.StatusOK, map[string]string{"message": "role removed"})
+	return writeJSON(c, http.StatusOK, nil)
 }
 
 func (h *AuthHandler) AssignPermission(c echo.Context) error {
@@ -122,7 +122,7 @@ func (h *AuthHandler) AssignPermission(c echo.Context) error {
 		return writeError(c, http.StatusInternalServerError, err)
 	}
 
-	return writeJSON(c, http.StatusOK, map[string]string{"message": "permission assigned"})
+	return writeJSON(c, http.StatusOK, nil)
 }
 
 func (h *AuthHandler) RemovePermission(c echo.Context) error {
@@ -133,5 +133,5 @@ func (h *AuthHandler) RemovePermission(c echo.Context) error {
 		return writeError(c, http.StatusInternalServerError, err)
 	}
 
-	return writeJSON(c, http.StatusOK, map[string]string{"message": "permission removed"})
+	return writeJSON(c, http.StatusOK, nil)
 }

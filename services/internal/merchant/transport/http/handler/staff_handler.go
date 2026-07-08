@@ -117,7 +117,7 @@ func (h *StaffHandler) RemoveStaff(c echo.Context) error {
 	if err := h.uc.RemoveStaff(c.Request().Context(), id); err != nil {
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}
-	return httputil.WriteJSON(c, http.StatusOK, map[string]string{"message": "staff removed"})
+	return httputil.WriteJSON(c, http.StatusOK, nil)
 }
 
 func (h *StaffHandler) MyStaffAssignments(c echo.Context) error {

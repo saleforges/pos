@@ -4,7 +4,10 @@ import "github.com/saleforge/pos/services/internal/iam/domain"
 
 type TokenClaims struct {
 	UserID      string              `json:"user_id"`
+	UserType    domain.UserType     `json:"user_type"`
 	Roles       []string            `json:"roles"`
+	MerchantID  string              `json:"merchant_id,omitempty"`
+	MerchantRole string             `json:"merchant_role,omitempty"`
 	Permissions []domain.Permission `json:"permissions"`
 }
 

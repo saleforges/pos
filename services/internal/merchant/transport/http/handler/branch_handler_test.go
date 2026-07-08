@@ -65,14 +65,14 @@ func TestBranchHandler_CreateBranch(t *testing.T) {
 			body:       `{bad}`,
 			mock:       &mockBranchSvc{},
 			wantStatus: http.StatusBadRequest,
-			wantBody:   `"error":"invalid request body"`,
+			wantBody:   `"message":"invalid request body"`,
 		},
 		{
 			name:       "missing fields",
 			body:       `{"merchant_id":"m1"}`,
 			mock:       &mockBranchSvc{},
 			wantStatus: http.StatusBadRequest,
-			wantBody:   `"error":"missing required fields"`,
+			wantBody:   `"message":"missing required fields"`,
 		},
 	}
 

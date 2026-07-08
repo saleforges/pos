@@ -37,5 +37,5 @@ func (h *AuthHandler) DeletePermission(c echo.Context) error {
 		return writeError(c, http.StatusInternalServerError, err)
 	}
 
-	return writeJSON(c, http.StatusOK, map[string]string{"message": "permission deleted"})
+	return writeJSON(c, http.StatusOK, nil)
 }

@@ -15,6 +15,7 @@ func toUserResponse(u domain.User) userResponse {
 		Username:  u.Username,
 		Email:     u.Email,
 		Roles:     u.Roles,
+		Type:      string(u.Type),
 		Status:    string(u.Status),
 		CreatedAt: u.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		UpdatedAt: u.UpdatedAt.Format("2006-01-02T15:04:05Z"),
@@ -106,5 +107,5 @@ func (h *AuthHandler) DeleteUser(c echo.Context) error {
 		return writeError(c, http.StatusNotFound, domain.ErrUserNotFound)
 	}
 
-	return writeJSON(c, http.StatusOK, map[string]string{"message": "user deleted"})
+	return writeJSON(c, http.StatusOK, nil)
 }

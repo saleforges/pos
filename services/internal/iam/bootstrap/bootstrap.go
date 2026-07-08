@@ -58,6 +58,7 @@ func New(cfg Config) (*App, error) {
 		permissionRepo   repository.PermissionRepository
 		refreshTokenRepo repository.RefreshTokenRepository
 		loginAuditRepo   repository.LoginAuditRepository
+		staffRepo        repository.StaffRepository
 	)
 
 	if cfg.DatabaseURL != "" {
@@ -81,6 +82,7 @@ func New(cfg Config) (*App, error) {
 		permissionRepo = postgres.NewPermissionRepository(pool)
 		refreshTokenRepo = postgres.NewRefreshTokenRepository(pool)
 		loginAuditRepo = postgres.NewLoginAuditRepository(pool)
+		staffRepo = postgres.NewStaffRepository(pool)
 
 		logger.Info("PostgreSQL connected and migrated")
 	} else {
@@ -90,6 +92,7 @@ func New(cfg Config) (*App, error) {
 		permissionRepo = memory.NewPermissionRepository()
 		refreshTokenRepo = memory.NewRefreshTokenRepository()
 		loginAuditRepo = memory.NewLoginAuditRepository()
+		staffRepo = memory.NewStaffRepository()
 	}
 
 	authUsecase := usecase.NewAuthUsecase(
@@ -98,6 +101,7 @@ func New(cfg Config) (*App, error) {
 		permissionRepo,
 		refreshTokenRepo,
 		loginAuditRepo,
+		staffRepo,
 		eventPublisher,
 		passwordHasher,
 		tokenSigner,

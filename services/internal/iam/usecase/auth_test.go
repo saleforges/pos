@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/saleforge/pos/services/internal/iam/adapter/repository/memory"
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/port/repository"
@@ -353,6 +354,7 @@ func newTestUsecase(
 		&mockPermissionRepo{},
 		&mockRefreshTokenRepo{},
 		&mockLoginAuditRepo{},
+		memory.NewStaffRepository(),
 		&mockEventPublisher{},
 		passwordHasher,
 		tokenSigner,

@@ -1,10 +1,11 @@
 package handler
 
+import "github.com/saleforge/pos/services/internal/iam/domain"
+
 type registerRequest struct {
-	Username string   `json:"username"`
-	Email    string   `json:"email"`
-	Password string   `json:"password"`
-	Roles    []string `json:"roles"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type loginRequest struct {
@@ -27,13 +28,15 @@ type authResponse struct {
 }
 
 type userResponse struct {
-	ID        string   `json:"id"`
-	Username  string   `json:"username"`
-	Email     string   `json:"email"`
-	Roles     []string `json:"roles"`
-	Status    string   `json:"status"`
-	CreatedAt string   `json:"created_at"`
-	UpdatedAt string   `json:"updated_at"`
+	ID        string             `json:"id"`
+	Username  string             `json:"username"`
+	Email     string             `json:"email"`
+	Roles     []string           `json:"roles"`
+	Type      string             `json:"type"`
+	Status    string             `json:"status"`
+	CreatedAt string             `json:"createdAt"`
+	UpdatedAt string             `json:"updatedAt"`
+	Merchants []domain.StaffInfo `json:"merchants"`
 }
 
 type createUserRequest struct {

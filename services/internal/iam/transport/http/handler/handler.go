@@ -3,6 +3,7 @@ package handler
 import (
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/iam/usecase"
+	"github.com/saleforge/pos/services/pkg/httputil"
 )
 
 const claimsKey = "claims"
@@ -16,9 +17,9 @@ func NewAuthHandler(authUsecase usecase.AuthService) *AuthHandler {
 }
 
 func writeJSON(c echo.Context, status int, data interface{}) error {
-	return c.JSON(status, data)
+	return httputil.Success(c, status, data)
 }
 
 func writeError(c echo.Context, status int, err error) error {
-	return writeJSON(c, status, map[string]string{"error": err.Error()})
+	return httputil.WriteError(c, status, err)
 }

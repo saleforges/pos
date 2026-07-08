@@ -119,7 +119,7 @@ func (h *MerchantHandler) Delete(c echo.Context) error {
 	if err := h.uc.DeleteMerchant(c.Request().Context(), id); err != nil {
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}
-	return httputil.WriteJSON(c, http.StatusOK, map[string]string{"message": "merchant deleted"})
+	return httputil.WriteJSON(c, http.StatusOK, nil)
 }
 
 func parseInt(s string, defaultVal int) int {

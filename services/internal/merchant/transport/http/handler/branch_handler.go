@@ -115,5 +115,5 @@ func (h *BranchHandler) DeleteBranch(c echo.Context) error {
 	if err := h.uc.DeleteBranch(c.Request().Context(), id); err != nil {
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}
-	return httputil.WriteJSON(c, http.StatusOK, map[string]string{"message": "branch deleted"})
+	return httputil.WriteJSON(c, http.StatusOK, nil)
 }

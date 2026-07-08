@@ -20,6 +20,7 @@ type AuthUsecase struct {
 	permissionRepo   repository.PermissionRepository
 	refreshTokenRepo repository.RefreshTokenRepository
 	loginAuditRepo   repository.LoginAuditRepository
+	staffRepo        repository.StaffRepository
 	eventPublisher   port.EventPublisher
 	passwordHasher   port.PasswordHasher
 	tokenSigner      port.TokenSigner
@@ -31,6 +32,7 @@ func NewAuthUsecase(
 	permissionRepo repository.PermissionRepository,
 	refreshTokenRepo repository.RefreshTokenRepository,
 	loginAuditRepo repository.LoginAuditRepository,
+	staffRepo repository.StaffRepository,
 	eventPublisher port.EventPublisher,
 	passwordHasher port.PasswordHasher,
 	tokenSigner port.TokenSigner,
@@ -41,6 +43,7 @@ func NewAuthUsecase(
 		permissionRepo:   permissionRepo,
 		refreshTokenRepo: refreshTokenRepo,
 		loginAuditRepo:   loginAuditRepo,
+		staffRepo:        staffRepo,
 		eventPublisher:   eventPublisher,
 		passwordHasher:   passwordHasher,
 		tokenSigner:      tokenSigner,
@@ -55,6 +58,8 @@ type AuthService interface {
 	Introspect(ctx context.Context, tokenString string) (*IntrospectResult, error)
 	ValidateToken(ctx context.Context, tokenString string) (*port.TokenClaims, error)
 	HasPermission(claims *port.TokenClaims, required domain.Permission) bool
+
+	ListStaff(ctx context.Context, userID string) ([]domain.StaffInfo, error)
 
 	ListUsers(ctx context.Context, offset, limit int) ([]domain.User, error)
 	GetUser(ctx context.Context, id string) (*domain.User, error)
@@ -83,6 +88,7 @@ type RegisterInput struct {
 	Email    string
 	Password string
 	Roles    []string
+	UserType domain.UserType
 }
 
 type AuthResult struct {
@@ -112,10 +118,13 @@ type LogoutInput struct {
 }
 
 type IntrospectResult struct {
-	Active      bool                `json:"active"`
-	UserID      string              `json:"user_id,omitempty"`
-	Roles       []string            `json:"roles,omitempty"`
-	Permissions []domain.Permission `json:"permissions,omitempty"`
+	Active       bool                `json:"active"`
+	UserID       string              `json:"user_id,omitempty"`
+	UserType     domain.UserType     `json:"user_type"`
+	Roles        []string            `json:"roles,omitempty"`
+	MerchantID   string              `json:"merchant_id"`
+	MerchantRole string              `json:"merchant_role"`
+	Permissions  []domain.Permission `json:"permissions,omitempty"`
 }
 
 type UpdateUserInput struct {
@@ -196,12 +205,17 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 	}
 
 	now := time.Now().UTC()
+	userType := input.UserType
+	if userType == "" {
+		userType = domain.UserTypeMerchant
+	}
 	user := &domain.User{
 		ID:        generateID(),
 		Username:  input.Username,
 		Email:     input.Email,
 		Password:  string(hashed),
 		Roles:     input.Roles,
+		Type:      userType,
 		Status:    domain.UserStatusActive,
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -220,6 +234,7 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 
 	accessToken, err := uc.tokenSigner.SignAccessToken(port.TokenClaims{
 		UserID:      user.ID,
+		UserType:    user.Type,
 		Roles:       user.Roles,
 		Permissions: permissions,
 	})
@@ -277,6 +292,7 @@ func (uc *AuthUsecase) Login(ctx context.Context, input LoginInput) (*LoginResul
 
 	claims := port.TokenClaims{
 		UserID:      user.ID,
+		UserType:    user.Type,
 		Roles:       user.Roles,
 		Permissions: permissions,
 	}
@@ -357,6 +373,7 @@ func (uc *AuthUsecase) RefreshToken(ctx context.Context, input RefreshTokenInput
 
 	claims := port.TokenClaims{
 		UserID:      user.ID,
+		UserType:    user.Type,
 		Roles:       user.Roles,
 		Permissions: permissions,
 	}
@@ -422,10 +439,13 @@ func (uc *AuthUsecase) Introspect(ctx context.Context, tokenString string) (*Int
 	}
 
 	return &IntrospectResult{
-		Active:      true,
-		UserID:      claims.UserID,
-		Roles:       claims.Roles,
-		Permissions: claims.Permissions,
+		Active:       true,
+		UserID:       claims.UserID,
+		UserType:     user.Type,
+		Roles:        claims.Roles,
+		MerchantID:   claims.MerchantID,
+		MerchantRole: claims.MerchantRole,
+		Permissions:  claims.Permissions,
 	}, nil
 }
 
@@ -606,6 +626,10 @@ func (uc *AuthUsecase) AssignPermission(ctx context.Context, roleName string, pe
 
 func (uc *AuthUsecase) RemovePermission(ctx context.Context, roleName string, permission domain.Permission) error {
 	return uc.roleRepo.RemovePermission(ctx, roleName, permission)
+}
+
+func (uc *AuthUsecase) ListStaff(ctx context.Context, userID string) ([]domain.StaffInfo, error) {
+	return uc.staffRepo.ListByUserID(ctx, userID)
 }
 
 func (uc *AuthUsecase) collectPermissions(ctx context.Context, roles []string) ([]domain.Permission, error) {
