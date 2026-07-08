@@ -44,6 +44,21 @@ type Role struct {
 }
 
 var DefaultRoles = map[string]Role{
+	"superadmin": {
+		Name:        "superadmin",
+		Description: "Platform super administrator — full access to all merchants",
+		IsSystem:    true,
+		Permissions: []Permission{
+			CatalogRead, CatalogCreate, CatalogUpdate, CatalogDelete,
+			SalesCreate, SalesRead, SalesUpdate, SalesDelete, SalesRefund,
+			InventoryRead, InventoryWrite, InventoryAdjust,
+			MerchantManage,
+			UserCreate, UserRead, UserUpdate, UserDelete, UserList,
+			RoleCreate, RoleRead, RoleUpdate, RoleDelete, RoleAssign,
+			PermissionCreate, PermissionRead, PermissionUpdate, PermissionDelete, PermissionAssign,
+			SessionManage, APIKeyManage, AuditView,
+		},
+	},
 	"owner": {
 		Name:        "owner",
 		Description: "Full system access",

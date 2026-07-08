@@ -42,13 +42,6 @@ func (h *AuthHandler) Register(c echo.Context) error {
 		AccessToken:  result.AccessToken,
 		RefreshToken: result.RefreshToken,
 		ExpiresIn:    result.ExpiresIn,
-		User: userResponse{
-			ID:       result.User.ID,
-			Username: result.User.Username,
-			Email:    result.User.Email,
-			Roles:    result.User.Roles,
-			Status:   string(result.User.Status),
-		},
 	})
 }
 
@@ -79,13 +72,6 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		AccessToken:  result.AccessToken,
 		RefreshToken: result.RefreshToken,
 		ExpiresIn:    result.ExpiresIn,
-		User: userResponse{
-			ID:       result.User.ID,
-			Username: result.User.Username,
-			Email:    result.User.Email,
-			Roles:    result.User.Roles,
-			Status:   string(result.User.Status),
-		},
 	})
 }
 
@@ -118,13 +104,6 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 		AccessToken:  result.AccessToken,
 		RefreshToken: result.RefreshToken,
 		ExpiresIn:    result.ExpiresIn,
-		User: userResponse{
-			ID:       result.User.ID,
-			Username: result.User.Username,
-			Email:    result.User.Email,
-			Roles:    result.User.Roles,
-			Status:   string(result.User.Status),
-		},
 	})
 }
 

@@ -85,13 +85,7 @@ type RegisterInput struct {
 	Roles    []string
 }
 
-type RegisterResult struct {
-	User domain.User
-	port.TokenPair
-}
-
 type AuthResult struct {
-	User domain.User
 	port.TokenPair
 }
 
@@ -103,7 +97,6 @@ type LoginInput struct {
 }
 
 type LoginResult struct {
-	User domain.User
 	port.TokenPair
 }
 
@@ -249,7 +242,6 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 	})
 
 	return &AuthResult{
-		User: *user,
 		TokenPair: port.TokenPair{
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
@@ -314,7 +306,6 @@ func (uc *AuthUsecase) Login(ctx context.Context, input LoginInput) (*LoginResul
 	uc.auditLogin(ctx, user.ID, input.Username, true, input.IPAddress, input.UserAgent, "")
 
 	return &LoginResult{
-		User: *user,
 		TokenPair: port.TokenPair{
 			AccessToken:  accessToken,
 			RefreshToken: refreshTokenStr,
@@ -394,7 +385,6 @@ func (uc *AuthUsecase) RefreshToken(ctx context.Context, input RefreshTokenInput
 	uc.publishEvent(ctx, "PasswordChanged", nil)
 
 	return &LoginResult{
-		User: *user,
 		TokenPair: port.TokenPair{
 			AccessToken:  accessToken,
 			RefreshToken: newRefreshTokenStr,

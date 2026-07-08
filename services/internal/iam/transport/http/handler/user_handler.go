@@ -57,7 +57,11 @@ func (h *AuthHandler) CreateUser(c echo.Context) error {
 		return writeError(c, http.StatusInternalServerError, err)
 	}
 
-	return writeJSON(c, http.StatusCreated, toUserResponse(result.User))
+	return writeJSON(c, http.StatusCreated, authResponse{
+		AccessToken:  result.AccessToken,
+		RefreshToken: result.RefreshToken,
+		ExpiresIn:    result.ExpiresIn,
+	})
 }
 
 func (h *AuthHandler) GetUser(c echo.Context) error {

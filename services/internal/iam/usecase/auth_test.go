@@ -392,7 +392,7 @@ func TestAuthUsecase_Register(t *testing.T) {
 				Username: "janedoe",
 				Email:    "jane@example.com",
 				Password: "Securepass1",
-				Roles:    []string{"superadmin"},
+				Roles:    []string{"nonexistent_role"},
 			},
 			userRepo:       &mockUserRepo{},
 			roleRepo:       &mockRoleRepo{},
@@ -466,12 +466,6 @@ func TestAuthUsecase_Register(t *testing.T) {
 			}
 			if result.RefreshToken == "" {
 				t.Error("expected non-empty refresh token")
-			}
-			if result.User.Username != tt.input.Username {
-				t.Errorf("expected username %s, got %s", tt.input.Username, result.User.Username)
-			}
-			if result.User.Password == "" {
-				t.Error("password hash should be set on the domain object")
 			}
 		})
 	}
