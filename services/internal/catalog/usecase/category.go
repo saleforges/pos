@@ -53,11 +53,28 @@ func (uc *categoryUsecase) GetByID(ctx context.Context, id string) (*domain.Cate
 	return cat, nil
 }
 
-func (uc *categoryUsecase) List(ctx context.Context, merchantID string, offset, limit int) ([]domain.Category, error) {
+func (uc *categoryUsecase) List(ctx context.Context, merchantID string, search string, offset, limit int) (*PaginatedResult[domain.Category], error) {
 	ctx, span := otel.StartSpan(ctx, "category.List")
 	defer span.End()
 
-	return uc.catRepo.List(ctx, merchantID, offset, limit)
+	total, err := uc.catRepo.Count(ctx, merchantID, search)
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := uc.catRepo.List(ctx, merchantID, search, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PaginatedResult[domain.Category]{
+		Items: items,
+		Meta: PaginationMeta{
+			Total:  total,
+			Offset: offset,
+			Limit:  limit,
+		},
+	}, nil
 }
 
 func (uc *categoryUsecase) Update(ctx context.Context, input UpdateCategoryInput) (*domain.Category, error) {

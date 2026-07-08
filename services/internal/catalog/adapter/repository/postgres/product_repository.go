@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/saleforge/pos/services/internal/catalog/domain"
 	"github.com/saleforge/pos/services/internal/catalog/port/repository"
@@ -42,16 +43,40 @@ func (r *ProductRepository) GetBySKU(ctx context.Context, sku string, merchantID
 	return scanProduct(row)
 }
 
-func (r *ProductRepository) List(ctx context.Context, merchantID string, offset, limit int) ([]domain.Product, error) {
-	rows, err := r.pool.Query(ctx,
-		`SELECT id, merchant_id, category_id, name, sku, barcode, description, price, cost, tax_rate, unit, image_url, status, created_at, updated_at
-		 FROM products WHERE merchant_id = $1 ORDER BY name LIMIT $2 OFFSET $3`,
-		merchantID, limit, offset)
+func (r *ProductRepository) List(ctx context.Context, merchantID string, search string, offset, limit int) ([]domain.Product, error) {
+	baseQuery := `SELECT id, merchant_id, category_id, name, sku, barcode, description, price, cost, tax_rate, unit, image_url, status, created_at, updated_at
+		 FROM products WHERE merchant_id = $1`
+	var args []any
+	args = append(args, merchantID)
+	paramIdx := 2
+	if search != "" {
+		pattern := "%" + search + "%"
+		baseQuery += fmt.Sprintf(` AND (name ILIKE $%d OR sku ILIKE $%d OR barcode ILIKE $%d OR description ILIKE $%d)`, paramIdx, paramIdx+1, paramIdx+2, paramIdx+3)
+		args = append(args, pattern, pattern, pattern, pattern)
+		paramIdx += 4
+	}
+	query := baseQuery + fmt.Sprintf(` ORDER BY name LIMIT $%d OFFSET $%d`, paramIdx, paramIdx+1)
+	args = append(args, limit, offset)
+	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 	return scanProducts(rows)
+}
+
+func (r *ProductRepository) Count(ctx context.Context, merchantID string, search string) (int, error) {
+	baseQuery := `SELECT COUNT(*) FROM products WHERE merchant_id = $1`
+	var args []any
+	args = append(args, merchantID)
+	if search != "" {
+		pattern := "%" + search + "%"
+		baseQuery += ` AND (name ILIKE $2 OR sku ILIKE $3 OR barcode ILIKE $4 OR description ILIKE $5)`
+		args = append(args, pattern, pattern, pattern, pattern)
+	}
+	var count int
+	err := r.pool.QueryRow(ctx, baseQuery, args...).Scan(&count)
+	return count, err
 }
 
 func (r *ProductRepository) ListByCategory(ctx context.Context, categoryID string, offset, limit int) ([]domain.Product, error) {

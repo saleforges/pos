@@ -62,11 +62,22 @@ func (uc *productUsecase) GetByID(ctx context.Context, id string) (*domain.Produ
 	return uc.prodRepo.GetByID(ctx, id)
 }
 
-func (uc *productUsecase) List(ctx context.Context, merchantID string, offset, limit int) ([]domain.Product, error) {
+func (uc *productUsecase) List(ctx context.Context, merchantID string, search string, offset, limit int) (*PaginatedResult[domain.Product], error) {
 	ctx, span := otel.StartSpan(ctx, "product.List")
 	defer span.End()
 
-	return uc.prodRepo.List(ctx, merchantID, offset, limit)
+	items, err := uc.prodRepo.List(ctx, merchantID, search, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+	total, err := uc.prodRepo.Count(ctx, merchantID, search)
+	if err != nil {
+		return nil, err
+	}
+	return &PaginatedResult[domain.Product]{
+		Items: items,
+		Meta:  PaginationMeta{Total: total, Offset: offset, Limit: limit},
+	}, nil
 }
 
 func (uc *productUsecase) Update(ctx context.Context, input UpdateProductInput) (*domain.Product, error) {

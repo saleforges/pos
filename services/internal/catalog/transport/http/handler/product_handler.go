@@ -62,18 +62,26 @@ func (h *ProductHandler) List(c echo.Context) error {
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
+	search := c.QueryParam("search")
 
 	merchantID := c.Param("merchantID")
-	result, err := h.uc.List(c.Request().Context(), merchantID, offset, limit)
+	result, err := h.uc.List(c.Request().Context(), merchantID, search, offset, limit)
 	if err != nil {
 		logger.Error("product.List failed", "error", err.Error())
 		return httputil.WriteError(c, http.StatusInternalServerError, domain.ErrInternal)
 	}
-	resp := make([]productResponse, len(result))
-	for i, p := range result {
-		resp[i] = toProductResponse(p)
+	items := make([]productResponse, len(result.Items))
+	for i, p := range result.Items {
+		items[i] = toProductResponse(p)
 	}
-	return httputil.WriteJSON(c, http.StatusOK, resp)
+	return httputil.WriteJSON(c, http.StatusOK, paginatedResponse[productResponse]{
+		Items: items,
+		Meta: paginatedMeta{
+			Total:  result.Meta.Total,
+			Offset: result.Meta.Offset,
+			Limit:  result.Meta.Limit,
+		},
+	})
 }
 
 func (h *ProductHandler) Update(c echo.Context) error {

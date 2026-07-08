@@ -50,6 +50,18 @@ func (r *VariantRepository) ListByProduct(_ context.Context, productID string) (
 	return result, nil
 }
 
+func (r *VariantRepository) CountByProduct(_ context.Context, productID string) (int, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var count int
+	for _, v := range r.variants {
+		if v.ProductID == productID {
+			count++
+		}
+	}
+	return count, nil
+}
+
 func (r *VariantRepository) Update(_ context.Context, variant *domain.Variant) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

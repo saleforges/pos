@@ -9,7 +9,7 @@ import (
 type CategoryUsecase interface {
 	Create(ctx context.Context, input CreateCategoryInput) (*domain.Category, error)
 	GetByID(ctx context.Context, id string) (*domain.Category, error)
-	List(ctx context.Context, merchantID string, offset, limit int) ([]domain.Category, error)
+	List(ctx context.Context, merchantID string, search string, offset, limit int) (*PaginatedResult[domain.Category], error)
 	Update(ctx context.Context, input UpdateCategoryInput) (*domain.Category, error)
 	Delete(ctx context.Context, id string) error
 }
@@ -17,7 +17,7 @@ type CategoryUsecase interface {
 type ProductUsecase interface {
 	Create(ctx context.Context, input CreateProductInput) (*domain.Product, error)
 	GetByID(ctx context.Context, id string) (*domain.Product, error)
-	List(ctx context.Context, merchantID string, offset, limit int) ([]domain.Product, error)
+	List(ctx context.Context, merchantID string, search string, offset, limit int) (*PaginatedResult[domain.Product], error)
 	Update(ctx context.Context, input UpdateProductInput) (*domain.Product, error)
 	Delete(ctx context.Context, id string) error
 }
@@ -27,6 +27,17 @@ type VariantUsecase interface {
 	ListByProduct(ctx context.Context, productID string) ([]domain.Variant, error)
 	Update(ctx context.Context, input UpdateVariantInput) (*domain.Variant, error)
 	Delete(ctx context.Context, id string) error
+}
+
+type PaginatedResult[T any] struct {
+	Items []T
+	Meta  PaginationMeta
+}
+
+type PaginationMeta struct {
+	Total  int
+	Offset int
+	Limit  int
 }
 
 type CreateCategoryInput struct {

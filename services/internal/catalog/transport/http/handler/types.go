@@ -113,6 +113,17 @@ type updateVariantReq struct {
 	SortOrder *int     `json:"sort_order,omitempty"`
 }
 
+type paginatedMeta struct {
+	Total  int `json:"total"`
+	Offset int `json:"offset"`
+	Limit  int `json:"limit"`
+}
+
+type paginatedResponse[T any] struct {
+	Items []T           `json:"items"`
+	Meta  paginatedMeta `json:"meta"`
+}
+
 func toCategoryResponse(c domain.Category) categoryResponse {
 	return categoryResponse{
 		ID:          c.ID,

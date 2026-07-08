@@ -68,6 +68,13 @@ func (r *VariantRepository) Update(ctx context.Context, variant *domain.Variant)
 	return err
 }
 
+func (r *VariantRepository) CountByProduct(ctx context.Context, productID string) (int, error) {
+	var count int
+	err := r.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM variants WHERE product_id = $1`, productID).Scan(&count)
+	return count, err
+}
+
 func (r *VariantRepository) Delete(ctx context.Context, id string) error {
 	_, err := r.pool.Exec(ctx, `DELETE FROM variants WHERE id = $1`, id)
 	return err
