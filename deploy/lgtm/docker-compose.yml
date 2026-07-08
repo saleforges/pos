@@ -3,6 +3,7 @@ services:
   mimir:
     image: grafana/mimir:latest
     container_name: mimir
+    restart: unless-stopped
     command: -config.file=/etc/mimir/config.yml
     ports:
       - "9009:9009"
@@ -16,6 +17,7 @@ services:
   tempo:
     image: grafana/tempo:latest
     container_name: tempo
+    restart: unless-stopped
     command: -config.file=/etc/tempo/config.yml
     user: root
     ports:
@@ -32,6 +34,7 @@ services:
   loki:
     image: grafana/loki:latest
     container_name: loki
+    restart: unless-stopped
     command: -config.file=/etc/loki/config.yml
     user: root
     ports:
@@ -46,6 +49,7 @@ services:
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
+    restart: unless-stopped
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
@@ -65,6 +69,7 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
+    restart: unless-stopped
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD}
       - GF_SERVER_ROOT_URL=http://grafana.saleforges.com/
@@ -78,6 +83,7 @@ services:
   promtail:
     image: grafana/promtail:latest
     container_name: promtail
+    restart: unless-stopped
     volumes:
       - ./config/promtail:/etc/promtail
       - ./logs:/logs:ro
