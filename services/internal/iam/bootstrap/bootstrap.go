@@ -2,11 +2,15 @@ package bootstrap
 
 import (
 	"context"
+	"time"
 
 	"github.com/labstack/echo/v4"
+	iainmemory "github.com/saleforge/pos/services/internal/iam/adapter/cache/memory"
+	redisadapter "github.com/saleforge/pos/services/internal/iam/adapter/cache/redis"
 	"github.com/saleforge/pos/services/internal/iam/adapter/repository/memory"
 	"github.com/saleforge/pos/services/internal/iam/adapter/repository/postgres"
 	"github.com/saleforge/pos/services/internal/iam/adapter/security"
+	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/port/repository"
 	httptransport "github.com/saleforge/pos/services/internal/iam/transport/http"
 	"github.com/saleforge/pos/services/internal/iam/transport/http/handler"
@@ -20,6 +24,7 @@ type Config struct {
 	JWTKeyID         string
 	DatabaseURL      string
 	OtelEndpoint     string
+	RedisAddr        string
 }
 
 type App struct {
@@ -95,6 +100,16 @@ func New(cfg Config) (*App, error) {
 		staffRepo = memory.NewStaffRepository()
 	}
 
+	var userCache port.UserCache
+
+	if cfg.RedisAddr != "" {
+		logger.Info("IAM cache using Redis", "addr", cfg.RedisAddr)
+		userCache = redisadapter.NewUserCache(cfg.RedisAddr, 5*time.Minute)
+	} else {
+		logger.Info("IAM cache using in-memory (30s TTL)")
+		userCache = iainmemory.NewUserCache(30*time.Second, 5*time.Minute)
+	}
+
 	authUsecase := usecase.NewAuthUsecase(
 		userRepo,
 		roleRepo,
@@ -105,6 +120,7 @@ func New(cfg Config) (*App, error) {
 		eventPublisher,
 		passwordHasher,
 		tokenSigner,
+		userCache,
 	)
 	authHandler := handler.NewAuthHandler(authUsecase)
 	router := httptransport.NewRouter(authHandler, authUsecase, tokenSigner)

@@ -12,6 +12,8 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/port/repository"
 	"github.com/saleforge/pos/services/pkg/logger"
 	"github.com/saleforge/pos/services/pkg/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type AuthUsecase struct {
@@ -24,6 +26,7 @@ type AuthUsecase struct {
 	eventPublisher   port.EventPublisher
 	passwordHasher   port.PasswordHasher
 	tokenSigner      port.TokenSigner
+	userCache        port.UserCache
 }
 
 func NewAuthUsecase(
@@ -36,6 +39,7 @@ func NewAuthUsecase(
 	eventPublisher port.EventPublisher,
 	passwordHasher port.PasswordHasher,
 	tokenSigner port.TokenSigner,
+	userCache port.UserCache,
 ) *AuthUsecase {
 	return &AuthUsecase{
 		userRepo:         userRepo,
@@ -47,6 +51,7 @@ func NewAuthUsecase(
 		eventPublisher:   eventPublisher,
 		passwordHasher:   passwordHasher,
 		tokenSigner:      tokenSigner,
+		userCache:        userCache,
 	}
 }
 
@@ -225,6 +230,8 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 		logger.Error("register: create user failed", "error", err.Error())
 		return nil, domain.ErrInternal
 	}
+
+	uc.cacheSet(ctx, user)
 
 	permissions, err := uc.collectPermissions(ctx, user.Roles)
 	if err != nil {
@@ -455,7 +462,7 @@ func (uc *AuthUsecase) ValidateToken(ctx context.Context, tokenString string) (*
 		return nil, domain.ErrInvalidToken
 	}
 
-	user, err := uc.userRepo.GetByID(ctx, claims.UserID)
+	user, err := uc.cacheGet(ctx, claims.UserID)
 	if err != nil {
 		return nil, domain.ErrInvalidToken
 	}
@@ -506,6 +513,8 @@ func (uc *AuthUsecase) UpdateUser(ctx context.Context, input UpdateUserInput) (*
 		return nil, domain.ErrInternal
 	}
 
+	uc.cacheDel(ctx, user.ID)
+
 	uc.publishEvent(ctx, "UserUpdated", map[string]interface{}{
 		"user_id": user.ID,
 	})
@@ -517,6 +526,8 @@ func (uc *AuthUsecase) DeleteUser(ctx context.Context, id string) error {
 	if err := uc.userRepo.Delete(ctx, id); err != nil {
 		return domain.ErrUserNotFound
 	}
+
+	uc.cacheDel(ctx, id)
 
 	uc.publishEvent(ctx, "UserDeleted", map[string]interface{}{
 		"user_id": id,
@@ -599,6 +610,8 @@ func (uc *AuthUsecase) AssignRole(ctx context.Context, userID, roleName string) 
 		return err
 	}
 
+	uc.cacheDel(ctx, userID)
+
 	uc.publishEvent(ctx, "RoleAssigned", map[string]interface{}{
 		"user_id": userID,
 		"role":    roleName,
@@ -611,6 +624,8 @@ func (uc *AuthUsecase) RemoveRole(ctx context.Context, userID, roleName string) 
 	if err := uc.userRepo.RemoveRole(ctx, userID, roleName); err != nil {
 		return err
 	}
+
+	uc.cacheDel(ctx, userID)
 
 	uc.publishEvent(ctx, "RoleRevoked", map[string]interface{}{
 		"user_id": userID,
@@ -688,4 +703,42 @@ func formatID(b []byte) string {
 		buf[i*2+1] = hex[v&0x0f]
 	}
 	return string(buf)
+}
+
+func (uc *AuthUsecase) cacheGet(ctx context.Context, id string) (*domain.User, error) {
+	span := trace.SpanFromContext(ctx)
+
+	if uc.userCache != nil {
+		if u, ok := uc.userCache.Get(ctx, id); ok {
+			span.AddEvent("cache.hit", trace.WithAttributes(
+				attribute.String("cache.key", id),
+			))
+			return u, nil
+		}
+		span.AddEvent("cache.miss", trace.WithAttributes(
+			attribute.String("cache.key", id),
+		))
+	}
+
+	u, err := uc.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if uc.userCache != nil {
+		uc.userCache.Set(ctx, u, 0)
+	}
+	return u, nil
+}
+
+func (uc *AuthUsecase) cacheSet(ctx context.Context, u *domain.User) {
+	if uc.userCache != nil {
+		uc.userCache.Set(ctx, u, 0)
+	}
+}
+
+func (uc *AuthUsecase) cacheDel(ctx context.Context, id string) {
+	if uc.userCache != nil {
+		uc.userCache.Delete(ctx, id)
+	}
 }

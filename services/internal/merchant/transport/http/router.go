@@ -7,12 +7,15 @@ import (
 	"github.com/saleforge/pos/services/internal/merchant/transport/http/handler"
 	"github.com/saleforge/pos/services/internal/merchant/transport/http/middleware"
 	"github.com/saleforge/pos/services/pkg/otel"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 )
 
 func NewRouter(merchantHandler *handler.MerchantHandler, branchHandler *handler.BranchHandler, staffHandler *handler.StaffHandler, tokenValidator port.TokenValidator, staffRepo repository.StaffRepository) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
-	e.Use(otel.MetricsMiddleware())
+
+	e.Use(otelecho.Middleware("merchant-service"))
+	e.Use(otel.LoggingMiddleware())
 
 	e.GET("/health", func(c echo.Context) error {
 		return c.JSON(200, map[string]string{"status": "ok"})
@@ -24,7 +27,7 @@ func NewRouter(merchantHandler *handler.MerchantHandler, branchHandler *handler.
 	})
 
 	auth := e.Group("")
-	auth.Use(otel.TracingMiddleware(), otel.LoggingMiddleware(), middleware.Auth(tokenValidator))
+	auth.Use(middleware.Auth(tokenValidator))
 
 	// Merchant
 	auth.POST("/api/v1/merchants", merchantHandler.Create)

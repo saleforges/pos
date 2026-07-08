@@ -11,6 +11,7 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/transport/http/middleware"
 	"github.com/saleforge/pos/services/internal/iam/usecase"
 	"github.com/saleforge/pos/services/pkg/otel"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 )
 
 func NewRouter(
@@ -20,16 +21,22 @@ func NewRouter(
 ) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
-	e.Use(otel.MetricsMiddleware())
 
 	e.Pre(middleware.CORSMiddleware())
+
+	e.Use(otelecho.Middleware("iam-service"))
+	e.Use(otel.LoggingMiddleware())
 
 	e.GET("/metrics", func(c echo.Context) error {
 		otel.MetricsHandler().ServeHTTP(c.Response(), c.Request())
 		return nil
 	})
 
-	api := e.Group("/api/v1", otel.TracingMiddleware(), otel.LoggingMiddleware())
+	e.GET("/.well-known/jwks.json", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, jwksProvider.JWKS())
+	})
+
+	api := e.Group("/api/v1")
 
 	loginRateLimit := middleware.RateLimitMiddleware(5, 1*time.Minute)
 	refreshRateLimit := middleware.RateLimitMiddleware(20, 1*time.Minute)
@@ -82,10 +89,6 @@ func NewRouter(
 		middleware.RBACMiddleware(domain.PermissionCreate, authUsecase.HasPermission))
 	api.DELETE("/permissions/:name", authHandler.DeletePermission, protected,
 		middleware.RBACMiddleware(domain.PermissionDelete, authUsecase.HasPermission))
-
-	e.GET("/.well-known/jwks.json", func(c echo.Context) error {
-		return c.JSON(http.StatusOK, jwksProvider.JWKS())
-	})
 
 	return e
 }

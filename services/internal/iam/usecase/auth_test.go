@@ -358,6 +358,7 @@ func newTestUsecase(
 		&mockEventPublisher{},
 		passwordHasher,
 		tokenSigner,
+		nil,
 	)
 }
 
