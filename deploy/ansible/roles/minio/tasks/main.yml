@@ -25,13 +25,7 @@
   community.docker.docker_container:
     name: mc-init
     image: quay.io/minio/mc:latest
-    entrypoint: |
-      /bin/sh -c "
-        sleep 3 &&
-        mc alias set pos http://minio:9000 {{ minio_root_user }} {{ minio_root_password }} &&
-        mc mb pos/{{ minio_bucket }} --ignore-existing &&
-        mc anonymous set public pos/{{ minio_bucket }}
-      "
+    command: ["/bin/sh", "-c", "sleep 3 && mc alias set pos http://minio:9000 {{ minio_root_user }} {{ minio_root_password }} && mc mb pos/{{ minio_bucket }} --ignore-existing && mc anonymous set public pos/{{ minio_bucket }}"]
     networks:
       - name: pos
     state: started
