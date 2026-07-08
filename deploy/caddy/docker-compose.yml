@@ -1,0 +1,10 @@
+services:
+  caddy:
+    image: caddy:alpine
+    container_name: pos-caddy
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./Caddyfile.domain:/etc/caddy/Caddyfile:ro
+      - ./.env:/etc/caddy/env:ro
+    command: caddy run --config /etc/caddy/Caddyfile --envfile /etc/caddy/env

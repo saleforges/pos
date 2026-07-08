@@ -1,22 +1,19 @@
-.PHONY: dev env caddy lgtm
-
-ENV_FILE := deploy/caddy/.env
-CADDYFILE := deploy/caddy/Caddyfile
+.PHONY: dev-up dev-down dev-logs restart env lgtm
 
 env:
-	@echo "# Auto-generated from services/*/.env" > $(ENV_FILE)
-	@for dir in services/*/; do \
-		name=$$(basename $$dir | tr '[:lower:]' '[:upper:]'); \
-		port=$$(grep -oP '(?<=:)\d+' $$$$dir.env 2>/dev/null || echo "8080"); \
-		echo "$${name}_PORT=$$port" >> $(ENV_FILE); \
-	done
+	@scripts/gen-env.sh
 
-caddy: env
-	caddy run --config $(CADDYFILE) --envfile $(ENV_FILE)
+dev-up: env
+	@scripts/dev-up.sh
 
-dev: env
-	@echo "Starting Caddy reverse proxy on localhost:80"
-	caddy run --config $(CADDYFILE) --envfile $(ENV_FILE)
+dev-down:
+	@scripts/dev-down.sh
+
+dev-logs:
+	@scripts/dev-logs.sh $(svc)
+
+restart:
+	@scripts/dev-restart.sh $(svc)
 
 lgtm:
 	@docker compose -f deploy/lgtm/docker-compose.yml up -d
