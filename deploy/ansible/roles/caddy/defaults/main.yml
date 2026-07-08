@@ -4,3 +4,4 @@ caddy_http_port: 80
 caddy_https_port: 443
 caddy_minio_domain: minio.saleforges.com
 caddy_minio_console_domain: minio-console.saleforges.com
+caddy_backoffice_domain: backoffice-dev.saleforges.com

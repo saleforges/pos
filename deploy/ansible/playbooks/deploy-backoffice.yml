@@ -1,0 +1,13 @@
+- name: Deploy Backoffice
+  hosts: all
+  become: yes
+  tasks:
+    - name: Pull and run Backoffice container
+      community.docker.docker_container:
+        name: backoffice
+        image: ghcr.io/saleforge/pos/backoffice:{{ image_tag }}
+        state: started
+        restart_policy: always
+        pull: true
+        networks:
+          - name: pos

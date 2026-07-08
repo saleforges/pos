@@ -36,3 +36,4 @@
         caddy_api_domain: api-dev.saleforges.com
         caddy_minio_domain: minio.saleforges.com
         caddy_minio_console_domain: minio-console.saleforges.com
+        caddy_backoffice_domain: backoffice-dev.saleforges.com

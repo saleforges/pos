@@ -23,4 +23,9 @@ localhost {
     handle @inventory {
         reverse_proxy localhost:{env.INVENTORY_PORT}
     }
+
+    @backoffice path /*
+    handle @backoffice {
+        reverse_proxy localhost:5173
+    }
 }
