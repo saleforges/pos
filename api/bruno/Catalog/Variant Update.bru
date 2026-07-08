@@ -1,0 +1,26 @@
+meta {
+  name: Variant Update
+  type: http
+  seq: 13
+}
+
+put {
+  url: {{catalog_base_url}}/api/v1/merchants/{{merchant_id}}/products/variants/{{variant_id}}
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "price": 7500,
+    "name": "Es Teh Manis - Large"
+  }
+}

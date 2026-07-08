@@ -1,0 +1,30 @@
+meta {
+  name: Variant Create
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{catalog_base_url}}/api/v1/merchants/{{merchant_id}}/products/{{product_id}}/variants
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "name": "Es Teh Manis - Large",
+    "sku": "ETM-001-L",
+    "barcode": "8991234567891",
+    "price": 7000,
+    "cost": 2500,
+    "sort_order": 1
+  }
+}

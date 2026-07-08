@@ -2,3 +2,5 @@ caddy_image: caddy:latest
 caddy_config_dir: /opt/caddy
 caddy_http_port: 80
 caddy_https_port: 443
+caddy_minio_domain: minio.saleforges.com
+caddy_minio_console_domain: minio-console.saleforges.com

@@ -1,0 +1,15 @@
+meta {
+  name: Product Delete
+  type: http
+  seq: 10
+}
+
+delete {
+  url: {{catalog_base_url}}/api/v1/merchants/{{merchant_id}}/products/{{product_id}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

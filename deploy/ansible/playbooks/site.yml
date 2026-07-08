@@ -22,9 +22,17 @@
       ansible.builtin.import_role:
         name: lgtm
 
+    - name: Run MinIO
+      ansible.builtin.import_role:
+        name: minio
+      vars:
+        minio_root_password: "{{ vault_minio_password }}"
+
     - name: Deploy Caddy reverse proxy
       ansible.builtin.import_role:
         name: caddy
       vars:
         caddy_grafana_domain: grafana.saleforges.com
         caddy_api_domain: api-dev.saleforges.com
+        caddy_minio_domain: minio.saleforges.com
+        caddy_minio_console_domain: minio-console.saleforges.com

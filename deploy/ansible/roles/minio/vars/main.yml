@@ -1,0 +1,6 @@
+minio_image: quay.io/minio/minio:latest
+minio_data_dir: /opt/pos/minio
+minio_api_port: 9000
+minio_console_port: 9001
+minio_root_user: minioadmin
+minio_bucket: catalog-dev

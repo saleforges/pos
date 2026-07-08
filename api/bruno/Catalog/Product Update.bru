@@ -1,0 +1,26 @@
+meta {
+  name: Product Update
+  type: http
+  seq: 9
+}
+
+put {
+  url: {{catalog_base_url}}/api/v1/merchants/{{merchant_id}}/products/{{product_id}}
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "price": 5500,
+    "description": "Teh manis dengan es batu segar"
+  }
+}

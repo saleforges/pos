@@ -1,0 +1,26 @@
+meta {
+  name: Category Update
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{catalog_base_url}}/api/v1/merchants/{{merchant_id}}/categories/{{catalog_id}}
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "name": "Minuman Segar",
+    "sort_order": 2
+  }
+}
