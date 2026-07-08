@@ -12,6 +12,11 @@
     handle @merchant {
         reverse_proxy merchant-service:8081
     }
+
+    @catalog path /api/v1/catalog*
+    handle @catalog {
+        reverse_proxy catalog-service:8082
+    }
 }
 
 {{ caddy_minio_domain }} {

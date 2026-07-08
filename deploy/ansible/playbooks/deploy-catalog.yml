@@ -1,0 +1,31 @@
+- name: Deploy Catalog service
+  hosts: all
+  become: yes
+  vars_files:
+    - ../vars/vault.yml
+  vars:
+    ghcr_username: "{{ vault_ghcr_username | default('') }}"
+    ghcr_token: "{{ vault_ghcr_token | default('') }}"
+    db_url: "postgres://pos:{{ vault_postgres_password }}@postgres:5432/pos?sslmode=disable"
+  tasks:
+    - name: Login to GHCR
+      community.docker.docker_login:
+        registry_url: https://ghcr.io
+        username: "{{ ghcr_username }}"
+        password: "{{ ghcr_token }}"
+      when: ghcr_username != '' and ghcr_token != ''
+      no_log: true
+
+    - name: Pull and run Catalog container
+      community.docker.docker_container:
+        name: catalog-service
+        image: ghcr.io/saleforge/pos/catalog-service:{{ image_tag }}
+        state: started
+        restart_policy: always
+        pull: true
+        env:
+          CATALOG_PORT: ":8082"
+          DATABASE_URL: "{{ db_url }}"
+          OTEL_EXPORTER_OTLP_ENDPOINT: "tempo:4317"
+        networks:
+          - name: pos
