@@ -1,0 +1,99 @@
+{
+  "title": "PostgreSQL",
+  "uid": "postgres-overview",
+  "version": 1,
+  "tags": ["postgres"],
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "title": "Active Connections",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "pg_stat_database_numbackends{datname=~\"pos_iam|pos_merchant|pos_catalog\"}",
+          "legendFormat": "{{datname}}"
+        }
+      ]
+    },
+    {
+      "title": "Transactions Per Second",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(pg_stat_database_xact_commit{datname=~\"pos_iam|pos_merchant|pos_catalog\"}[1m])",
+          "legendFormat": "commit {{datname}}"
+        },
+        {
+          "expr": "rate(pg_stat_database_xact_rollback{datname=~\"pos_iam|pos_merchant|pos_catalog\"}[1m])",
+          "legendFormat": "rollback {{datname}}"
+        }
+      ]
+    },
+    {
+      "title": "Cache Hit Ratio",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "targets": [
+        {
+          "expr": "rate(pg_stat_database_blks_hit{datname=~\"pos_iam|pos_merchant|pos_catalog\"}[1m]) / (rate(pg_stat_database_blks_hit{datname=~\"pos_iam|pos_merchant|pos_catalog\"}[1m]) + rate(pg_stat_database_blks_read{datname=~\"pos_iam|pos_merchant|pos_catalog\"}[1m])) * 100",
+          "legendFormat": "{{datname}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      }
+    },
+    {
+      "title": "Database Size",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "pg_database_size_bytes{datname=~\"pos_iam|pos_merchant|pos_catalog\"}",
+          "legendFormat": "{{datname}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        }
+      }
+    },
+    {
+      "title": "Queries Waiting (Conflicts/Deadlocks)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "targets": [
+        {
+          "expr": "rate(pg_stat_database_conflicts_total{datname=~\"pos_iam|pos_merchant|pos_catalog\"}[1m])",
+          "legendFormat": "conflicts {{datname}}"
+        },
+        {
+          "expr": "rate(pg_stat_database_deadlocks{datname=~\"pos_iam|pos_merchant|pos_catalog\"}[1m])",
+          "legendFormat": "deadlocks {{datname}}"
+        }
+      ]
+    },
+    {
+      "title": "Pool Utilization (MaxConns)",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "targets": [
+        {
+          "expr": "pg_stat_database_numbackends{datname=~\"pos_iam|pos_merchant|pos_catalog\"} / 25 * 100"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent"
+        }
+      }
+    }
+  ]
+}

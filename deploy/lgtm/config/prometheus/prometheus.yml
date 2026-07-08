@@ -13,5 +13,9 @@ scrape_configs:
     static_configs:
       - targets: ["host.docker.internal:8080"]
 
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
 remote_write:
   - url: http://mimir:9009/api/v1/push
