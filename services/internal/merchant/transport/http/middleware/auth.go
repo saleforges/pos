@@ -10,10 +10,11 @@ import (
 
 const (
 	ContextKeyUserID       = "user_id"
+	ContextKeyUserType     = "user_type"
 	ContextKeyRoles        = "roles"
 	ContextKeyPermissions  = "permissions"
 	ContextKeyMerchantID   = "merchant_id"
-	ContextKeyMerchantRole = "merchant_role"
+	ContextKeyStaff        = "staff"
 )
 
 func Auth(tokenValidator port.TokenValidator) echo.MiddlewareFunc {
@@ -35,10 +36,16 @@ func Auth(tokenValidator port.TokenValidator) echo.MiddlewareFunc {
 			}
 
 			c.Set(ContextKeyUserID, claims.UserID)
+			c.Set(ContextKeyUserType, claims.UserType)
 			c.Set(ContextKeyRoles, claims.Roles)
 			c.Set(ContextKeyPermissions, claims.Permissions)
 			c.Set(ContextKeyMerchantID, claims.MerchantID)
-			c.Set(ContextKeyMerchantRole, claims.MerchantRole)
+			c.Set(ContextKeyStaff, claims.Staff)
+
+			merchantID := c.Request().Header.Get("X-Merchant-Id")
+			if merchantID != "" {
+				c.Set(ContextKeyMerchantID, merchantID)
+			}
 
 			return next(c)
 		}
