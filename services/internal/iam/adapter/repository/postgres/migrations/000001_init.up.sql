@@ -6,7 +6,9 @@ CREATE TABLE IF NOT EXISTS permissions (
 );
 
 CREATE TABLE IF NOT EXISTS roles (
-    name VARCHAR(255) PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    display_id VARCHAR(64) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL UNIQUE,
     description TEXT NOT NULL DEFAULT '',
     is_system BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -14,9 +16,9 @@ CREATE TABLE IF NOT EXISTS roles (
 );
 
 CREATE TABLE IF NOT EXISTS role_permissions (
-    role_name VARCHAR(255) NOT NULL REFERENCES roles(name) ON DELETE CASCADE,
+    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
     permission_name VARCHAR(255) NOT NULL REFERENCES permissions(name) ON DELETE CASCADE,
-    PRIMARY KEY (role_name, permission_name)
+    PRIMARY KEY (role_id, permission_name)
 );
 
 CREATE TABLE IF NOT EXISTS users (
@@ -24,6 +26,7 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(255) NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
+    type VARCHAR(20) NOT NULL DEFAULT 'merchant',
     status VARCHAR(20) NOT NULL DEFAULT 'active',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -31,8 +34,8 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS user_roles (
     user_id VARCHAR(64) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role_name VARCHAR(255) NOT NULL REFERENCES roles(name) ON DELETE CASCADE,
-    PRIMARY KEY (user_id, role_name)
+    role_id UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, role_id)
 );
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (

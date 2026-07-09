@@ -45,7 +45,7 @@ func (h *AuthHandler) CreateRole(c echo.Context) error {
 }
 
 func (h *AuthHandler) GetRole(c echo.Context) error {
-	role, err := h.authUsecase.GetRole(c.Request().Context(), c.Param("name"))
+	role, err := h.authUsecase.GetRole(c.Request().Context(), c.Param("id"))
 	if err != nil {
 		return writeError(c, http.StatusNotFound, domain.ErrInvalidRole)
 	}
@@ -60,7 +60,7 @@ func (h *AuthHandler) UpdateRole(c echo.Context) error {
 	}
 
 	role, err := h.authUsecase.UpdateRole(c.Request().Context(), usecase.UpdateRoleInput{
-		Name:        c.Param("name"),
+		ID:          c.Param("id"),
 		Description: req.Description,
 	})
 	if err != nil {
@@ -74,7 +74,7 @@ func (h *AuthHandler) UpdateRole(c echo.Context) error {
 }
 
 func (h *AuthHandler) DeleteRole(c echo.Context) error {
-	if err := h.authUsecase.DeleteRole(c.Request().Context(), c.Param("name")); err != nil {
+	if err := h.authUsecase.DeleteRole(c.Request().Context(), c.Param("id")); err != nil {
 		return writeError(c, http.StatusConflict, domain.ErrInvalidRole)
 	}
 
@@ -115,7 +115,7 @@ func (h *AuthHandler) AssignPermission(c echo.Context) error {
 		return writeError(c, http.StatusBadRequest, errInvalidBody)
 	}
 
-	if err := h.authUsecase.AssignPermission(c.Request().Context(), c.Param("name"), domain.Permission(req.Permission)); err != nil {
+	if err := h.authUsecase.AssignPermission(c.Request().Context(), c.Param("id"), domain.Permission(req.Permission)); err != nil {
 		if err == domain.ErrInvalidRole {
 			return writeError(c, http.StatusNotFound, err)
 		}
@@ -126,7 +126,7 @@ func (h *AuthHandler) AssignPermission(c echo.Context) error {
 }
 
 func (h *AuthHandler) RemovePermission(c echo.Context) error {
-	if err := h.authUsecase.RemovePermission(c.Request().Context(), c.Param("name"), domain.Permission(c.Param("permissionId"))); err != nil {
+	if err := h.authUsecase.RemovePermission(c.Request().Context(), c.Param("id"), domain.Permission(c.Param("permissionId"))); err != nil {
 		if err == domain.ErrInvalidRole {
 			return writeError(c, http.StatusNotFound, err)
 		}

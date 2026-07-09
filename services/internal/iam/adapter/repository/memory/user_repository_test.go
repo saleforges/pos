@@ -143,7 +143,12 @@ func TestRoleRepository_GetPermissions(t *testing.T) {
 	t.Parallel()
 	repo := NewRoleRepository()
 
-	perms, err := repo.GetPermissions(context.Background(), "admin")
+	role, err := repo.GetByName(context.Background(), "admin")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	perms, err := repo.GetPermissions(context.Background(), role.ID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -151,7 +156,7 @@ func TestRoleRepository_GetPermissions(t *testing.T) {
 		t.Error("expected non-empty permissions for admin")
 	}
 
-	_, err = repo.GetPermissions(context.Background(), "nonexistent")
+	_, err = repo.GetPermissions(context.Background(), "nonexistent-id")
 	if err != domain.ErrInvalidRole {
 		t.Errorf("expected ErrInvalidRole, got %v", err)
 	}

@@ -2,12 +2,21 @@ package postgres
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/saleforge/pos/services/pkg/otel"
 	"github.com/saleforge/pos/services/internal/iam/domain"
 )
+
+func hexID() string {
+	b := make([]byte, 8)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}
 
 type UserRepository struct {
 	pool *otel.TracedPool
@@ -30,7 +39,7 @@ func scanUser(row pgx.Row) (*domain.User, error) {
 }
 
 func loadUserRoles(ctx context.Context, pool *otel.TracedPool, userID string) ([]string, error) {
-	rows, err := pool.Query(ctx, `SELECT role_name FROM user_roles WHERE user_id = $1 ORDER BY role_name`, userID)
+	rows, err := pool.Query(ctx, `SELECT r.name FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = $1 ORDER BY r.name`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +73,7 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 
 	for _, role := range user.Roles {
 		_, err = tx.Exec(ctx,
-			`INSERT INTO user_roles (user_id, role_name) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+			`INSERT INTO user_roles (user_id, role_id) SELECT $1, id FROM roles WHERE name = $2 ON CONFLICT DO NOTHING`,
 			user.ID, role,
 		)
 		if err != nil {
@@ -160,7 +169,7 @@ func (r *UserRepository) Delete(ctx context.Context, id string) error {
 
 func (r *UserRepository) AddRole(ctx context.Context, userID, roleName string) error {
 	_, err := r.pool.Exec(ctx,
-		`INSERT INTO user_roles (user_id, role_name) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+		`INSERT INTO user_roles (user_id, role_id) SELECT $1, id FROM roles WHERE name = $2 ON CONFLICT DO NOTHING`,
 		userID, roleName,
 	)
 	return err
@@ -168,7 +177,7 @@ func (r *UserRepository) AddRole(ctx context.Context, userID, roleName string) e
 
 func (r *UserRepository) RemoveRole(ctx context.Context, userID, roleName string) error {
 	_, err := r.pool.Exec(ctx,
-		`DELETE FROM user_roles WHERE user_id = $1 AND role_name = $2`,
+		`DELETE FROM user_roles USING roles WHERE user_roles.role_id = roles.id AND user_roles.user_id = $1 AND roles.name = $2`,
 		userID, roleName,
 	)
 	return err
@@ -182,9 +191,9 @@ func NewRoleRepository(pool *otel.TracedPool) *RoleRepository {
 	return &RoleRepository{pool: pool}
 }
 
-func loadRolePermissions(ctx context.Context, pool *otel.TracedPool, roleName string) ([]domain.Permission, error) {
+func loadRolePermissions(ctx context.Context, pool *otel.TracedPool, roleID string) ([]domain.Permission, error) {
 	rows, err := pool.Query(ctx,
-		`SELECT permission_name FROM role_permissions WHERE role_name = $1 ORDER BY permission_name`, roleName,
+		`SELECT permission_name FROM role_permissions WHERE role_id = $1 ORDER BY permission_name`, roleID,
 	)
 	if err != nil {
 		return nil, err
@@ -209,10 +218,16 @@ func (r *RoleRepository) Create(ctx context.Context, role *domain.Role) error {
 	}
 	defer tx.Rollback(ctx)
 
-	roleName := role.Name
+	if role.ID == "" {
+		role.ID = uuid.NewString()
+	}
+	if role.DisplayID == "" {
+		role.DisplayID = "role_" + hexID()
+	}
+
 	_, err = tx.Exec(ctx,
-		`INSERT INTO roles (name, description, is_system, created_at, updated_at) VALUES ($1, $2, $3, NOW(), NOW())`,
-		roleName, role.Description, role.IsSystem,
+		`INSERT INTO roles (id, display_id, name, description, is_system, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`,
+		role.ID, role.DisplayID, role.Name, role.Description, role.IsSystem,
 	)
 	if err != nil {
 		return err
@@ -220,8 +235,8 @@ func (r *RoleRepository) Create(ctx context.Context, role *domain.Role) error {
 
 	for _, p := range role.Permissions {
 		_, err = tx.Exec(ctx,
-			`INSERT INTO role_permissions (role_name, permission_name) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-			roleName, string(p),
+			`INSERT INTO role_permissions (role_id, permission_name) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+			role.ID, string(p),
 		)
 		if err != nil {
 			return err
@@ -231,26 +246,48 @@ func (r *RoleRepository) Create(ctx context.Context, role *domain.Role) error {
 	return tx.Commit(ctx)
 }
 
-func (r *RoleRepository) GetByName(ctx context.Context, name string) (*domain.Role, error) {
+func scanRole(row pgx.Row) (*domain.Role, error) {
 	var role domain.Role
-	err := r.pool.QueryRow(ctx,
-		`SELECT name, description, is_system FROM roles WHERE name = $1`, name,
-	).Scan(&role.Name, &role.Description, &role.IsSystem)
+	err := row.Scan(&role.ID, &role.DisplayID, &role.Name, &role.Description, &role.IsSystem)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, domain.ErrInvalidRole
 		}
 		return nil, err
 	}
-	role.Permissions, err = loadRolePermissions(ctx, r.pool, name)
-	if err != nil {
-		return nil, err
-	}
 	return &role, nil
 }
 
+func (r *RoleRepository) GetByID(ctx context.Context, id string) (*domain.Role, error) {
+	role, err := scanRole(r.pool.QueryRow(ctx,
+		`SELECT id, display_id, name, description, is_system FROM roles WHERE id = $1 OR display_id = $1`, id,
+	))
+	if err != nil {
+		return nil, err
+	}
+	role.Permissions, err = loadRolePermissions(ctx, r.pool, role.ID)
+	if err != nil {
+		return nil, err
+	}
+	return role, nil
+}
+
+func (r *RoleRepository) GetByName(ctx context.Context, name string) (*domain.Role, error) {
+	role, err := scanRole(r.pool.QueryRow(ctx,
+		`SELECT id, display_id, name, description, is_system FROM roles WHERE name = $1`, name,
+	))
+	if err != nil {
+		return nil, err
+	}
+	role.Permissions, err = loadRolePermissions(ctx, r.pool, role.ID)
+	if err != nil {
+		return nil, err
+	}
+	return role, nil
+}
+
 func (r *RoleRepository) List(ctx context.Context) ([]domain.Role, error) {
-	rows, err := r.pool.Query(ctx, `SELECT name, description, is_system FROM roles ORDER BY name`)
+	rows, err := r.pool.Query(ctx, `SELECT id, display_id, name, description, is_system FROM roles ORDER BY name`)
 	if err != nil {
 		return nil, err
 	}
@@ -259,10 +296,10 @@ func (r *RoleRepository) List(ctx context.Context) ([]domain.Role, error) {
 	var roles []domain.Role
 	for rows.Next() {
 		var role domain.Role
-		if err := rows.Scan(&role.Name, &role.Description, &role.IsSystem); err != nil {
+		if err := rows.Scan(&role.ID, &role.DisplayID, &role.Name, &role.Description, &role.IsSystem); err != nil {
 			return nil, err
 		}
-		role.Permissions, err = loadRolePermissions(ctx, r.pool, role.Name)
+		role.Permissions, err = loadRolePermissions(ctx, r.pool, role.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -273,33 +310,33 @@ func (r *RoleRepository) List(ctx context.Context) ([]domain.Role, error) {
 
 func (r *RoleRepository) Update(ctx context.Context, role *domain.Role) error {
 	_, err := r.pool.Exec(ctx,
-		`UPDATE roles SET description = $1, updated_at = NOW() WHERE name = $2 AND is_system = false`,
-		role.Description, role.Name,
+		`UPDATE roles SET description = $1, updated_at = NOW() WHERE id = $2 AND is_system = false`,
+		role.Description, role.ID,
 	)
 	return err
 }
 
-func (r *RoleRepository) Delete(ctx context.Context, name string) error {
-	_, err := r.pool.Exec(ctx, `DELETE FROM roles WHERE name = $1 AND is_system = false`, name)
+func (r *RoleRepository) Delete(ctx context.Context, id string) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM roles WHERE id = $1 AND is_system = false`, id)
 	return err
 }
 
-func (r *RoleRepository) AddPermission(ctx context.Context, roleName string, permission domain.Permission) error {
+func (r *RoleRepository) AddPermission(ctx context.Context, roleID string, permission domain.Permission) error {
 	_, err := r.pool.Exec(ctx,
-		`INSERT INTO role_permissions (role_name, permission_name) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-		roleName, string(permission),
+		`INSERT INTO role_permissions (role_id, permission_name) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+		roleID, string(permission),
 	)
 	return err
 }
 
-func (r *RoleRepository) RemovePermission(ctx context.Context, roleName string, permission domain.Permission) error {
+func (r *RoleRepository) RemovePermission(ctx context.Context, roleID string, permission domain.Permission) error {
 	_, err := r.pool.Exec(ctx,
-		`DELETE FROM role_permissions WHERE role_name = $1 AND permission_name = $2`,
-		roleName, string(permission),
+		`DELETE FROM role_permissions WHERE role_id = $1 AND permission_name = $2`,
+		roleID, string(permission),
 	)
 	return err
 }
 
-func (r *RoleRepository) GetPermissions(ctx context.Context, roleName string) ([]domain.Permission, error) {
-	return loadRolePermissions(ctx, r.pool, roleName)
+func (r *RoleRepository) GetPermissions(ctx context.Context, roleID string) ([]domain.Permission, error) {
+	return loadRolePermissions(ctx, r.pool, roleID)
 }

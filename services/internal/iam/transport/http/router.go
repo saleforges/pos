@@ -72,15 +72,15 @@ func NewRouter(
 	api.GET("/roles", authHandler.ListRoles, protected, roleManage)
 	api.POST("/roles", authHandler.CreateRole, protected,
 		middleware.RBACMiddleware(domain.RoleCreate, authUsecase.HasPermission))
-	api.GET("/roles/:name", authHandler.GetRole, protected, roleManage)
-	api.PATCH("/roles/:name", authHandler.UpdateRole, protected,
+	api.GET("/roles/:id", authHandler.GetRole, protected, roleManage)
+	api.PATCH("/roles/:id", authHandler.UpdateRole, protected,
 		middleware.RBACMiddleware(domain.RoleUpdate, authUsecase.HasPermission))
-	api.DELETE("/roles/:name", authHandler.DeleteRole, protected,
+	api.DELETE("/roles/:id", authHandler.DeleteRole, protected,
 		middleware.RBACMiddleware(domain.RoleDelete, authUsecase.HasPermission))
 
-	api.POST("/roles/:name/permissions", authHandler.AssignPermission, protected,
+	api.POST("/roles/:id/permissions", authHandler.AssignPermission, protected,
 		middleware.RBACMiddleware(domain.PermissionAssign, authUsecase.HasPermission))
-	api.DELETE("/roles/:name/permissions/:permissionId", authHandler.RemovePermission, protected,
+	api.DELETE("/roles/:id/permissions/:permissionId", authHandler.RemovePermission, protected,
 		middleware.RBACMiddleware(domain.PermissionAssign, authUsecase.HasPermission))
 
 	permManage := middleware.RBACMiddleware(domain.PermissionRead, authUsecase.HasPermission)

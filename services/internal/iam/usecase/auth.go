@@ -73,9 +73,9 @@ type AuthService interface {
 
 	ListRoles(ctx context.Context) ([]domain.Role, error)
 	CreateRole(ctx context.Context, input CreateRoleInput) (*domain.Role, error)
-	GetRole(ctx context.Context, name string) (*domain.Role, error)
+	GetRole(ctx context.Context, id string) (*domain.Role, error)
 	UpdateRole(ctx context.Context, input UpdateRoleInput) (*domain.Role, error)
-	DeleteRole(ctx context.Context, name string) error
+	DeleteRole(ctx context.Context, id string) error
 
 	ListPermissions(ctx context.Context) ([]domain.Permission, error)
 	CreatePermission(ctx context.Context, permission domain.Permission) error
@@ -84,8 +84,8 @@ type AuthService interface {
 	AssignRole(ctx context.Context, userID, roleName string) error
 	RemoveRole(ctx context.Context, userID, roleName string) error
 
-	AssignPermission(ctx context.Context, roleName string, permission domain.Permission) error
-	RemovePermission(ctx context.Context, roleName string, permission domain.Permission) error
+	AssignPermission(ctx context.Context, roleID string, permission domain.Permission) error
+	RemovePermission(ctx context.Context, roleID string, permission domain.Permission) error
 }
 
 type RegisterInput struct {
@@ -123,13 +123,13 @@ type LogoutInput struct {
 }
 
 type IntrospectResult struct {
-	Active       bool                `json:"active"`
-	UserID       string              `json:"user_id,omitempty"`
-	UserType     domain.UserType     `json:"user_type"`
-	Roles        []string            `json:"roles,omitempty"`
-	MerchantID   string              `json:"merchant_id"`
-	MerchantRole string              `json:"merchant_role"`
-	Permissions  []domain.Permission `json:"permissions,omitempty"`
+	Active       bool                   `json:"active"`
+	UserID       string                 `json:"user_id,omitempty"`
+	UserType     domain.UserType        `json:"user_type"`
+	Roles        []string               `json:"roles,omitempty"`
+	MerchantID   string                 `json:"merchant_id"`
+	Staff        []domain.StaffAssignment `json:"staff,omitempty"`
+	Permissions  []domain.Permission   `json:"permissions,omitempty"`
 }
 
 type UpdateUserInput struct {
@@ -146,7 +146,7 @@ type CreateRoleInput struct {
 }
 
 type UpdateRoleInput struct {
-	Name        string
+	ID          string
 	Description *string
 }
 
@@ -297,10 +297,20 @@ func (uc *AuthUsecase) Login(ctx context.Context, input LoginInput) (*LoginResul
 		return nil, domain.ErrInternal
 	}
 
+	staffList, _ := uc.staffRepo.ListByUserID(ctx, user.ID)
+	staff := make([]domain.StaffAssignment, 0, len(staffList))
+	for _, s := range staffList {
+		staff = append(staff, domain.StaffAssignment{
+			MerchantID: s.MerchantID,
+			Role:       s.Role,
+		})
+	}
+
 	claims := port.TokenClaims{
 		UserID:      user.ID,
 		UserType:    user.Type,
 		Roles:       user.Roles,
+		Staff:       staff,
 		Permissions: permissions,
 	}
 
@@ -445,13 +455,22 @@ func (uc *AuthUsecase) Introspect(ctx context.Context, tokenString string) (*Int
 		return &IntrospectResult{Active: false}, nil
 	}
 
+	staffList, _ := uc.staffRepo.ListByUserID(ctx, claims.UserID)
+	staff := make([]domain.StaffAssignment, 0, len(staffList))
+	for _, s := range staffList {
+		staff = append(staff, domain.StaffAssignment{
+			MerchantID: s.MerchantID,
+			Role:       s.Role,
+		})
+	}
+
 	return &IntrospectResult{
 		Active:       true,
 		UserID:       claims.UserID,
 		UserType:     user.Type,
 		Roles:        claims.Roles,
 		MerchantID:   claims.MerchantID,
-		MerchantRole: claims.MerchantRole,
+		Staff:        staff,
 		Permissions:  claims.Permissions,
 	}, nil
 }
@@ -558,12 +577,12 @@ func (uc *AuthUsecase) CreateRole(ctx context.Context, input CreateRoleInput) (*
 	return role, nil
 }
 
-func (uc *AuthUsecase) GetRole(ctx context.Context, name string) (*domain.Role, error) {
-	return uc.roleRepo.GetByName(ctx, name)
+func (uc *AuthUsecase) GetRole(ctx context.Context, id string) (*domain.Role, error) {
+	return uc.roleRepo.GetByID(ctx, id)
 }
 
 func (uc *AuthUsecase) UpdateRole(ctx context.Context, input UpdateRoleInput) (*domain.Role, error) {
-	role, err := uc.roleRepo.GetByName(ctx, input.Name)
+	role, err := uc.roleRepo.GetByID(ctx, input.ID)
 	if err != nil {
 		return nil, domain.ErrInvalidRole
 	}
@@ -579,12 +598,16 @@ func (uc *AuthUsecase) UpdateRole(ctx context.Context, input UpdateRoleInput) (*
 	return role, nil
 }
 
-func (uc *AuthUsecase) DeleteRole(ctx context.Context, name string) error {
-	if _, ok := domain.DefaultRoles[name]; ok {
+func (uc *AuthUsecase) DeleteRole(ctx context.Context, id string) error {
+	role, err := uc.roleRepo.GetByID(ctx, id)
+	if err != nil {
+		return domain.ErrInvalidRole
+	}
+	if _, ok := domain.DefaultRoles[role.Name]; ok {
 		return domain.ErrInvalidRole
 	}
 
-	return uc.roleRepo.Delete(ctx, name)
+	return uc.roleRepo.Delete(ctx, role.ID)
 }
 
 func (uc *AuthUsecase) ListPermissions(ctx context.Context) ([]domain.Permission, error) {
@@ -635,12 +658,12 @@ func (uc *AuthUsecase) RemoveRole(ctx context.Context, userID, roleName string) 
 	return nil
 }
 
-func (uc *AuthUsecase) AssignPermission(ctx context.Context, roleName string, permission domain.Permission) error {
-	return uc.roleRepo.AddPermission(ctx, roleName, permission)
+func (uc *AuthUsecase) AssignPermission(ctx context.Context, roleID string, permission domain.Permission) error {
+	return uc.roleRepo.AddPermission(ctx, roleID, permission)
 }
 
-func (uc *AuthUsecase) RemovePermission(ctx context.Context, roleName string, permission domain.Permission) error {
-	return uc.roleRepo.RemovePermission(ctx, roleName, permission)
+func (uc *AuthUsecase) RemovePermission(ctx context.Context, roleID string, permission domain.Permission) error {
+	return uc.roleRepo.RemovePermission(ctx, roleID, permission)
 }
 
 func (uc *AuthUsecase) ListStaff(ctx context.Context, userID string) ([]domain.StaffInfo, error) {
@@ -650,11 +673,11 @@ func (uc *AuthUsecase) ListStaff(ctx context.Context, userID string) ([]domain.S
 func (uc *AuthUsecase) collectPermissions(ctx context.Context, roles []string) ([]domain.Permission, error) {
 	permSet := make(map[domain.Permission]bool)
 	for _, roleName := range roles {
-		perms, err := uc.roleRepo.GetPermissions(ctx, roleName)
+		role, err := uc.roleRepo.GetByName(ctx, roleName)
 		if err != nil {
 			continue
 		}
-		for _, p := range perms {
+		for _, p := range role.Permissions {
 			permSet[p] = true
 		}
 	}

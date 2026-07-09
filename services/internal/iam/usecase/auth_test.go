@@ -103,8 +103,27 @@ func (m *mockRoleRepo) Create(_ context.Context, role *domain.Role) error {
 	if m.roles == nil {
 		m.roles = make(map[string]*domain.Role)
 	}
-	m.roles[role.Name] = role
+	role.ID = role.Name + "-uuid"
+	role.DisplayID = "role_" + role.Name
+	m.roles[role.ID] = role
 	return nil
+}
+
+func (m *mockRoleRepo) GetByID(_ context.Context, id string) (*domain.Role, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	if m.roles != nil {
+		if r, ok := m.roles[id]; ok {
+			return r, nil
+		}
+		for _, r := range m.roles {
+			if r.DisplayID == id {
+				return r, nil
+			}
+		}
+	}
+	return nil, domain.ErrInvalidRole
 }
 
 func (m *mockRoleRepo) GetByName(_ context.Context, name string) (*domain.Role, error) {
@@ -112,8 +131,10 @@ func (m *mockRoleRepo) GetByName(_ context.Context, name string) (*domain.Role, 
 		return nil, m.err
 	}
 	if m.roles != nil {
-		if r, ok := m.roles[name]; ok {
-			return r, nil
+		for _, r := range m.roles {
+			if r.Name == name {
+				return r, nil
+			}
 		}
 	}
 	return nil, domain.ErrInvalidRole
@@ -128,32 +149,32 @@ func (m *mockRoleRepo) Update(_ context.Context, role *domain.Role) error {
 		return m.err
 	}
 	if m.roles != nil {
-		m.roles[role.Name] = role
+		m.roles[role.ID] = role
 	}
 	return nil
 }
 
-func (m *mockRoleRepo) Delete(_ context.Context, name string) error {
+func (m *mockRoleRepo) Delete(_ context.Context, id string) error {
 	return nil
 }
 
-func (m *mockRoleRepo) AddPermission(_ context.Context, roleName string, permission domain.Permission) error {
+func (m *mockRoleRepo) AddPermission(_ context.Context, roleID string, permission domain.Permission) error {
 	return nil
 }
 
-func (m *mockRoleRepo) RemovePermission(_ context.Context, roleName string, permission domain.Permission) error {
+func (m *mockRoleRepo) RemovePermission(_ context.Context, roleID string, permission domain.Permission) error {
 	return nil
 }
 
-func (m *mockRoleRepo) GetPermissions(_ context.Context, roleName string) ([]domain.Permission, error) {
+func (m *mockRoleRepo) GetPermissions(_ context.Context, roleID string) ([]domain.Permission, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
-	perms, ok := m.permissions[roleName]
+	role, ok := m.roles[roleID]
 	if !ok {
 		return nil, domain.ErrInvalidRole
 	}
-	return perms, nil
+	return role.Permissions, nil
 }
 
 type mockPermissionRepo struct {
@@ -384,8 +405,12 @@ func TestAuthUsecase_Register(t *testing.T) {
 				Password: "Securepass1",
 				Roles:    []string{"viewer"},
 			},
-			userRepo:       &mockUserRepo{},
-			roleRepo:       &mockRoleRepo{permissions: map[string][]domain.Permission{"viewer": validPerms}},
+			userRepo: &mockUserRepo{},
+			roleRepo: &mockRoleRepo{
+				roles: map[string]*domain.Role{
+					"v1": {ID: "v1", Name: "viewer", Permissions: validPerms},
+				},
+			},
 			passwordHasher: &mockPasswordHasher{},
 			tokenSigner:    &mockTokenSigner{signedToken: "token123"},
 		},
@@ -506,10 +531,14 @@ func TestAuthUsecase_Login(t *testing.T) {
 			},
 			userRepo: &mockUserRepo{
 				users: map[string]*domain.User{
-					"u1": {ID: "u1", Username: "johndoe", Password: "hashed:securepass123"},
+					"u1": {ID: "u1", Username: "johndoe", Password: "hashed:securepass123", Roles: []string{"viewer"}},
 				},
 			},
-			roleRepo:       &mockRoleRepo{permissions: map[string][]domain.Permission{"viewer": {domain.UserRead}}},
+			roleRepo: &mockRoleRepo{
+				roles: map[string]*domain.Role{
+					"v1": {ID: "v1", Name: "viewer", Permissions: []domain.Permission{domain.UserRead}},
+				},
+			},
 			passwordHasher: &mockPasswordHasher{},
 			tokenSigner:    &mockTokenSigner{signedToken: "token123"},
 		},

@@ -37,6 +37,8 @@ const (
 )
 
 type Role struct {
+	ID          string       `json:"id,omitempty"`
+	DisplayID   string       `json:"display_id,omitempty"`
 	Name        string       `json:"name"`
 	Description string       `json:"description"`
 	Permissions []Permission `json:"permissions"`

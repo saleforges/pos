@@ -2,12 +2,21 @@ package memory
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port/repository"
 )
+
+func hexID() string {
+	b := make([]byte, 8)
+	rand.Read(b)
+	return hex.EncodeToString(b)
+}
 
 type UserRepository struct {
 	mu    sync.RWMutex
@@ -126,19 +135,24 @@ func (r *UserRepository) RemoveRole(_ context.Context, userID, roleName string) 
 }
 
 type RoleRepository struct {
-	mu    sync.RWMutex
-	roles map[string]*domain.Role
+	mu       sync.RWMutex
+	roles    map[string]*domain.Role
+	nameToID map[string]string
 }
 
 var _ repository.RoleRepository = (*RoleRepository)(nil)
 
 func NewRoleRepository() *RoleRepository {
 	r := &RoleRepository{
-		roles: make(map[string]*domain.Role),
+		roles:    make(map[string]*domain.Role),
+		nameToID: make(map[string]string),
 	}
 	for name, role := range domain.DefaultRoles {
 		cp := role
-		r.roles[name] = &cp
+		cp.ID = uuid.NewString()
+		cp.DisplayID = "role_" + hexID()
+		r.roles[cp.ID] = &cp
+		r.nameToID[name] = cp.ID
 	}
 	return r
 }
@@ -146,14 +160,44 @@ func NewRoleRepository() *RoleRepository {
 func (r *RoleRepository) Create(_ context.Context, role *domain.Role) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.roles[role.Name] = role
+	if role.ID == "" {
+		role.ID = uuid.NewString()
+	}
+	if role.DisplayID == "" {
+		role.DisplayID = "role_" + hexID()
+	}
+	r.roles[role.ID] = role
+	r.nameToID[role.Name] = role.ID
 	return nil
+}
+
+func (r *RoleRepository) GetByID(_ context.Context, id string) (*domain.Role, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	role, ok := r.roles[id]
+	if !ok {
+		for _, rl := range r.roles {
+			if rl.DisplayID == id {
+				role = rl
+				ok = true
+				break
+			}
+		}
+	}
+	if !ok {
+		return nil, domain.ErrInvalidRole
+	}
+	return role, nil
 }
 
 func (r *RoleRepository) GetByName(_ context.Context, name string) (*domain.Role, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	role, ok := r.roles[name]
+	id, ok := r.nameToID[name]
+	if !ok {
+		return nil, domain.ErrInvalidRole
+	}
+	role, ok := r.roles[id]
 	if !ok {
 		return nil, domain.ErrInvalidRole
 	}
@@ -176,28 +220,29 @@ func (r *RoleRepository) Update(_ context.Context, role *domain.Role) error {
 	if role.IsSystem {
 		return nil
 	}
-	r.roles[role.Name] = role
+	r.roles[role.ID] = role
 	return nil
 }
 
-func (r *RoleRepository) Delete(_ context.Context, name string) error {
+func (r *RoleRepository) Delete(_ context.Context, id string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	role, ok := r.roles[name]
+	role, ok := r.roles[id]
 	if !ok {
 		return domain.ErrInvalidRole
 	}
 	if role.IsSystem {
 		return nil
 	}
-	delete(r.roles, name)
+	delete(r.nameToID, role.Name)
+	delete(r.roles, id)
 	return nil
 }
 
-func (r *RoleRepository) AddPermission(_ context.Context, roleName string, permission domain.Permission) error {
+func (r *RoleRepository) AddPermission(_ context.Context, roleID string, permission domain.Permission) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	role, ok := r.roles[roleName]
+	role, ok := r.roles[roleID]
 	if !ok {
 		return domain.ErrInvalidRole
 	}
@@ -210,10 +255,10 @@ func (r *RoleRepository) AddPermission(_ context.Context, roleName string, permi
 	return nil
 }
 
-func (r *RoleRepository) RemovePermission(_ context.Context, roleName string, permission domain.Permission) error {
+func (r *RoleRepository) RemovePermission(_ context.Context, roleID string, permission domain.Permission) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	role, ok := r.roles[roleName]
+	role, ok := r.roles[roleID]
 	if !ok {
 		return domain.ErrInvalidRole
 	}
@@ -227,10 +272,10 @@ func (r *RoleRepository) RemovePermission(_ context.Context, roleName string, pe
 	return nil
 }
 
-func (r *RoleRepository) GetPermissions(_ context.Context, roleName string) ([]domain.Permission, error) {
+func (r *RoleRepository) GetPermissions(_ context.Context, roleID string) ([]domain.Permission, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	role, ok := r.roles[roleName]
+	role, ok := r.roles[roleID]
 	if !ok {
 		return nil, domain.ErrInvalidRole
 	}
