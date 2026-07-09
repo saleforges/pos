@@ -1,0 +1,27 @@
+meta {
+  name: Login Superadmin
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "username": "{{superadmin_user}}",
+    "password": "{{superadmin_pass}}"
+  }
+}
+
+script:post-response {
+  bru.setVar("access_token", res.body.data.access_token);
+  bru.setVar("refresh_token", res.body.data.refresh_token);
+}

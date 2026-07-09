@@ -1,11 +1,11 @@
 meta {
-  name: Product Get
+  name: List Branches
   type: http
-  seq: 8
+  seq: 2
 }
 
 get {
-  url: {{base_url}}/v1/merchants/{{merchant_id}}/products/{{product_id}}
+  url: {{base_url}}/v1/merchants/{{merchant_id}}/branches
   body: none
   auth: bearer
 }

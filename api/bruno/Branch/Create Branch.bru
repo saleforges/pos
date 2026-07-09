@@ -1,0 +1,26 @@
+meta {
+  name: Create Branch
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/v1/merchants/{{merchant_id}}/branches
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Cabang A",
+    "address": "Jl. Contoh No. 123"
+  }
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

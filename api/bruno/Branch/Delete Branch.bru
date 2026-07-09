@@ -1,13 +1,17 @@
 meta {
-  name: Category Delete
+  name: Delete Branch
   type: http
   seq: 5
 }
 
 delete {
-  url: {{base_url}}/v1/merchants/{{merchant_id}}/categories/{{catalog_id}}
+  url: {{base_url}}/v1/branches/:id
   body: none
   auth: bearer
+}
+
+params:path {
+  id: {{branch_id}}
 }
 
 auth:bearer {

@@ -1,0 +1,25 @@
+meta {
+  name: Set Default Branch
+  type: http
+  seq: 8
+}
+
+put {
+  url: {{base_url}}/v1/me/default-branch
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "branch_id": "{{branch_id}}"
+  }
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

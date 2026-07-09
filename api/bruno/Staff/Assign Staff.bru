@@ -1,0 +1,28 @@
+meta {
+  name: Assign Staff
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/v1/staff
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "user_id": "{{user_id}}",
+    "merchant_id": "{{merchant_id}}",
+    "role": "cashier",
+    "branch_ids": ["{{branch_id}}"]
+  }
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

@@ -1,11 +1,11 @@
 meta {
-  name: Product Get
+  name: List Staff by Merchant
   type: http
-  seq: 8
+  seq: 5
 }
 
 get {
-  url: {{base_url}}/v1/merchants/{{merchant_id}}/products/{{product_id}}
+  url: {{base_url}}/v1/merchants/{{merchant_id}}/staff
   body: none
   auth: bearer
 }

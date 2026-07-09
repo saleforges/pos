@@ -1,0 +1,30 @@
+meta {
+  name: Update Staff
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{base_url}}/v1/staff/:id
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id: {{staff_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "role": "admin",
+    "branch_ids": ["{{branch_id}}"]
+  }
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

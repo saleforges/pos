@@ -1,0 +1,19 @@
+meta {
+  name: Remove Staff
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{base_url}}/v1/staff/:id
+  body: none
+  auth: bearer
+}
+
+params:path {
+  id: {{staff_id}}
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

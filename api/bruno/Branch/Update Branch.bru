@@ -1,0 +1,30 @@
+meta {
+  name: Update Branch
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{base_url}}/v1/branches/:id
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id: {{branch_id}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Cabang A Updated",
+    "address": "Jl. Baru No. 456"
+  }
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

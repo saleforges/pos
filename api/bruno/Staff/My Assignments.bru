@@ -1,11 +1,11 @@
 meta {
-  name: Product Get
+  name: My Assignments
   type: http
-  seq: 8
+  seq: 7
 }
 
 get {
-  url: {{base_url}}/v1/merchants/{{merchant_id}}/products/{{product_id}}
+  url: {{base_url}}/v1/me/merchants/{{merchant_id}}/assignments
   body: none
   auth: bearer
 }
