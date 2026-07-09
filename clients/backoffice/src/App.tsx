@@ -1,9 +1,14 @@
+// App.tsx
+import { RouterProvider } from 'react-router-dom';
+import { AuthProvider } from '@/features/auth/context/AuthContext';
+import { router } from '@/router';
+
 function App() {
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <h1 className="text-3xl font-bold text-gray-900">Backoffice test with turbo</h1>
-    </div>
-  )
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
 }
 
-export default App
+export default App;
