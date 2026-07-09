@@ -17,6 +17,9 @@ scrape_configs:
         regex: "/(promtail|loki|mimir|tempo|prometheus|grafana|postgres-exporter|redis-exporter|node-exporter)"
         action: drop
       - source_labels: ["__meta_docker_container_name"]
+        regex: "/(iam-service|merchant-service|catalog-service|backoffice|caddy|postgres|redis|minio)"
+        action: keep
+      - source_labels: ["__meta_docker_container_name"]
         regex: "/(.*)"
         target_label: "container"
       - source_labels: ["__meta_docker_container_name"]
