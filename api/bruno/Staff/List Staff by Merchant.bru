@@ -5,9 +5,13 @@ meta {
 }
 
 get {
-  url: {{base_url}}/v1/merchants/{{merchant_id}}/staff
+  url: {{base_url}}/v1/staff
   body: none
   auth: bearer
+}
+
+headers {
+  X-Merchant-Id: {{merchant_id}}
 }
 
 auth:bearer {

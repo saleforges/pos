@@ -6,6 +6,7 @@ import (
 	"github.com/saleforge/pos/services/internal/merchant/port/repository"
 	"github.com/saleforge/pos/services/internal/merchant/transport/http/handler"
 	"github.com/saleforge/pos/services/internal/merchant/transport/http/middleware"
+	"github.com/saleforge/pos/services/pkg/httputil"
 	"github.com/saleforge/pos/services/pkg/otel"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 )
@@ -36,27 +37,29 @@ func NewRouter(merchantHandler *handler.MerchantHandler, branchHandler *handler.
 	auth.PATCH("/api/v1/merchants/:id", merchantHandler.Update)
 	auth.DELETE("/api/v1/merchants/:id", merchantHandler.Delete)
 
-	// Branch (nested under merchant)
-	auth.POST("/api/v1/merchants/:merchantId/branches", branchHandler.CreateBranch)
-	auth.GET("/api/v1/merchants/:merchantId/branches", branchHandler.ListBranches)
-	auth.GET("/api/v1/branches/:id", branchHandler.GetBranch)
-	auth.PATCH("/api/v1/branches/:id", branchHandler.UpdateBranch)
-	auth.DELETE("/api/v1/branches/:id", branchHandler.DeleteBranch)
+	// Branch — merchant context from header
+	branchGroup := auth.Group("/api/v1/branches", httputil.MerchantMiddleware())
+	branchGroup.POST("", branchHandler.CreateBranch)
+	branchGroup.GET("", branchHandler.ListBranches)
+	branchGroup.GET("/:id", branchHandler.GetBranch)
+	branchGroup.PATCH("/:id", branchHandler.UpdateBranch)
+	branchGroup.DELETE("/:id", branchHandler.DeleteBranch)
 
-	// Staff management
-	auth.POST("/api/v1/staff", staffHandler.AssignStaff)
-	auth.GET("/api/v1/staff/:id", staffHandler.GetStaff)
-	auth.PATCH("/api/v1/staff/:id", staffHandler.UpdateStaff)
-	auth.DELETE("/api/v1/staff/:id", staffHandler.RemoveStaff)
-	auth.GET("/api/v1/merchants/:merchantId/staff", staffHandler.ListStaffByMerchant)
+	// Staff — merchant context from header
+	staffGroup := auth.Group("/api/v1/staff", httputil.MerchantMiddleware())
+	staffGroup.POST("", staffHandler.AssignStaff)
+	staffGroup.GET("", staffHandler.ListStaffByMerchant)
+	staffGroup.GET("/:id", staffHandler.GetStaff)
+	staffGroup.PATCH("/:id", staffHandler.UpdateStaff)
+	staffGroup.DELETE("/:id", staffHandler.RemoveStaff)
+
 	auth.GET("/api/v1/branches/:branchId/staff", staffHandler.ListStaffByBranch)
 
-	// Staff branch context (enriched with branch-scoped RBAC)
-	branchCtx := auth.Group("")
-	branchCtx.Use(middleware.BranchContext(staffRepo))
-
-	branchCtx.GET("/api/v1/me/merchants/:merchantId/assignments", staffHandler.MyStaffAssignments)
-	branchCtx.PUT("/api/v1/me/default-branch", staffHandler.SetMyDefaultBranch)
+	// Staff assignments — merchant context from header
+	assignGroup := auth.Group("/api/v1/me", httputil.MerchantMiddleware())
+	assignGroup.Use(middleware.BranchContext(staffRepo))
+	assignGroup.GET("/assignments", staffHandler.MyStaffAssignments)
+	assignGroup.PUT("/default-branch", staffHandler.SetMyDefaultBranch)
 
 	return e
 }

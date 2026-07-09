@@ -19,11 +19,10 @@ func NewStaffHandler(uc usecase.StaffUsecase) *StaffHandler {
 }
 
 type assignStaffReq struct {
-	MerchantID string          `json:"merchant_id"`
-	BranchID   string          `json:"branch_id"`
-	UserID     string          `json:"user_id"`
-	Role       domain.StaffRole `json:"role"`
-	IsDefault  bool            `json:"is_default"`
+	BranchID  string          `json:"branch_id"`
+	UserID    string          `json:"user_id"`
+	Role      domain.StaffRole `json:"role"`
+	IsDefault bool            `json:"is_default"`
 }
 
 func (h *StaffHandler) AssignStaff(c echo.Context) error {
@@ -31,12 +30,13 @@ func (h *StaffHandler) AssignStaff(c echo.Context) error {
 	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
-	if req.MerchantID == "" || req.BranchID == "" || req.UserID == "" || req.Role == "" {
+	merchantID := httputil.GetMerchantID(c)
+	if merchantID == "" || req.BranchID == "" || req.UserID == "" || req.Role == "" {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrMissingFields)
 	}
 
 	result, err := h.uc.AssignStaff(c.Request().Context(), usecase.AssignStaffInput{
-		MerchantID: req.MerchantID,
+		MerchantID: merchantID,
 		BranchID:   req.BranchID,
 		UserID:     req.UserID,
 		Role:       req.Role,
@@ -78,7 +78,7 @@ func (h *StaffHandler) ListStaffByBranch(c echo.Context) error {
 }
 
 func (h *StaffHandler) ListStaffByMerchant(c echo.Context) error {
-	merchantID := c.Param("merchantId")
+	merchantID := httputil.GetMerchantID(c)
 	staff, err := h.uc.ListStaffByMerchant(c.Request().Context(), merchantID)
 	if err != nil {
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
@@ -122,7 +122,7 @@ func (h *StaffHandler) RemoveStaff(c echo.Context) error {
 
 func (h *StaffHandler) MyStaffAssignments(c echo.Context) error {
 	userID, _ := c.Get("user_id").(string)
-	merchantID := c.Param("merchantId")
+	merchantID := httputil.GetMerchantID(c)
 	if merchantID == "" {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrMissingFields)
 	}

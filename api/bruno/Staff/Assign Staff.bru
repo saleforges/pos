@@ -12,12 +12,12 @@ post {
 
 headers {
   Content-Type: application/json
+  X-Merchant-Id: {{merchant_id}}
 }
 
 body:json {
   {
     "user_id": "{{user_id}}",
-    "merchant_id": "{{merchant_id}}",
     "role": "cashier",
     "branch_ids": ["{{branch_id}}"]
   }

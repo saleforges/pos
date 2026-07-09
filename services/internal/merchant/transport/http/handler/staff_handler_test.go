@@ -59,7 +59,7 @@ func TestStaffHandler_AssignStaff(t *testing.T) {
 	}{
 		{
 			name: "success",
-			body: `{"merchant_id":"m1","branch_id":"b1","user_id":"u1","role":"cashier","is_default":true}`,
+			body: `{"branch_id":"b1","user_id":"u1","role":"cashier","is_default":true}`,
 			mock: &mockStaffSvc{
 				assignStaff: func(_ context.Context, i usecase.AssignStaffInput) (*domain.StaffMember, error) {
 					return &domain.StaffMember{
@@ -79,13 +79,13 @@ func TestStaffHandler_AssignStaff(t *testing.T) {
 		},
 		{
 			name:       "missing fields",
-			body:       `{"merchant_id":"m1"}`,
+			body:       `{"branch_id":"b1"}`,
 			mock:       &mockStaffSvc{},
 			wantStatus: http.StatusBadRequest,
 		},
 		{
 			name: "conflict",
-			body: `{"merchant_id":"m1","branch_id":"b1","user_id":"u1","role":"cashier"}`,
+			body: `{"branch_id":"b1","user_id":"u1","role":"cashier"}`,
 			mock: &mockStaffSvc{
 				assignStaff: func(_ context.Context, _ usecase.AssignStaffInput) (*domain.StaffMember, error) {
 					return nil, domain.ErrStaffExists
@@ -104,6 +104,7 @@ func TestStaffHandler_AssignStaff(t *testing.T) {
 			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
+			c.Set("merchant_id", "m1")
 
 			h := NewStaffHandler(tt.mock)
 			err := h.AssignStaff(c)
@@ -271,11 +272,10 @@ func TestStaffHandler_MyStaffAssignments(t *testing.T) {
 	}
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/merchants/m1/assignments", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/assignments", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	c.SetParamNames("merchantId")
-	c.SetParamValues("m1")
+	c.Set("merchant_id", "m1")
 	c.Set("user_id", "u1")
 
 	h := NewStaffHandler(mock)

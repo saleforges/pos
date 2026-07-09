@@ -30,7 +30,7 @@ func (h *CategoryHandler) Create(c echo.Context) error {
 	}
 
 	result, err := h.uc.Create(c.Request().Context(), usecase.CreateCategoryInput{
-		MerchantID:  c.Param("merchantID"),
+		MerchantID:  httputil.GetMerchantID(c),
 		Name:        req.Name,
 		Slug:        req.Slug,
 		Description: req.Description,
@@ -59,7 +59,7 @@ func (h *CategoryHandler) List(c echo.Context) error {
 	}
 	search := c.QueryParam("search")
 
-	merchantID := c.Param("merchantID")
+	merchantID := httputil.GetMerchantID(c)
 	result, err := h.uc.List(c.Request().Context(), merchantID, search, offset, limit)
 	if err != nil {
 		logger.Error("category.List failed", "error", err.Error())

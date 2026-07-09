@@ -19,7 +19,6 @@ func NewBranchHandler(uc usecase.BranchUsecase) *BranchHandler {
 }
 
 type createBranchReq struct {
-	MerchantID     string                 `json:"merchant_id"`
 	Name           string                 `json:"name"`
 	Code           string                 `json:"code"`
 	Address        string                 `json:"address"`
@@ -33,12 +32,13 @@ func (h *BranchHandler) CreateBranch(c echo.Context) error {
 	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
-	if req.Name == "" || req.MerchantID == "" || req.Code == "" {
+	merchantID := httputil.GetMerchantID(c)
+	if req.Name == "" || merchantID == "" || req.Code == "" {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrMissingFields)
 	}
 
 	result, err := h.uc.CreateBranch(c.Request().Context(), usecase.CreateBranchInput{
-		MerchantID:     req.MerchantID,
+		MerchantID:     merchantID,
 		Name:           req.Name,
 		Code:           req.Code,
 		Address:        req.Address,
@@ -68,7 +68,7 @@ func (h *BranchHandler) GetBranch(c echo.Context) error {
 }
 
 func (h *BranchHandler) ListBranches(c echo.Context) error {
-	merchantID := c.Param("merchantId")
+	merchantID := httputil.GetMerchantID(c)
 	branches, err := h.uc.ListBranches(c.Request().Context(), merchantID)
 	if err != nil {
 		return httputil.WriteError(c, http.StatusInternalServerError, err)

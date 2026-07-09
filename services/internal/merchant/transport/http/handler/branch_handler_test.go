@@ -48,7 +48,7 @@ func TestBranchHandler_CreateBranch(t *testing.T) {
 	}{
 		{
 			name: "success",
-			body: `{"merchant_id":"m1","name":"Downtown","code":"DTC-01","address":"123 Main St"}`,
+			body: `{"name":"Downtown","code":"DTC-01","address":"123 Main St"}`,
 			mock: &mockBranchSvc{
 				createBranch: func(_ context.Context, i usecase.CreateBranchInput) (*domain.Branch, error) {
 					return &domain.Branch{
@@ -69,7 +69,7 @@ func TestBranchHandler_CreateBranch(t *testing.T) {
 		},
 		{
 			name:       "missing fields",
-			body:       `{"merchant_id":"m1"}`,
+			body:       `{"name":"test"}`,
 			mock:       &mockBranchSvc{},
 			wantStatus: http.StatusBadRequest,
 			wantBody:   `"message":"missing required fields"`,
@@ -81,10 +81,11 @@ func TestBranchHandler_CreateBranch(t *testing.T) {
 			t.Parallel()
 
 			e := echo.New()
-			req := httptest.NewRequest(http.MethodPost, "/api/v1/merchants/m1/branches", strings.NewReader(tt.body))
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/branches", strings.NewReader(tt.body))
 			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
+			c.Set("merchant_id", "m1")
 
 			h := NewBranchHandler(tt.mock)
 			err := h.CreateBranch(c)

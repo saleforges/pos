@@ -5,6 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/merchant/port/repository"
+	"github.com/saleforge/pos/services/pkg/httputil"
 )
 
 const (
@@ -28,10 +29,7 @@ func BranchContext(staffRepo repository.StaffRepository) echo.MiddlewareFunc {
 				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 			}
 
-			merchantID := c.Param("merchantId")
-			if merchantID == "" {
-				merchantID = c.QueryParam("merchant_id")
-			}
+			merchantID := httputil.GetMerchantID(c)
 
 			var assignments []BranchAssignment
 			var defaultBranch string

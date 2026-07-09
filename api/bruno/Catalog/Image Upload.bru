@@ -5,9 +5,13 @@ meta {
 }
 
 post {
-  url: {{base_url}}/v1/merchants/{{merchant_id}}/images
+  url: {{base_url}}/v1/images
   body: multipartForm
   auth: bearer
+}
+
+headers {
+  X-Merchant-Id: {{merchant_id}}
 }
 
 auth:bearer {

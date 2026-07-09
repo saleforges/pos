@@ -5,13 +5,14 @@ meta {
 }
 
 put {
-  url: {{base_url}}/v1/merchants/{{merchant_id}}/products/{{product_id}}
+  url: {{base_url}}/v1/products/{{product_id}}
   body: json
   auth: bearer
 }
 
 headers {
   Content-Type: application/json
+  X-Merchant-Id: {{merchant_id}}
 }
 
 auth:bearer {

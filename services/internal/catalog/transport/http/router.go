@@ -5,6 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/handler"
+	"github.com/saleforge/pos/services/pkg/httputil"
 	"github.com/saleforge/pos/services/pkg/otel"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 )
@@ -32,14 +33,14 @@ func NewRouter(
 		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 	})
 
-	cat := api.Group("/merchants/:merchantID/categories")
+	cat := api.Group("/categories", httputil.MerchantMiddleware())
 	cat.POST("", catHandler.Create)
 	cat.GET("", catHandler.List)
 	cat.GET("/:id", catHandler.GetByID)
 	cat.PUT("/:id", catHandler.Update)
 	cat.DELETE("/:id", catHandler.Delete)
 
-	prod := api.Group("/merchants/:merchantID/products")
+	prod := api.Group("/products", httputil.MerchantMiddleware())
 	prod.POST("", prodHandler.Create)
 	prod.GET("", prodHandler.List)
 	prod.GET("/:id", prodHandler.GetByID)
@@ -52,7 +53,7 @@ func NewRouter(
 	prod.DELETE("/variants/:id", varHandler.Delete)
 
 	if imgHandler != nil {
-		img := api.Group("/merchants/:merchantID/images")
+		img := api.Group("/images", httputil.MerchantMiddleware())
 		img.POST("", imgHandler.Upload)
 	}
 

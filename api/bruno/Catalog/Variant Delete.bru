@@ -5,9 +5,13 @@ meta {
 }
 
 delete {
-  url: {{base_url}}/v1/merchants/{{merchant_id}}/products/variants/{{variant_id}}
+  url: {{base_url}}/v1/products/variants/{{variant_id}}
   body: none
   auth: bearer
+}
+
+headers {
+  X-Merchant-Id: {{merchant_id}}
 }
 
 auth:bearer {

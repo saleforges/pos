@@ -30,7 +30,7 @@ func (h *ProductHandler) Create(c echo.Context) error {
 	}
 
 	result, err := h.uc.Create(c.Request().Context(), usecase.CreateProductInput{
-		MerchantID:  c.Param("merchantID"),
+		MerchantID:  httputil.GetMerchantID(c),
 		CategoryID:  req.CategoryID,
 		Name:        req.Name,
 		SKU:         req.SKU,
@@ -64,7 +64,7 @@ func (h *ProductHandler) List(c echo.Context) error {
 	}
 	search := c.QueryParam("search")
 
-	merchantID := c.Param("merchantID")
+	merchantID := httputil.GetMerchantID(c)
 	result, err := h.uc.List(c.Request().Context(), merchantID, search, offset, limit)
 	if err != nil {
 		logger.Error("product.List failed", "error", err.Error())
