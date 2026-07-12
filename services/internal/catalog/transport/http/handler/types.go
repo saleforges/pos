@@ -5,12 +5,12 @@ import (
 )
 
 type categoryResponse struct {
-	ID          string                `json:"id"`
-	MerchantID  string                `json:"merchant_id"`
+	ID          int64                 `json:"id"`
+	MerchantID  int64                 `json:"merchant_id"`
 	Name        string                `json:"name"`
 	Slug        string                `json:"slug"`
 	Description string                `json:"description"`
-	ParentID    *string               `json:"parent_id,omitempty"`
+	ParentID    *int64                `json:"parent_id,omitempty"`
 	SortOrder   int                   `json:"sort_order"`
 	Status      domain.CategoryStatus `json:"status"`
 	CreatedAt   string                `json:"created_at"`
@@ -18,56 +18,56 @@ type categoryResponse struct {
 }
 
 type productResponse struct {
-	ID          string                `json:"id"`
-	MerchantID  string                `json:"merchant_id"`
-	CategoryID  string                `json:"category_id"`
-	Name        string                `json:"name"`
-	SKU         string                `json:"sku"`
-	Barcode     string                `json:"barcode,omitempty"`
-	Description string                `json:"description,omitempty"`
-	Price       float64               `json:"price"`
-	Cost        float64               `json:"cost,omitempty"`
-	TaxRate     float64               `json:"tax_rate"`
-	Unit        string                `json:"unit"`
-	ImageURL    string                `json:"image_url,omitempty"`
-	Status      domain.ProductStatus  `json:"status"`
-	CreatedAt   string                `json:"created_at"`
-	UpdatedAt   string                `json:"updated_at"`
+	ID          int64                `json:"id"`
+	MerchantID  int64                `json:"merchant_id"`
+	CategoryID  int64                `json:"category_id"`
+	Name        string               `json:"name"`
+	SKU         string               `json:"sku"`
+	Barcode     string               `json:"barcode,omitempty"`
+	Description string               `json:"description,omitempty"`
+	Price       float64              `json:"price"`
+	Cost        float64              `json:"cost,omitempty"`
+	TaxRate     float64              `json:"tax_rate"`
+	Unit        string               `json:"unit"`
+	ImageURL    string               `json:"image_url,omitempty"`
+	Status      domain.ProductStatus `json:"status"`
+	CreatedAt   string               `json:"created_at"`
+	UpdatedAt   string               `json:"updated_at"`
 }
 
 type variantResponse struct {
-	ID        string `json:"id"`
-	ProductID string `json:"product_id"`
-	Name      string `json:"name"`
-	SKU       string `json:"sku"`
-	Barcode   string `json:"barcode,omitempty"`
+	ID        int64   `json:"id"`
+	ProductID int64   `json:"product_id"`
+	Name      string  `json:"name"`
+	SKU       string  `json:"sku"`
+	Barcode   string  `json:"barcode,omitempty"`
 	Price     float64 `json:"price"`
 	Cost      float64 `json:"cost,omitempty"`
-	ImageURL  string `json:"image_url,omitempty"`
-	SortOrder int    `json:"sort_order"`
-	CreatedAt string `json:"created_at"`
-	UpdatedAt string `json:"updated_at"`
+	ImageURL  string  `json:"image_url,omitempty"`
+	SortOrder int     `json:"sort_order"`
+	CreatedAt string  `json:"created_at"`
+	UpdatedAt string  `json:"updated_at"`
 }
 
 type createCategoryReq struct {
-	Name        string  `json:"name"`
-	Slug        string  `json:"slug"`
-	Description string  `json:"description"`
-	ParentID    *string `json:"parent_id,omitempty"`
-	SortOrder   int     `json:"sort_order"`
+	Name        string `json:"name"`
+	Slug        string `json:"slug"`
+	Description string `json:"description"`
+	ParentID    *int64 `json:"parent_id,omitempty"`
+	SortOrder   int    `json:"sort_order"`
 }
 
 type updateCategoryReq struct {
 	Name        *string                `json:"name,omitempty"`
 	Slug        *string                `json:"slug,omitempty"`
 	Description *string                `json:"description,omitempty"`
-	ParentID    *string                `json:"parent_id,omitempty"`
+	ParentID    *int64                 `json:"parent_id,omitempty"`
 	SortOrder   *int                   `json:"sort_order,omitempty"`
 	Status      *domain.CategoryStatus `json:"status,omitempty"`
 }
 
 type createProductReq struct {
-	CategoryID  string  `json:"category_id"`
+	CategoryID  int64   `json:"category_id"`
 	Name        string  `json:"name"`
 	SKU         string  `json:"sku"`
 	Barcode     string  `json:"barcode,omitempty"`
@@ -80,7 +80,7 @@ type createProductReq struct {
 }
 
 type updateProductReq struct {
-	CategoryID  *string               `json:"category_id,omitempty"`
+	CategoryID  *int64                `json:"category_id,omitempty"`
 	Name        *string               `json:"name,omitempty"`
 	SKU         *string               `json:"sku,omitempty"`
 	Barcode     *string               `json:"barcode,omitempty"`

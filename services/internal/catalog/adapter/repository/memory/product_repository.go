@@ -2,6 +2,8 @@ package memory
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/saleforge/pos/services/internal/catalog/domain"
@@ -11,104 +13,122 @@ import (
 var _ repository.ProductRepository = (*ProductRepository)(nil)
 
 type ProductRepository struct {
-	mu       sync.RWMutex
-	products map[string]*domain.Product
+	mu   sync.RWMutex
+	data map[int64]*domain.Product
+	seq  int64
 }
 
 func NewProductRepository() *ProductRepository {
 	return &ProductRepository{
-		products: make(map[string]*domain.Product),
+		data: make(map[int64]*domain.Product),
 	}
 }
 
-func (r *ProductRepository) Create(_ context.Context, product *domain.Product) error {
+func (r *ProductRepository) Create(ctx context.Context, product *domain.Product) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.products[product.ID] = product
+	r.seq++
+	product.ID = r.seq
+	cp := *product
+	r.data[product.ID] = &cp
 	return nil
 }
 
-func (r *ProductRepository) GetByID(_ context.Context, id string) (*domain.Product, error) {
+func (r *ProductRepository) GetByID(ctx context.Context, id int64) (*domain.Product, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	p, ok := r.products[id]
+	p, ok := r.data[id]
 	if !ok {
-		return nil, domain.ErrProductNotFound
+		return nil, fmt.Errorf("product not found")
 	}
-	return p, nil
+	cp := *p
+	return &cp, nil
 }
 
-func (r *ProductRepository) GetBySKU(_ context.Context, sku string, merchantID string) (*domain.Product, error) {
+func (r *ProductRepository) GetBySKU(ctx context.Context, sku string, merchantID int64) (*domain.Product, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	for _, p := range r.products {
+	for _, p := range r.data {
 		if p.SKU == sku && p.MerchantID == merchantID {
-			return p, nil
+			cp := *p
+			return &cp, nil
 		}
 	}
-	return nil, domain.ErrProductNotFound
+	return nil, fmt.Errorf("product not found")
 }
 
-func (r *ProductRepository) List(_ context.Context, merchantID string, search string, offset, limit int) ([]domain.Product, error) {
+func (r *ProductRepository) List(ctx context.Context, merchantID int64, search string, offset, limit int) ([]domain.Product, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	var result []domain.Product
-	for _, p := range r.products {
-		if p.MerchantID == merchantID {
-			if search != "" && !matchProduct(p, search) {
+
+	var filtered []domain.Product
+	for _, p := range r.data {
+		if p.MerchantID != merchantID {
+			continue
+		}
+		if search != "" {
+			search = strings.ToLower(search)
+			if !strings.Contains(strings.ToLower(p.Name), search) &&
+				!strings.Contains(strings.ToLower(p.SKU), search) &&
+				!strings.Contains(strings.ToLower(p.Barcode), search) &&
+				!strings.Contains(strings.ToLower(p.Description), search) {
 				continue
 			}
-			result = append(result, *p)
 		}
+		filtered = append(filtered, *p)
 	}
-	start := min(offset, len(result))
-	end := min(start+limit, len(result))
-	return result[start:end], nil
+
+	if offset >= len(filtered) {
+		return nil, nil
+	}
+	end := offset + limit
+	if end > len(filtered) {
+		end = len(filtered)
+	}
+	return filtered[offset:end], nil
 }
 
-func (r *ProductRepository) Count(_ context.Context, merchantID string, search string) (int, error) {
+func (r *ProductRepository) ListByCategory(ctx context.Context, categoryID int64, offset, limit int) ([]domain.Product, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	var count int
-	for _, p := range r.products {
-		if p.MerchantID == merchantID {
-			if search != "" && !matchProduct(p, search) {
-				continue
-			}
-			count++
-		}
-	}
-	return count, nil
-}
 
-func matchProduct(p *domain.Product, search string) bool {
-	return contains(p.Name, search) || contains(p.SKU, search) || contains(p.Barcode, search) || contains(p.Description, search)
-}
-
-func (r *ProductRepository) ListByCategory(_ context.Context, categoryID string, offset, limit int) ([]domain.Product, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	var result []domain.Product
-	for _, p := range r.products {
+	var filtered []domain.Product
+	for _, p := range r.data {
 		if p.CategoryID == categoryID {
-			result = append(result, *p)
+			filtered = append(filtered, *p)
 		}
 	}
-	start := min(offset, len(result))
-	end := min(start+limit, len(result))
-	return result[start:end], nil
+
+	if offset >= len(filtered) {
+		return nil, nil
+	}
+	end := offset + limit
+	if end > len(filtered) {
+		end = len(filtered)
+	}
+	return filtered[offset:end], nil
 }
 
-func (r *ProductRepository) Update(_ context.Context, product *domain.Product) error {
+func (r *ProductRepository) Count(ctx context.Context, merchantID int64, search string) (int, error) {
+	list, _ := r.List(ctx, merchantID, search, 0, 1<<30)
+	return len(list), nil
+}
+
+func (r *ProductRepository) Update(ctx context.Context, product *domain.Product) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.products[product.ID] = product
+	_, ok := r.data[product.ID]
+	if !ok {
+		return fmt.Errorf("product not found")
+	}
+	cp := *product
+	r.data[product.ID] = &cp
 	return nil
 }
 
-func (r *ProductRepository) Delete(_ context.Context, id string) error {
+func (r *ProductRepository) Delete(ctx context.Context, id int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.products, id)
+	delete(r.data, id)
 	return nil
 }

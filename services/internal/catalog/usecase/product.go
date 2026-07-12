@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/saleforge/pos/services/internal/catalog/domain"
 	"github.com/saleforge/pos/services/internal/catalog/port/repository"
 	"github.com/saleforge/pos/services/pkg/logger"
@@ -32,7 +31,6 @@ func (uc *productUsecase) Create(ctx context.Context, input CreateProductInput) 
 	}
 
 	prod := &domain.Product{
-		ID:          uuid.NewString()[:14],
 		MerchantID:  input.MerchantID,
 		CategoryID:  input.CategoryID,
 		Name:        input.Name,
@@ -55,14 +53,14 @@ func (uc *productUsecase) Create(ctx context.Context, input CreateProductInput) 
 	return prod, nil
 }
 
-func (uc *productUsecase) GetByID(ctx context.Context, id string) (*domain.Product, error) {
+func (uc *productUsecase) GetByID(ctx context.Context, id int64) (*domain.Product, error) {
 	ctx, span := otel.StartSpan(ctx, "product.GetByID")
 	defer span.End()
 
 	return uc.prodRepo.GetByID(ctx, id)
 }
 
-func (uc *productUsecase) List(ctx context.Context, merchantID string, search string, offset, limit int) (*PaginatedResult[domain.Product], error) {
+func (uc *productUsecase) List(ctx context.Context, merchantID int64, search string, offset, limit int) (*PaginatedResult[domain.Product], error) {
 	ctx, span := otel.StartSpan(ctx, "product.List")
 	defer span.End()
 
@@ -133,7 +131,7 @@ func (uc *productUsecase) Update(ctx context.Context, input UpdateProductInput) 
 	return prod, nil
 }
 
-func (uc *productUsecase) Delete(ctx context.Context, id string) error {
+func (uc *productUsecase) Delete(ctx context.Context, id int64) error {
 	ctx, span := otel.StartSpan(ctx, "product.Delete")
 	defer span.End()
 

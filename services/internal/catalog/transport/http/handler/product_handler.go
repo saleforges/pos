@@ -25,7 +25,7 @@ func (h *ProductHandler) Create(c echo.Context) error {
 	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
-	if req.Name == "" || req.SKU == "" || req.CategoryID == "" {
+	if req.Name == "" || req.SKU == "" || req.CategoryID == 0 {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrMissingFields)
 	}
 
@@ -49,7 +49,11 @@ func (h *ProductHandler) Create(c echo.Context) error {
 }
 
 func (h *ProductHandler) GetByID(c echo.Context) error {
-	result, err := h.uc.GetByID(c.Request().Context(), c.Param("id"))
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+	result, err := h.uc.GetByID(c.Request().Context(), id)
 	if err != nil {
 		return mapProductError(c, err)
 	}
@@ -90,8 +94,12 @@ func (h *ProductHandler) Update(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
 
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
 	result, err := h.uc.Update(c.Request().Context(), usecase.UpdateProductInput{
-		ID:          c.Param("id"),
+		ID:          id,
 		CategoryID:  req.CategoryID,
 		Name:        req.Name,
 		SKU:         req.SKU,
@@ -111,7 +119,11 @@ func (h *ProductHandler) Update(c echo.Context) error {
 }
 
 func (h *ProductHandler) Delete(c echo.Context) error {
-	err := h.uc.Delete(c.Request().Context(), c.Param("id"))
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+	err = h.uc.Delete(c.Request().Context(), id)
 	if err != nil {
 		return mapProductError(c, err)
 	}

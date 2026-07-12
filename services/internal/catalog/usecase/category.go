@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/saleforge/pos/services/internal/catalog/domain"
 	"github.com/saleforge/pos/services/internal/catalog/port/repository"
 	"github.com/saleforge/pos/services/pkg/logger"
@@ -24,7 +23,6 @@ func (uc *categoryUsecase) Create(ctx context.Context, input CreateCategoryInput
 	defer span.End()
 
 	cat := &domain.Category{
-		ID:          uuid.NewString()[:14],
 		MerchantID:  input.MerchantID,
 		Name:        input.Name,
 		Slug:        input.Slug,
@@ -42,18 +40,14 @@ func (uc *categoryUsecase) Create(ctx context.Context, input CreateCategoryInput
 	return cat, nil
 }
 
-func (uc *categoryUsecase) GetByID(ctx context.Context, id string) (*domain.Category, error) {
+func (uc *categoryUsecase) GetByID(ctx context.Context, id int64) (*domain.Category, error) {
 	ctx, span := otel.StartSpan(ctx, "category.GetByID")
 	defer span.End()
 
-	cat, err := uc.catRepo.GetByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return cat, nil
+	return uc.catRepo.GetByID(ctx, id)
 }
 
-func (uc *categoryUsecase) List(ctx context.Context, merchantID string, search string, offset, limit int) (*PaginatedResult[domain.Category], error) {
+func (uc *categoryUsecase) List(ctx context.Context, merchantID int64, search string, offset, limit int) (*PaginatedResult[domain.Category], error) {
 	ctx, span := otel.StartSpan(ctx, "category.List")
 	defer span.End()
 
@@ -112,7 +106,7 @@ func (uc *categoryUsecase) Update(ctx context.Context, input UpdateCategoryInput
 	return cat, nil
 }
 
-func (uc *categoryUsecase) Delete(ctx context.Context, id string) error {
+func (uc *categoryUsecase) Delete(ctx context.Context, id int64) error {
 	ctx, span := otel.StartSpan(ctx, "category.Delete")
 	defer span.End()
 

@@ -2,47 +2,53 @@ package memory
 
 import (
 	"context"
-	"sync"
+	"fmt"
 
 	"github.com/saleforge/pos/services/internal/catalog/domain"
 	"github.com/saleforge/pos/services/internal/catalog/port/repository"
+	"sync"
 )
 
 var _ repository.VariantRepository = (*VariantRepository)(nil)
 
 type VariantRepository struct {
-	mu       sync.RWMutex
-	variants map[string]*domain.Variant
+	mu   sync.RWMutex
+	data map[int64]*domain.Variant
+	seq  int64
 }
 
 func NewVariantRepository() *VariantRepository {
 	return &VariantRepository{
-		variants: make(map[string]*domain.Variant),
+		data: make(map[int64]*domain.Variant),
 	}
 }
 
-func (r *VariantRepository) Create(_ context.Context, variant *domain.Variant) error {
+func (r *VariantRepository) Create(ctx context.Context, variant *domain.Variant) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.variants[variant.ID] = variant
+	r.seq++
+	variant.ID = r.seq
+	cp := *variant
+	r.data[variant.ID] = &cp
 	return nil
 }
 
-func (r *VariantRepository) GetByID(_ context.Context, id string) (*domain.Variant, error) {
+func (r *VariantRepository) GetByID(ctx context.Context, id int64) (*domain.Variant, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	v, ok := r.variants[id]
+	v, ok := r.data[id]
 	if !ok {
-		return nil, domain.ErrVariantNotFound
+		return nil, fmt.Errorf("variant not found")
 	}
-	return v, nil
+	cp := *v
+	return &cp, nil
 }
 
-func (r *VariantRepository) ListByProduct(_ context.Context, productID string) ([]domain.Variant, error) {
+func (r *VariantRepository) ListByProduct(ctx context.Context, productID int64) ([]domain.Variant, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	var result []domain.Variant
-	for _, v := range r.variants {
+	for _, v := range r.data {
 		if v.ProductID == productID {
 			result = append(result, *v)
 		}
@@ -50,28 +56,26 @@ func (r *VariantRepository) ListByProduct(_ context.Context, productID string) (
 	return result, nil
 }
 
-func (r *VariantRepository) CountByProduct(_ context.Context, productID string) (int, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	var count int
-	for _, v := range r.variants {
-		if v.ProductID == productID {
-			count++
-		}
-	}
-	return count, nil
+func (r *VariantRepository) CountByProduct(ctx context.Context, productID int64) (int, error) {
+	list, _ := r.ListByProduct(ctx, productID)
+	return len(list), nil
 }
 
-func (r *VariantRepository) Update(_ context.Context, variant *domain.Variant) error {
+func (r *VariantRepository) Update(ctx context.Context, variant *domain.Variant) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.variants[variant.ID] = variant
+	_, ok := r.data[variant.ID]
+	if !ok {
+		return fmt.Errorf("variant not found")
+	}
+	cp := *variant
+	r.data[variant.ID] = &cp
 	return nil
 }
 
-func (r *VariantRepository) Delete(_ context.Context, id string) error {
+func (r *VariantRepository) Delete(ctx context.Context, id int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.variants, id)
+	delete(r.data, id)
 	return nil
 }

@@ -8,25 +8,25 @@ import (
 
 type CategoryUsecase interface {
 	Create(ctx context.Context, input CreateCategoryInput) (*domain.Category, error)
-	GetByID(ctx context.Context, id string) (*domain.Category, error)
-	List(ctx context.Context, merchantID string, search string, offset, limit int) (*PaginatedResult[domain.Category], error)
+	GetByID(ctx context.Context, id int64) (*domain.Category, error)
+	List(ctx context.Context, merchantID int64, search string, offset, limit int) (*PaginatedResult[domain.Category], error)
 	Update(ctx context.Context, input UpdateCategoryInput) (*domain.Category, error)
-	Delete(ctx context.Context, id string) error
+	Delete(ctx context.Context, id int64) error
 }
 
 type ProductUsecase interface {
 	Create(ctx context.Context, input CreateProductInput) (*domain.Product, error)
-	GetByID(ctx context.Context, id string) (*domain.Product, error)
-	List(ctx context.Context, merchantID string, search string, offset, limit int) (*PaginatedResult[domain.Product], error)
+	GetByID(ctx context.Context, id int64) (*domain.Product, error)
+	List(ctx context.Context, merchantID int64, search string, offset, limit int) (*PaginatedResult[domain.Product], error)
 	Update(ctx context.Context, input UpdateProductInput) (*domain.Product, error)
-	Delete(ctx context.Context, id string) error
+	Delete(ctx context.Context, id int64) error
 }
 
 type VariantUsecase interface {
 	Create(ctx context.Context, input CreateVariantInput) (*domain.Variant, error)
-	ListByProduct(ctx context.Context, productID string) ([]domain.Variant, error)
+	ListByProduct(ctx context.Context, productID int64) ([]domain.Variant, error)
 	Update(ctx context.Context, input UpdateVariantInput) (*domain.Variant, error)
-	Delete(ctx context.Context, id string) error
+	Delete(ctx context.Context, id int64) error
 }
 
 type PaginatedResult[T any] struct {
@@ -41,27 +41,27 @@ type PaginationMeta struct {
 }
 
 type CreateCategoryInput struct {
-	MerchantID  string
+	MerchantID  int64
 	Name        string
 	Slug        string
 	Description string
-	ParentID    *string
+	ParentID    *int64
 	SortOrder   int
 }
 
 type UpdateCategoryInput struct {
-	ID          string
+	ID          int64
 	Name        *string
 	Slug        *string
 	Description *string
-	ParentID    *string
+	ParentID    *int64
 	SortOrder   *int
 	Status      *domain.CategoryStatus
 }
 
 type CreateProductInput struct {
-	MerchantID  string
-	CategoryID  string
+	MerchantID  int64
+	CategoryID  int64
 	Name        string
 	SKU         string
 	Barcode     string
@@ -74,8 +74,8 @@ type CreateProductInput struct {
 }
 
 type UpdateProductInput struct {
-	ID          string
-	CategoryID  *string
+	ID          int64
+	CategoryID  *int64
 	Name        *string
 	SKU         *string
 	Barcode     *string
@@ -89,7 +89,7 @@ type UpdateProductInput struct {
 }
 
 type CreateVariantInput struct {
-	ProductID string
+	ProductID int64
 	Name      string
 	SKU       string
 	Barcode   string
@@ -100,7 +100,7 @@ type CreateVariantInput struct {
 }
 
 type UpdateVariantInput struct {
-	ID        string
+	ID        int64
 	Name      *string
 	SKU       *string
 	Barcode   *string

@@ -44,7 +44,11 @@ func (h *CategoryHandler) Create(c echo.Context) error {
 }
 
 func (h *CategoryHandler) GetByID(c echo.Context) error {
-	result, err := h.uc.GetByID(c.Request().Context(), c.Param("id"))
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+	result, err := h.uc.GetByID(c.Request().Context(), id)
 	if err != nil {
 		return mapCategoryError(c, err)
 	}
@@ -85,8 +89,12 @@ func (h *CategoryHandler) Update(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
 
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
 	result, err := h.uc.Update(c.Request().Context(), usecase.UpdateCategoryInput{
-		ID:          c.Param("id"),
+		ID:          id,
 		Name:        req.Name,
 		Slug:        req.Slug,
 		Description: req.Description,
@@ -101,7 +109,11 @@ func (h *CategoryHandler) Update(c echo.Context) error {
 }
 
 func (h *CategoryHandler) Delete(c echo.Context) error {
-	err := h.uc.Delete(c.Request().Context(), c.Param("id"))
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+	err = h.uc.Delete(c.Request().Context(), id)
 	if err != nil {
 		return mapCategoryError(c, err)
 	}

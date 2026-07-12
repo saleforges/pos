@@ -11,9 +11,9 @@ const (
 )
 
 type Product struct {
-	ID          string        `json:"id"`
-	MerchantID  string        `json:"merchant_id"`
-	CategoryID  string        `json:"category_id"`
+	ID          int64         `json:"id"`
+	MerchantID  int64         `json:"merchant_id"`
+	CategoryID  int64         `json:"category_id"`
 	Name        string        `json:"name"`
 	SKU         string        `json:"sku"`
 	Barcode     string        `json:"barcode,omitempty"`

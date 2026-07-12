@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/saleforge/pos/services/internal/catalog/domain"
 	"github.com/saleforge/pos/services/internal/catalog/port/repository"
 	"github.com/saleforge/pos/services/pkg/logger"
@@ -12,7 +11,7 @@ import (
 )
 
 type variantUsecase struct {
-	varRepo repository.VariantRepository
+	varRepo  repository.VariantRepository
 	prodRepo repository.ProductRepository
 }
 
@@ -29,7 +28,6 @@ func (uc *variantUsecase) Create(ctx context.Context, input CreateVariantInput) 
 	}
 
 	v := &domain.Variant{
-		ID:        uuid.NewString()[:14],
 		ProductID: input.ProductID,
 		Name:      input.Name,
 		SKU:       input.SKU,
@@ -48,7 +46,7 @@ func (uc *variantUsecase) Create(ctx context.Context, input CreateVariantInput) 
 	return v, nil
 }
 
-func (uc *variantUsecase) ListByProduct(ctx context.Context, productID string) ([]domain.Variant, error) {
+func (uc *variantUsecase) ListByProduct(ctx context.Context, productID int64) ([]domain.Variant, error) {
 	ctx, span := otel.StartSpan(ctx, "variant.ListByProduct")
 	defer span.End()
 
@@ -96,7 +94,7 @@ func (uc *variantUsecase) Update(ctx context.Context, input UpdateVariantInput) 
 	return v, nil
 }
 
-func (uc *variantUsecase) Delete(ctx context.Context, id string) error {
+func (uc *variantUsecase) Delete(ctx context.Context, id int64) error {
 	ctx, span := otel.StartSpan(ctx, "variant.Delete")
 	defer span.End()
 

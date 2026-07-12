@@ -2,6 +2,8 @@ package memory
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/saleforge/pos/services/internal/catalog/domain"
@@ -11,95 +13,89 @@ import (
 var _ repository.CategoryRepository = (*CategoryRepository)(nil)
 
 type CategoryRepository struct {
-	mu         sync.RWMutex
-	categories map[string]*domain.Category
+	mu   sync.RWMutex
+	data map[int64]*domain.Category
+	seq  int64
 }
 
 func NewCategoryRepository() *CategoryRepository {
 	return &CategoryRepository{
-		categories: make(map[string]*domain.Category),
+		data: make(map[int64]*domain.Category),
 	}
 }
 
-func (r *CategoryRepository) Create(_ context.Context, category *domain.Category) error {
+func (r *CategoryRepository) Create(ctx context.Context, category *domain.Category) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.categories[category.ID] = category
+	r.seq++
+	category.ID = r.seq
+	cp := *category
+	r.data[category.ID] = &cp
 	return nil
 }
 
-func (r *CategoryRepository) GetByID(_ context.Context, id string) (*domain.Category, error) {
+func (r *CategoryRepository) GetByID(ctx context.Context, id int64) (*domain.Category, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	cat, ok := r.categories[id]
+	cat, ok := r.data[id]
 	if !ok {
-		return nil, domain.ErrCategoryNotFound
+		return nil, fmt.Errorf("category not found")
 	}
-	return cat, nil
+	cp := *cat
+	return &cp, nil
 }
 
-func (r *CategoryRepository) List(_ context.Context, merchantID string, search string, offset, limit int) ([]domain.Category, error) {
+func (r *CategoryRepository) List(ctx context.Context, merchantID int64, search string, offset, limit int) ([]domain.Category, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	var result []domain.Category
-	for _, cat := range r.categories {
-		if cat.MerchantID == merchantID {
-			if search != "" && !matchCategory(cat, search) {
+
+	var filtered []domain.Category
+	for _, cat := range r.data {
+		if cat.MerchantID != merchantID {
+			continue
+		}
+		if search != "" {
+			search = strings.ToLower(search)
+			if !strings.Contains(strings.ToLower(cat.Name), search) &&
+				!strings.Contains(strings.ToLower(cat.Slug), search) &&
+				!strings.Contains(strings.ToLower(cat.Description), search) {
 				continue
 			}
-			result = append(result, *cat)
 		}
+		filtered = append(filtered, *cat)
 	}
-	start := min(offset, len(result))
-	end := min(start+limit, len(result))
-	return result[start:end], nil
-}
 
-func (r *CategoryRepository) Count(_ context.Context, merchantID string, search string) (int, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	var count int
-	for _, cat := range r.categories {
-		if cat.MerchantID == merchantID {
-			if search != "" && !matchCategory(cat, search) {
-				continue
-			}
-			count++
-		}
+	if offset >= len(filtered) {
+		return nil, nil
 	}
-	return count, nil
+	end := offset + limit
+	if end > len(filtered) {
+		end = len(filtered)
+	}
+	return filtered[offset:end], nil
 }
 
-func matchCategory(cat *domain.Category, search string) bool {
-	return contains(cat.Name, search) || contains(cat.Slug, search) || contains(cat.Description, search)
+func (r *CategoryRepository) Count(ctx context.Context, merchantID int64, search string) (int, error) {
+	list, _ := r.List(ctx, merchantID, search, 0, 1<<30)
+	return len(list), nil
+	// ponytail: O(n) scan, fine for dev/memory
 }
 
-func (r *CategoryRepository) Update(_ context.Context, category *domain.Category) error {
+func (r *CategoryRepository) Update(ctx context.Context, category *domain.Category) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.categories[category.ID] = category
+	_, ok := r.data[category.ID]
+	if !ok {
+		return fmt.Errorf("category not found")
+	}
+	cp := *category
+	r.data[category.ID] = &cp
 	return nil
 }
 
-func (r *CategoryRepository) Delete(_ context.Context, id string) error {
+func (r *CategoryRepository) Delete(ctx context.Context, id int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	delete(r.categories, id)
+	delete(r.data, id)
 	return nil
-}
-
-func contains(s, substr string) bool {
-	return len(substr) > 0 && containsStr(s, substr)
-}
-
-func containsStr(s, substr string) bool {
-	if len(substr) > len(s) {
-		return false
-	}
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

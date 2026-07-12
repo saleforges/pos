@@ -20,22 +20,22 @@ func NewCategoryRepository(pool *otel.TracedPool) *CategoryRepository {
 }
 
 func (r *CategoryRepository) Create(ctx context.Context, category *domain.Category) error {
-	_, err := r.pool.Exec(ctx,
-		`INSERT INTO categories (id, merchant_id, name, slug, description, parent_id, sort_order, status, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-		category.ID, category.MerchantID, category.Name, category.Slug, category.Description,
-		category.ParentID, category.SortOrder, category.Status, category.CreatedAt, category.UpdatedAt)
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO categories (merchant_id, name, slug, description, parent_id, sort_order, status, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+		category.MerchantID, category.Name, category.Slug, category.Description,
+		category.ParentID, category.SortOrder, category.Status, category.CreatedAt, category.UpdatedAt).Scan(&category.ID)
 	return err
 }
 
-func (r *CategoryRepository) GetByID(ctx context.Context, id string) (*domain.Category, error) {
+func (r *CategoryRepository) GetByID(ctx context.Context, id int64) (*domain.Category, error) {
 	row := r.pool.QueryRow(ctx,
 		`SELECT id, merchant_id, name, slug, description, parent_id, sort_order, status, created_at, updated_at
 		 FROM categories WHERE id = $1`, id)
 	return scanCategory(row)
 }
 
-func (r *CategoryRepository) List(ctx context.Context, merchantID string, search string, offset, limit int) ([]domain.Category, error) {
+func (r *CategoryRepository) List(ctx context.Context, merchantID int64, search string, offset, limit int) ([]domain.Category, error) {
 	query := `SELECT id, merchant_id, name, slug, description, parent_id, sort_order, status, created_at, updated_at
 		 FROM categories WHERE merchant_id = $1`
 	args := []interface{}{merchantID}
@@ -68,7 +68,7 @@ func (r *CategoryRepository) List(ctx context.Context, merchantID string, search
 	return result, rows.Err()
 }
 
-func (r *CategoryRepository) Count(ctx context.Context, merchantID string, search string) (int, error) {
+func (r *CategoryRepository) Count(ctx context.Context, merchantID int64, search string) (int, error) {
 	query := `SELECT COUNT(*) FROM categories WHERE merchant_id = $1`
 	args := []interface{}{merchantID}
 	if search != "" {
@@ -88,7 +88,7 @@ func (r *CategoryRepository) Update(ctx context.Context, category *domain.Catego
 	return err
 }
 
-func (r *CategoryRepository) Delete(ctx context.Context, id string) error {
+func (r *CategoryRepository) Delete(ctx context.Context, id int64) error {
 	_, err := r.pool.Exec(ctx, `DELETE FROM categories WHERE id = $1`, id)
 	return err
 }

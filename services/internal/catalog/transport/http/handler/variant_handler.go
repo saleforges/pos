@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/catalog/domain"
@@ -28,8 +29,12 @@ func (h *VariantHandler) Create(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrMissingFields)
 	}
 
+	productID, err := strconv.ParseInt(c.Param("productID"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
 	result, err := h.uc.Create(c.Request().Context(), usecase.CreateVariantInput{
-		ProductID: c.Param("productID"),
+		ProductID: productID,
 		Name:      req.Name,
 		SKU:       req.SKU,
 		Barcode:   req.Barcode,
@@ -45,7 +50,11 @@ func (h *VariantHandler) Create(c echo.Context) error {
 }
 
 func (h *VariantHandler) ListByProduct(c echo.Context) error {
-	result, err := h.uc.ListByProduct(c.Request().Context(), c.Param("productID"))
+	productID, err := strconv.ParseInt(c.Param("productID"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+	result, err := h.uc.ListByProduct(c.Request().Context(), productID)
 	if err != nil {
 		return mapVariantError(c, err)
 	}
@@ -62,8 +71,12 @@ func (h *VariantHandler) Update(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
 
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
 	result, err := h.uc.Update(c.Request().Context(), usecase.UpdateVariantInput{
-		ID:        c.Param("id"),
+		ID:        id,
 		Name:      req.Name,
 		SKU:       req.SKU,
 		Barcode:   req.Barcode,
@@ -79,7 +92,11 @@ func (h *VariantHandler) Update(c echo.Context) error {
 }
 
 func (h *VariantHandler) Delete(c echo.Context) error {
-	err := h.uc.Delete(c.Request().Context(), c.Param("id"))
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+	err = h.uc.Delete(c.Request().Context(), id)
 	if err != nil {
 		return mapVariantError(c, err)
 	}

@@ -19,23 +19,23 @@ func NewVariantRepository(pool *otel.TracedPool) *VariantRepository {
 }
 
 func (r *VariantRepository) Create(ctx context.Context, variant *domain.Variant) error {
-	_, err := r.pool.Exec(ctx,
-		`INSERT INTO variants (id, product_id, name, sku, barcode, price, cost, image_url, sort_order, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-		variant.ID, variant.ProductID, variant.Name, variant.SKU, variant.Barcode,
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO variants (product_id, name, sku, barcode, price, cost, image_url, sort_order, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+		variant.ProductID, variant.Name, variant.SKU, variant.Barcode,
 		variant.Price, variant.Cost, variant.ImageURL, variant.SortOrder,
-		variant.CreatedAt, variant.UpdatedAt)
+		variant.CreatedAt, variant.UpdatedAt).Scan(&variant.ID)
 	return err
 }
 
-func (r *VariantRepository) GetByID(ctx context.Context, id string) (*domain.Variant, error) {
+func (r *VariantRepository) GetByID(ctx context.Context, id int64) (*domain.Variant, error) {
 	row := r.pool.QueryRow(ctx,
 		`SELECT id, product_id, name, sku, barcode, price, cost, image_url, sort_order, created_at, updated_at
 		 FROM variants WHERE id = $1`, id)
 	return scanVariant(row)
 }
 
-func (r *VariantRepository) ListByProduct(ctx context.Context, productID string) ([]domain.Variant, error) {
+func (r *VariantRepository) ListByProduct(ctx context.Context, productID int64) ([]domain.Variant, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, product_id, name, sku, barcode, price, cost, image_url, sort_order, created_at, updated_at
 		 FROM variants WHERE product_id = $1 ORDER BY sort_order`, productID)
@@ -68,14 +68,14 @@ func (r *VariantRepository) Update(ctx context.Context, variant *domain.Variant)
 	return err
 }
 
-func (r *VariantRepository) CountByProduct(ctx context.Context, productID string) (int, error) {
+func (r *VariantRepository) CountByProduct(ctx context.Context, productID int64) (int, error) {
 	var count int
 	err := r.pool.QueryRow(ctx,
 		`SELECT COUNT(*) FROM variants WHERE product_id = $1`, productID).Scan(&count)
 	return count, err
 }
 
-func (r *VariantRepository) Delete(ctx context.Context, id string) error {
+func (r *VariantRepository) Delete(ctx context.Context, id int64) error {
 	_, err := r.pool.Exec(ctx, `DELETE FROM variants WHERE id = $1`, id)
 	return err
 }

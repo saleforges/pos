@@ -20,30 +20,30 @@ func NewProductRepository(pool *otel.TracedPool) *ProductRepository {
 }
 
 func (r *ProductRepository) Create(ctx context.Context, product *domain.Product) error {
-	_, err := r.pool.Exec(ctx,
-		`INSERT INTO products (id, merchant_id, category_id, name, sku, barcode, description, price, cost, tax_rate, unit, image_url, status, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
-		product.ID, product.MerchantID, product.CategoryID, product.Name, product.SKU, product.Barcode,
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO products (merchant_id, category_id, name, sku, barcode, description, price, cost, tax_rate, unit, image_url, status, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
+		product.MerchantID, product.CategoryID, product.Name, product.SKU, product.Barcode,
 		product.Description, product.Price, product.Cost, product.TaxRate, product.Unit, product.ImageURL,
-		product.Status, product.CreatedAt, product.UpdatedAt)
+		product.Status, product.CreatedAt, product.UpdatedAt).Scan(&product.ID)
 	return err
 }
 
-func (r *ProductRepository) GetByID(ctx context.Context, id string) (*domain.Product, error) {
+func (r *ProductRepository) GetByID(ctx context.Context, id int64) (*domain.Product, error) {
 	row := r.pool.QueryRow(ctx,
 		`SELECT id, merchant_id, category_id, name, sku, barcode, description, price, cost, tax_rate, unit, image_url, status, created_at, updated_at
 		 FROM products WHERE id = $1`, id)
 	return scanProduct(row)
 }
 
-func (r *ProductRepository) GetBySKU(ctx context.Context, sku string, merchantID string) (*domain.Product, error) {
+func (r *ProductRepository) GetBySKU(ctx context.Context, sku string, merchantID int64) (*domain.Product, error) {
 	row := r.pool.QueryRow(ctx,
 		`SELECT id, merchant_id, category_id, name, sku, barcode, description, price, cost, tax_rate, unit, image_url, status, created_at, updated_at
 		 FROM products WHERE sku = $1 AND merchant_id = $2`, sku, merchantID)
 	return scanProduct(row)
 }
 
-func (r *ProductRepository) List(ctx context.Context, merchantID string, search string, offset, limit int) ([]domain.Product, error) {
+func (r *ProductRepository) List(ctx context.Context, merchantID int64, search string, offset, limit int) ([]domain.Product, error) {
 	baseQuery := `SELECT id, merchant_id, category_id, name, sku, barcode, description, price, cost, tax_rate, unit, image_url, status, created_at, updated_at
 		 FROM products WHERE merchant_id = $1`
 	var args []any
@@ -65,7 +65,7 @@ func (r *ProductRepository) List(ctx context.Context, merchantID string, search 
 	return scanProducts(rows)
 }
 
-func (r *ProductRepository) Count(ctx context.Context, merchantID string, search string) (int, error) {
+func (r *ProductRepository) Count(ctx context.Context, merchantID int64, search string) (int, error) {
 	baseQuery := `SELECT COUNT(*) FROM products WHERE merchant_id = $1`
 	var args []any
 	args = append(args, merchantID)
@@ -79,7 +79,7 @@ func (r *ProductRepository) Count(ctx context.Context, merchantID string, search
 	return count, err
 }
 
-func (r *ProductRepository) ListByCategory(ctx context.Context, categoryID string, offset, limit int) ([]domain.Product, error) {
+func (r *ProductRepository) ListByCategory(ctx context.Context, categoryID int64, offset, limit int) ([]domain.Product, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, merchant_id, category_id, name, sku, barcode, description, price, cost, tax_rate, unit, image_url, status, created_at, updated_at
 		 FROM products WHERE category_id = $1 ORDER BY name LIMIT $2 OFFSET $3`,
@@ -100,7 +100,7 @@ func (r *ProductRepository) Update(ctx context.Context, product *domain.Product)
 	return err
 }
 
-func (r *ProductRepository) Delete(ctx context.Context, id string) error {
+func (r *ProductRepository) Delete(ctx context.Context, id int64) error {
 	_, err := r.pool.Exec(ctx, `DELETE FROM products WHERE id = $1`, id)
 	return err
 }
