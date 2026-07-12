@@ -10,7 +10,7 @@ import (
 )
 
 type mockMerchantRepo struct {
-	merchants map[string]*domain.Merchant
+	merchants map[int64]*domain.Merchant
 	err       error
 }
 
@@ -19,13 +19,14 @@ func (m *mockMerchantRepo) Create(_ context.Context, merchant *domain.Merchant) 
 		return m.err
 	}
 	if m.merchants == nil {
-		m.merchants = make(map[string]*domain.Merchant)
+		m.merchants = make(map[int64]*domain.Merchant)
 	}
+	merchant.ID = int64(len(m.merchants) + 1)
 	m.merchants[merchant.ID] = merchant
 	return nil
 }
 
-func (m *mockMerchantRepo) GetByID(_ context.Context, id string) (*domain.Merchant, error) {
+func (m *mockMerchantRepo) GetByID(_ context.Context, id int64) (*domain.Merchant, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -55,7 +56,7 @@ func (m *mockMerchantRepo) Update(_ context.Context, merchant *domain.Merchant) 
 	return nil
 }
 
-func (m *mockMerchantRepo) Delete(_ context.Context, id string) error {
+func (m *mockMerchantRepo) Delete(_ context.Context, id int64) error {
 	if m.err != nil {
 		return m.err
 	}
@@ -64,7 +65,7 @@ func (m *mockMerchantRepo) Delete(_ context.Context, id string) error {
 }
 
 type mockBranchRepo struct {
-	branches map[string]*domain.Branch
+	branches map[int64]*domain.Branch
 	err      error
 }
 
@@ -73,13 +74,14 @@ func (m *mockBranchRepo) Create(_ context.Context, branch *domain.Branch) error 
 		return m.err
 	}
 	if m.branches == nil {
-		m.branches = make(map[string]*domain.Branch)
+		m.branches = make(map[int64]*domain.Branch)
 	}
+	branch.ID = int64(len(m.branches) + 1)
 	m.branches[branch.ID] = branch
 	return nil
 }
 
-func (m *mockBranchRepo) GetByID(_ context.Context, id string) (*domain.Branch, error) {
+func (m *mockBranchRepo) GetByID(_ context.Context, id int64) (*domain.Branch, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -90,7 +92,7 @@ func (m *mockBranchRepo) GetByID(_ context.Context, id string) (*domain.Branch, 
 	return branch, nil
 }
 
-func (m *mockBranchRepo) ListByMerchant(_ context.Context, merchantID string) ([]domain.Branch, error) {
+func (m *mockBranchRepo) ListByMerchant(_ context.Context, merchantID int64) ([]domain.Branch, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -111,7 +113,7 @@ func (m *mockBranchRepo) Update(_ context.Context, branch *domain.Branch) error 
 	return nil
 }
 
-func (m *mockBranchRepo) Delete(_ context.Context, id string) error {
+func (m *mockBranchRepo) Delete(_ context.Context, id int64) error {
 	if m.err != nil {
 		return m.err
 	}
@@ -120,7 +122,7 @@ func (m *mockBranchRepo) Delete(_ context.Context, id string) error {
 }
 
 type mockStaffRepo struct {
-	staff map[string]*domain.StaffMember
+	staff map[int64]*domain.StaffMember
 	err   error
 }
 
@@ -129,13 +131,14 @@ func (m *mockStaffRepo) Create(_ context.Context, s *domain.StaffMember) error {
 		return m.err
 	}
 	if m.staff == nil {
-		m.staff = make(map[string]*domain.StaffMember)
+		m.staff = make(map[int64]*domain.StaffMember)
 	}
+	s.ID = int64(len(m.staff) + 1)
 	m.staff[s.ID] = s
 	return nil
 }
 
-func (m *mockStaffRepo) GetByID(_ context.Context, id string) (*domain.StaffMember, error) {
+func (m *mockStaffRepo) GetByID(_ context.Context, id int64) (*domain.StaffMember, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -146,7 +149,7 @@ func (m *mockStaffRepo) GetByID(_ context.Context, id string) (*domain.StaffMemb
 	return s, nil
 }
 
-func (m *mockStaffRepo) ListByBranch(_ context.Context, branchID string) ([]domain.StaffMember, error) {
+func (m *mockStaffRepo) ListByBranch(_ context.Context, branchID int64) ([]domain.StaffMember, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -159,7 +162,7 @@ func (m *mockStaffRepo) ListByBranch(_ context.Context, branchID string) ([]doma
 	return result, nil
 }
 
-func (m *mockStaffRepo) ListByMerchant(_ context.Context, merchantID string) ([]domain.StaffMember, error) {
+func (m *mockStaffRepo) ListByMerchant(_ context.Context, merchantID int64) ([]domain.StaffMember, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -172,7 +175,7 @@ func (m *mockStaffRepo) ListByMerchant(_ context.Context, merchantID string) ([]
 	return result, nil
 }
 
-func (m *mockStaffRepo) GetByUserAndBranch(_ context.Context, userID, branchID string) (*domain.StaffMember, error) {
+func (m *mockStaffRepo) GetByUserAndBranch(_ context.Context, userID, branchID int64) (*domain.StaffMember, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -184,7 +187,7 @@ func (m *mockStaffRepo) GetByUserAndBranch(_ context.Context, userID, branchID s
 	return nil, domain.ErrStaffNotFound
 }
 
-func (m *mockStaffRepo) ListByUserAndMerchant(_ context.Context, userID, merchantID string) ([]domain.StaffMember, error) {
+func (m *mockStaffRepo) ListByUserAndMerchant(_ context.Context, userID, merchantID int64) ([]domain.StaffMember, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -200,7 +203,7 @@ func (m *mockStaffRepo) ListByUserAndMerchant(_ context.Context, userID, merchan
 	return result, nil
 }
 
-func (m *mockStaffRepo) SetDefaultBranch(_ context.Context, userID, branchID string) error {
+func (m *mockStaffRepo) SetDefaultBranch(_ context.Context, userID, branchID int64) error {
 	if m.err != nil {
 		return m.err
 	}
@@ -220,7 +223,7 @@ func (m *mockStaffRepo) Update(_ context.Context, s *domain.StaffMember) error {
 	return nil
 }
 
-func (m *mockStaffRepo) Delete(_ context.Context, id string) error {
+func (m *mockStaffRepo) Delete(_ context.Context, id int64) error {
 	if m.err != nil {
 		return m.err
 	}
@@ -314,7 +317,7 @@ func TestMerchantUsecase_GetMerchant(t *testing.T) {
 	t.Parallel()
 
 	uc := NewMerchantUsecase(&mockMerchantRepo{}, &mockBranchRepo{}, &mockStaffRepo{})
-	_, err := uc.GetMerchant(context.Background(), "nonexistent")
+	_, err := uc.GetMerchant(context.Background(), 999)
 	if err != domain.ErrMerchantNotFound {
 		t.Errorf("expected ErrMerchantNotFound, got %v", err)
 	}
@@ -335,18 +338,18 @@ func TestMerchantUsecase_CreateBranch(t *testing.T) {
 		{
 			name: "successful branch creation",
 			input: CreateBranchInput{
-				MerchantID: "m1",
+				MerchantID: 1,
 				Name:       "Branch A",
 				Code:       "BR-A",
 			},
-			merchantRepo: &mockMerchantRepo{merchants: map[string]*domain.Merchant{"m1": {ID: "m1", Name: "M1"}}},
+			merchantRepo: &mockMerchantRepo{merchants: map[int64]*domain.Merchant{1: {ID: 1, Name: "M1"}}},
 			branchRepo:   &mockBranchRepo{},
 			staffRepo:    &mockStaffRepo{},
 		},
 		{
 			name: "merchant not found",
 			input: CreateBranchInput{
-				MerchantID: "nonexistent",
+				MerchantID: 999,
 				Name:       "Branch B",
 				Code:       "BR-B",
 			},
@@ -358,9 +361,9 @@ func TestMerchantUsecase_CreateBranch(t *testing.T) {
 		{
 			name: "missing required fields",
 			input: CreateBranchInput{
-				MerchantID: "m1",
+				MerchantID: 1,
 			},
-			merchantRepo: &mockMerchantRepo{merchants: map[string]*domain.Merchant{"m1": {ID: "m1"}}},
+			merchantRepo: &mockMerchantRepo{merchants: map[int64]*domain.Merchant{1: {ID: 1}}},
 			branchRepo:   &mockBranchRepo{},
 			staffRepo:    &mockStaffRepo{},
 			wantErr:      domain.ErrInvalidBranch,
@@ -408,37 +411,37 @@ func TestMerchantUsecase_AssignStaff(t *testing.T) {
 		{
 			name: "successful assignment",
 			input: AssignStaffInput{
-				MerchantID: "m1",
-				BranchID:   "b1",
-				UserID:     "u1",
+				MerchantID: 1,
+				BranchID:   1,
+				UserID:     1,
 				Role:       domain.StaffRoleCashier,
 			},
-			merchantRepo: &mockMerchantRepo{merchants: map[string]*domain.Merchant{"m1": {ID: "m1"}}},
-			branchRepo:   &mockBranchRepo{branches: map[string]*domain.Branch{"b1": {ID: "b1", MerchantID: "m1"}}},
+			merchantRepo: &mockMerchantRepo{merchants: map[int64]*domain.Merchant{1: {ID: 1}}},
+			branchRepo:   &mockBranchRepo{branches: map[int64]*domain.Branch{1: {ID: 1, MerchantID: 1}}},
 			staffRepo:    &mockStaffRepo{},
 		},
 		{
 			name: "merchant not found",
 			input: AssignStaffInput{
-				MerchantID: "nonexistent",
-				BranchID:   "b1",
-				UserID:     "u1",
+				MerchantID: 999,
+				BranchID:   1,
+				UserID:     1,
 				Role:       domain.StaffRoleCashier,
 			},
 			merchantRepo: &mockMerchantRepo{},
-			branchRepo:   &mockBranchRepo{branches: map[string]*domain.Branch{"b1": {ID: "b1"}}},
+			branchRepo:   &mockBranchRepo{branches: map[int64]*domain.Branch{1: {ID: 1}}},
 			staffRepo:    &mockStaffRepo{},
 			wantErr:      domain.ErrMerchantNotFound,
 		},
 		{
 			name: "branch not found",
 			input: AssignStaffInput{
-				MerchantID: "m1",
-				BranchID:   "nonexistent",
-				UserID:     "u1",
+				MerchantID: 1,
+				BranchID:   999,
+				UserID:     1,
 				Role:       domain.StaffRoleCashier,
 			},
-			merchantRepo: &mockMerchantRepo{merchants: map[string]*domain.Merchant{"m1": {ID: "m1"}}},
+			merchantRepo: &mockMerchantRepo{merchants: map[int64]*domain.Merchant{1: {ID: 1}}},
 			branchRepo:   &mockBranchRepo{},
 			staffRepo:    &mockStaffRepo{},
 			wantErr:      domain.ErrBranchNotFound,
@@ -446,24 +449,24 @@ func TestMerchantUsecase_AssignStaff(t *testing.T) {
 		{
 			name: "duplicate assignment",
 			input: AssignStaffInput{
-				MerchantID: "m1",
-				BranchID:   "b1",
-				UserID:     "u1",
+				MerchantID: 1,
+				BranchID:   1,
+				UserID:     1,
 				Role:       domain.StaffRoleCashier,
 			},
-			merchantRepo: &mockMerchantRepo{merchants: map[string]*domain.Merchant{"m1": {ID: "m1"}}},
-			branchRepo:   &mockBranchRepo{branches: map[string]*domain.Branch{"b1": {ID: "b1", MerchantID: "m1"}}},
-			staffRepo:    &mockStaffRepo{staff: map[string]*domain.StaffMember{"s1": {UserID: "u1", BranchID: "b1"}}},
+			merchantRepo: &mockMerchantRepo{merchants: map[int64]*domain.Merchant{1: {ID: 1}}},
+			branchRepo:   &mockBranchRepo{branches: map[int64]*domain.Branch{1: {ID: 1, MerchantID: 1}}},
+			staffRepo:    &mockStaffRepo{staff: map[int64]*domain.StaffMember{1: {UserID: 1, BranchID: 1}}},
 			wantErr:      domain.ErrStaffExists,
 		},
 		{
 			name: "missing input fields",
 			input: AssignStaffInput{
-				MerchantID: "m1",
-				BranchID:   "b1",
+				MerchantID: 1,
+				BranchID:   1,
 			},
-			merchantRepo: &mockMerchantRepo{merchants: map[string]*domain.Merchant{"m1": {ID: "m1"}}},
-			branchRepo:   &mockBranchRepo{branches: map[string]*domain.Branch{"b1": {ID: "b1"}}},
+			merchantRepo: &mockMerchantRepo{merchants: map[int64]*domain.Merchant{1: {ID: 1}}},
+			branchRepo:   &mockBranchRepo{branches: map[int64]*domain.Branch{1: {ID: 1}}},
 			staffRepo:    &mockStaffRepo{},
 			wantErr:      domain.ErrInvalidStaff,
 		},
@@ -490,7 +493,7 @@ func TestMerchantUsecase_AssignStaff(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			if result.UserID != tt.input.UserID {
-				t.Errorf("expected user ID %s, got %s", tt.input.UserID, result.UserID)
+				t.Errorf("expected user ID %d, got %d", tt.input.UserID, result.UserID)
 			}
 			if result.Role != tt.input.Role {
 				t.Errorf("expected role %s, got %s", tt.input.Role, result.Role)
@@ -503,15 +506,15 @@ func TestMerchantUsecase_UpdateStaff(t *testing.T) {
 	t.Parallel()
 
 	uc := NewMerchantUsecase(&mockMerchantRepo{}, &mockBranchRepo{}, &mockStaffRepo{
-		staff: map[string]*domain.StaffMember{
-			"s1": {ID: "s1", Role: domain.StaffRoleCashier, Status: domain.StaffStatusActive},
+		staff: map[int64]*domain.StaffMember{
+			1: {ID: 1, Role: domain.StaffRoleCashier, Status: domain.StaffStatusActive},
 		},
 	})
 
 	role := domain.StaffRoleSupervisor
 	status := domain.StaffStatusInactive
 	result, err := uc.UpdateStaff(context.Background(), UpdateStaffInput{
-		ID:     "s1",
+		ID:     1,
 		Role:   &role,
 		Status: &status,
 	})
@@ -530,18 +533,18 @@ func TestMerchantUsecase_RemoveStaff(t *testing.T) {
 	t.Parallel()
 
 	staffRepo := &mockStaffRepo{
-		staff: map[string]*domain.StaffMember{
-			"s1": {ID: "s1"},
+		staff: map[int64]*domain.StaffMember{
+			1: {ID: 1},
 		},
 	}
 	uc := NewMerchantUsecase(&mockMerchantRepo{}, &mockBranchRepo{}, staffRepo)
 
-	err := uc.RemoveStaff(context.Background(), "s1")
+	err := uc.RemoveStaff(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	_, err = uc.GetStaff(context.Background(), "s1")
+	_, err = uc.GetStaff(context.Background(), 1)
 	if err != domain.ErrStaffNotFound {
 		t.Errorf("expected ErrStaffNotFound after delete, got %v", err)
 	}
@@ -551,14 +554,14 @@ func TestMerchantUsecase_ListStaffByBranch(t *testing.T) {
 	t.Parallel()
 
 	uc := NewMerchantUsecase(&mockMerchantRepo{}, &mockBranchRepo{}, &mockStaffRepo{
-		staff: map[string]*domain.StaffMember{
-			"s1": {ID: "s1", BranchID: "b1"},
-			"s2": {ID: "s2", BranchID: "b1"},
-			"s3": {ID: "s3", BranchID: "b2"},
+		staff: map[int64]*domain.StaffMember{
+			1: {ID: 1, BranchID: 1},
+			2: {ID: 2, BranchID: 1},
+			3: {ID: 3, BranchID: 2},
 		},
 	})
 
-	staff, err := uc.ListStaffByBranch(context.Background(), "b1")
+	staff, err := uc.ListStaffByBranch(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -571,14 +574,14 @@ func TestMerchantUsecase_GetMyStaffAssignments(t *testing.T) {
 	t.Parallel()
 
 	uc := NewMerchantUsecase(&mockMerchantRepo{}, &mockBranchRepo{}, &mockStaffRepo{
-		staff: map[string]*domain.StaffMember{
-			"s1": {ID: "s1", UserID: "u1", MerchantID: "m1", BranchID: "b1"},
-			"s2": {ID: "s2", UserID: "u1", MerchantID: "m1", BranchID: "b2"},
-			"s3": {ID: "s3", UserID: "u2", MerchantID: "m1", BranchID: "b1"},
+		staff: map[int64]*domain.StaffMember{
+			1: {ID: 1, UserID: 1, MerchantID: 1, BranchID: 1},
+			2: {ID: 2, UserID: 1, MerchantID: 1, BranchID: 2},
+			3: {ID: 3, UserID: 2, MerchantID: 1, BranchID: 1},
 		},
 	})
 
-	assignments, err := uc.GetMyStaffAssignments(context.Background(), "u1", "m1")
+	assignments, err := uc.GetMyStaffAssignments(context.Background(), 1, 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -592,27 +595,27 @@ func TestMerchantUsecase_SetMyDefaultBranch(t *testing.T) {
 
 	uc := NewMerchantUsecase(
 		&mockMerchantRepo{},
-		&mockBranchRepo{branches: map[string]*domain.Branch{"b1": {ID: "b1"}}},
+		&mockBranchRepo{branches: map[int64]*domain.Branch{1: {ID: 1}}},
 		&mockStaffRepo{
-			staff: map[string]*domain.StaffMember{
-				"s1": {ID: "s1", UserID: "u1", BranchID: "b1", MerchantID: "m1"},
-				"s2": {ID: "s2", UserID: "u1", BranchID: "b2", MerchantID: "m1"},
+			staff: map[int64]*domain.StaffMember{
+				1: {ID: 1, UserID: 1, BranchID: 1, MerchantID: 1},
+				2: {ID: 2, UserID: 1, BranchID: 2, MerchantID: 1},
 			},
 		},
 	)
 
-	err := uc.SetMyDefaultBranch(context.Background(), "u1", "b1")
+	err := uc.SetMyDefaultBranch(context.Background(), 1, 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	assignments, _ := uc.GetMyStaffAssignments(context.Background(), "u1", "m1")
+	assignments, _ := uc.GetMyStaffAssignments(context.Background(), 1, 1)
 	for _, a := range assignments {
-		if a.BranchID == "b1" && !a.IsDefault {
-			t.Error("expected b1 to be default branch")
+		if a.BranchID == 1 && !a.IsDefault {
+			t.Error("expected branch 1 to be default")
 		}
-		if a.BranchID == "b2" && a.IsDefault {
-			t.Error("expected b2 to not be default")
+		if a.BranchID == 2 && a.IsDefault {
+			t.Error("expected branch 2 to not be default")
 		}
 	}
 }
@@ -626,7 +629,7 @@ func TestMerchantUsecase_SetMyDefaultBranch_BranchNotFound(t *testing.T) {
 		&mockStaffRepo{},
 	)
 
-	err := uc.SetMyDefaultBranch(context.Background(), "u1", "nonexistent")
+	err := uc.SetMyDefaultBranch(context.Background(), 1, 999)
 	if err != domain.ErrBranchNotFound {
 		t.Errorf("expected ErrBranchNotFound, got %v", err)
 	}

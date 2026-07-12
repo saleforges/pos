@@ -10,14 +10,17 @@ import (
 func TestMerchantRepository_CreateAndGetByID(t *testing.T) {
 	t.Parallel()
 	repo := NewMerchantRepository()
-	m := &domain.Merchant{ID: "m1", Name: "Test Merchant", Email: "test@test.com"}
+	m := &domain.Merchant{Name: "Test Merchant", Email: "test@test.com"}
 
 	err := repo.Create(context.Background(), m)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	if m.ID == 0 {
+		t.Fatal("expected non-zero ID after create")
+	}
 
-	got, err := repo.GetByID(context.Background(), "m1")
+	got, err := repo.GetByID(context.Background(), m.ID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -29,7 +32,7 @@ func TestMerchantRepository_CreateAndGetByID(t *testing.T) {
 func TestMerchantRepository_GetByID_NotFound(t *testing.T) {
 	t.Parallel()
 	repo := NewMerchantRepository()
-	_, err := repo.GetByID(context.Background(), "nonexistent")
+	_, err := repo.GetByID(context.Background(), 999)
 	if err != domain.ErrMerchantNotFound {
 		t.Errorf("expected ErrMerchantNotFound, got %v", err)
 	}
@@ -38,9 +41,9 @@ func TestMerchantRepository_GetByID_NotFound(t *testing.T) {
 func TestMerchantRepository_List(t *testing.T) {
 	t.Parallel()
 	repo := NewMerchantRepository()
-	repo.Create(context.Background(), &domain.Merchant{ID: "m1", Name: "A"})
-	repo.Create(context.Background(), &domain.Merchant{ID: "m2", Name: "B"})
-	repo.Create(context.Background(), &domain.Merchant{ID: "m3", Name: "C"})
+	repo.Create(context.Background(), &domain.Merchant{Name: "A"})
+	repo.Create(context.Background(), &domain.Merchant{Name: "B"})
+	repo.Create(context.Background(), &domain.Merchant{Name: "C"})
 
 	all, err := repo.List(context.Background(), 0, 10)
 	if err != nil {
@@ -54,14 +57,15 @@ func TestMerchantRepository_List(t *testing.T) {
 func TestMerchantRepository_Update(t *testing.T) {
 	t.Parallel()
 	repo := NewMerchantRepository()
-	repo.Create(context.Background(), &domain.Merchant{ID: "m1", Name: "Old"})
+	m := &domain.Merchant{Name: "Old"}
+	repo.Create(context.Background(), m)
 
-	err := repo.Update(context.Background(), &domain.Merchant{ID: "m1", Name: "New"})
+	err := repo.Update(context.Background(), &domain.Merchant{ID: m.ID, Name: "New"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	got, _ := repo.GetByID(context.Background(), "m1")
+	got, _ := repo.GetByID(context.Background(), m.ID)
 	if got.Name != "New" {
 		t.Errorf("expected New, got %s", got.Name)
 	}
@@ -70,14 +74,15 @@ func TestMerchantRepository_Update(t *testing.T) {
 func TestMerchantRepository_Delete(t *testing.T) {
 	t.Parallel()
 	repo := NewMerchantRepository()
-	repo.Create(context.Background(), &domain.Merchant{ID: "m1"})
+	m := &domain.Merchant{Name: "Test"}
+	repo.Create(context.Background(), m)
 
-	err := repo.Delete(context.Background(), "m1")
+	err := repo.Delete(context.Background(), m.ID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	_, err = repo.GetByID(context.Background(), "m1")
+	_, err = repo.GetByID(context.Background(), m.ID)
 	if err != domain.ErrMerchantNotFound {
 		t.Errorf("expected ErrMerchantNotFound, got %v", err)
 	}
@@ -86,14 +91,17 @@ func TestMerchantRepository_Delete(t *testing.T) {
 func TestBranchRepository_CreateAndGetByID(t *testing.T) {
 	t.Parallel()
 	repo := NewBranchRepository()
-	b := &domain.Branch{ID: "b1", Name: "Branch A", Code: "BR-A"}
+	b := &domain.Branch{Name: "Branch A", Code: "BR-A"}
 
 	err := repo.Create(context.Background(), b)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	if b.ID == 0 {
+		t.Fatal("expected non-zero ID after create")
+	}
 
-	got, err := repo.GetByID(context.Background(), "b1")
+	got, err := repo.GetByID(context.Background(), b.ID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -105,7 +113,7 @@ func TestBranchRepository_CreateAndGetByID(t *testing.T) {
 func TestBranchRepository_GetByID_NotFound(t *testing.T) {
 	t.Parallel()
 	repo := NewBranchRepository()
-	_, err := repo.GetByID(context.Background(), "nonexistent")
+	_, err := repo.GetByID(context.Background(), 999)
 	if err != domain.ErrBranchNotFound {
 		t.Errorf("expected ErrBranchNotFound, got %v", err)
 	}
@@ -114,11 +122,11 @@ func TestBranchRepository_GetByID_NotFound(t *testing.T) {
 func TestBranchRepository_ListByMerchant(t *testing.T) {
 	t.Parallel()
 	repo := NewBranchRepository()
-	repo.Create(context.Background(), &domain.Branch{ID: "b1", MerchantID: "m1"})
-	repo.Create(context.Background(), &domain.Branch{ID: "b2", MerchantID: "m1"})
-	repo.Create(context.Background(), &domain.Branch{ID: "b3", MerchantID: "m2"})
+	repo.Create(context.Background(), &domain.Branch{MerchantID: 1})
+	repo.Create(context.Background(), &domain.Branch{MerchantID: 1})
+	repo.Create(context.Background(), &domain.Branch{MerchantID: 2})
 
-	branches, err := repo.ListByMerchant(context.Background(), "m1")
+	branches, err := repo.ListByMerchant(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -126,7 +134,7 @@ func TestBranchRepository_ListByMerchant(t *testing.T) {
 		t.Errorf("expected 2 branches, got %d", len(branches))
 	}
 
-	empty, err := repo.ListByMerchant(context.Background(), "nonexistent")
+	empty, err := repo.ListByMerchant(context.Background(), 999)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -138,14 +146,15 @@ func TestBranchRepository_ListByMerchant(t *testing.T) {
 func TestBranchRepository_Update(t *testing.T) {
 	t.Parallel()
 	repo := NewBranchRepository()
-	repo.Create(context.Background(), &domain.Branch{ID: "b1", Name: "Old"})
+	b := &domain.Branch{Name: "Old"}
+	repo.Create(context.Background(), b)
 
-	err := repo.Update(context.Background(), &domain.Branch{ID: "b1", Name: "New"})
+	err := repo.Update(context.Background(), &domain.Branch{ID: b.ID, Name: "New"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	got, _ := repo.GetByID(context.Background(), "b1")
+	got, _ := repo.GetByID(context.Background(), b.ID)
 	if got.Name != "New" {
 		t.Errorf("expected New, got %s", got.Name)
 	}
@@ -154,14 +163,15 @@ func TestBranchRepository_Update(t *testing.T) {
 func TestBranchRepository_Delete(t *testing.T) {
 	t.Parallel()
 	repo := NewBranchRepository()
-	repo.Create(context.Background(), &domain.Branch{ID: "b1"})
+	b := &domain.Branch{Name: "Test"}
+	repo.Create(context.Background(), b)
 
-	err := repo.Delete(context.Background(), "b1")
+	err := repo.Delete(context.Background(), b.ID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	_, err = repo.GetByID(context.Background(), "b1")
+	_, err = repo.GetByID(context.Background(), b.ID)
 	if err != domain.ErrBranchNotFound {
 		t.Errorf("expected ErrBranchNotFound, got %v", err)
 	}

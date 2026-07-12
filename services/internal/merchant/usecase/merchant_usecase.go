@@ -6,16 +6,15 @@ import (
 
 	"github.com/saleforge/pos/services/internal/merchant/domain"
 	"github.com/saleforge/pos/services/internal/merchant/port/repository"
-	"github.com/saleforge/pos/services/pkg/id"
 	"github.com/saleforge/pos/services/pkg/otel"
 )
 
 type MerchantUsecase interface {
 	CreateMerchant(ctx context.Context, input CreateMerchantInput) (*domain.Merchant, error)
-	GetMerchant(ctx context.Context, id string) (*domain.Merchant, error)
+	GetMerchant(ctx context.Context, id int64) (*domain.Merchant, error)
 	ListMerchants(ctx context.Context, offset, limit int) ([]domain.Merchant, error)
 	UpdateMerchant(ctx context.Context, input UpdateMerchantInput) (*domain.Merchant, error)
-	DeleteMerchant(ctx context.Context, id string) error
+	DeleteMerchant(ctx context.Context, id int64) error
 }
 
 type merchantUsecase struct {
@@ -39,7 +38,7 @@ type CreateMerchantInput struct {
 }
 
 type UpdateMerchantInput struct {
-	ID        string
+	ID        int64
 	Name      *string
 	LegalName *string
 	Address   *string
@@ -60,7 +59,6 @@ func (uc *merchantUsecase) CreateMerchant(ctx context.Context, input CreateMerch
 
 	now := time.Now().UTC()
 	merchant := &domain.Merchant{
-		ID:        id.Generate(),
 		Name:      input.Name,
 		LegalName: input.LegalName,
 		Address:   input.Address,
@@ -88,7 +86,7 @@ func (uc *merchantUsecase) CreateMerchant(ctx context.Context, input CreateMerch
 	return merchant, nil
 }
 
-func (uc *merchantUsecase) GetMerchant(ctx context.Context, id string) (*domain.Merchant, error) {
+func (uc *merchantUsecase) GetMerchant(ctx context.Context, id int64) (*domain.Merchant, error) {
 	return uc.merchantRepo.GetByID(ctx, id)
 }
 
@@ -140,6 +138,6 @@ func (uc *merchantUsecase) UpdateMerchant(ctx context.Context, input UpdateMerch
 	return merchant, nil
 }
 
-func (uc *merchantUsecase) DeleteMerchant(ctx context.Context, id string) error {
+func (uc *merchantUsecase) DeleteMerchant(ctx context.Context, id int64) error {
 	return uc.merchantRepo.Delete(ctx, id)
 }

@@ -21,7 +21,7 @@ type MerchantSettings struct {
 }
 
 type Merchant struct {
-	ID        string          `json:"id"`
+	ID        int64           `json:"id"`
 	Name      string           `json:"name"`
 	LegalName string           `json:"legal_name"`
 	Address   string           `json:"address"`

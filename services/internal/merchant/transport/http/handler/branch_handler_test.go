@@ -14,25 +14,25 @@ import (
 
 type mockBranchSvc struct {
 	createBranch func(context.Context, usecase.CreateBranchInput) (*domain.Branch, error)
-	getBranch    func(context.Context, string) (*domain.Branch, error)
-	listBranches func(context.Context, string) ([]domain.Branch, error)
+	getBranch    func(context.Context, int64) (*domain.Branch, error)
+	listBranches func(context.Context, int64) ([]domain.Branch, error)
 	updateBranch func(context.Context, usecase.UpdateBranchInput) (*domain.Branch, error)
-	deleteBranch func(context.Context, string) error
+	deleteBranch func(context.Context, int64) error
 }
 
 func (m *mockBranchSvc) CreateBranch(ctx context.Context, i usecase.CreateBranchInput) (*domain.Branch, error) {
 	return m.createBranch(ctx, i)
 }
-func (m *mockBranchSvc) GetBranch(ctx context.Context, id string) (*domain.Branch, error) {
+func (m *mockBranchSvc) GetBranch(ctx context.Context, id int64) (*domain.Branch, error) {
 	return m.getBranch(ctx, id)
 }
-func (m *mockBranchSvc) ListBranches(ctx context.Context, merchantID string) ([]domain.Branch, error) {
+func (m *mockBranchSvc) ListBranches(ctx context.Context, merchantID int64) ([]domain.Branch, error) {
 	return m.listBranches(ctx, merchantID)
 }
 func (m *mockBranchSvc) UpdateBranch(ctx context.Context, i usecase.UpdateBranchInput) (*domain.Branch, error) {
 	return m.updateBranch(ctx, i)
 }
-func (m *mockBranchSvc) DeleteBranch(ctx context.Context, id string) error {
+func (m *mockBranchSvc) DeleteBranch(ctx context.Context, id int64) error {
 	return m.deleteBranch(ctx, id)
 }
 
@@ -52,7 +52,7 @@ func TestBranchHandler_CreateBranch(t *testing.T) {
 			mock: &mockBranchSvc{
 				createBranch: func(_ context.Context, i usecase.CreateBranchInput) (*domain.Branch, error) {
 					return &domain.Branch{
-						ID: "b1", MerchantID: i.MerchantID, Name: i.Name,
+						ID: 1, MerchantID: i.MerchantID, Name: i.Name,
 						Code: i.Code, Status: domain.BranchStatusActive,
 					}, nil
 				},
@@ -85,7 +85,7 @@ func TestBranchHandler_CreateBranch(t *testing.T) {
 			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
-			c.Set("merchant_id", "m1")
+			c.Set("merchant_id", int64(1))
 
 			h := NewBranchHandler(tt.mock)
 			err := h.CreateBranch(c)
@@ -114,9 +114,9 @@ func TestBranchHandler_GetBranch(t *testing.T) {
 	}{
 		{
 			name: "success",
-			id:   "b1",
+			id:   "1",
 			mock: &mockBranchSvc{
-				getBranch: func(_ context.Context, id string) (*domain.Branch, error) {
+				getBranch: func(_ context.Context, id int64) (*domain.Branch, error) {
 					return &domain.Branch{ID: id, Name: "Downtown", Status: domain.BranchStatusActive}, nil
 				},
 			},
@@ -124,9 +124,9 @@ func TestBranchHandler_GetBranch(t *testing.T) {
 		},
 		{
 			name: "not found",
-			id:   "nonexistent",
+			id:   "999",
 			mock: &mockBranchSvc{
-				getBranch: func(_ context.Context, _ string) (*domain.Branch, error) {
+				getBranch: func(_ context.Context, _ int64) (*domain.Branch, error) {
 					return nil, domain.ErrBranchNotFound
 				},
 			},
@@ -169,14 +169,14 @@ func TestBranchHandler_DeleteBranch(t *testing.T) {
 	}{
 		{
 			name: "success",
-			id:   "b1",
-			mock: &mockBranchSvc{deleteBranch: func(_ context.Context, _ string) error { return nil }},
+			id:   "1",
+			mock: &mockBranchSvc{deleteBranch: func(_ context.Context, _ int64) error { return nil }},
 			wantStatus: http.StatusOK,
 		},
 		{
 			name: "internal error",
-			id:   "b1",
-			mock: &mockBranchSvc{deleteBranch: func(_ context.Context, _ string) error { return domain.ErrInternal }},
+			id:   "1",
+			mock: &mockBranchSvc{deleteBranch: func(_ context.Context, _ int64) error { return domain.ErrInternal }},
 			wantStatus: http.StatusInternalServerError,
 		},
 	}

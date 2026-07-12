@@ -1,7 +1,5 @@
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
 CREATE TABLE IF NOT EXISTS merchants (
-    id VARCHAR(64) PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     legal_name VARCHAR(255) NOT NULL DEFAULT '',
     address TEXT NOT NULL DEFAULT '',
@@ -22,8 +20,8 @@ CREATE TABLE IF NOT EXISTS merchants (
 );
 
 CREATE TABLE IF NOT EXISTS branches (
-    id VARCHAR(64) PRIMARY KEY,
-    merchant_id VARCHAR(64) NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+    id BIGSERIAL PRIMARY KEY,
+    merchant_id BIGINT NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     code VARCHAR(100) NOT NULL,
     address TEXT NOT NULL DEFAULT '',
@@ -40,10 +38,10 @@ CREATE TABLE IF NOT EXISTS branches (
 CREATE INDEX idx_branches_merchant_id ON branches(merchant_id);
 
 CREATE TABLE IF NOT EXISTS staff (
-    id VARCHAR(64) PRIMARY KEY,
-    merchant_id VARCHAR(64) NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
-    branch_id VARCHAR(64) NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
-    user_id VARCHAR(64) NOT NULL,
+    id BIGSERIAL PRIMARY KEY,
+    merchant_id BIGINT NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
+    branch_id BIGINT NOT NULL REFERENCES branches(id) ON DELETE CASCADE,
+    user_id BIGINT NOT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'cashier',
     status VARCHAR(20) NOT NULL DEFAULT 'active',
     is_default BOOLEAN NOT NULL DEFAULT FALSE,

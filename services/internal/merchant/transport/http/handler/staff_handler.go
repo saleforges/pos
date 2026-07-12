@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/merchant/domain"
@@ -19,8 +20,8 @@ func NewStaffHandler(uc usecase.StaffUsecase) *StaffHandler {
 }
 
 type assignStaffReq struct {
-	BranchID  string          `json:"branch_id"`
-	UserID    string          `json:"user_id"`
+	BranchID  int64           `json:"branch_id"`
+	UserID    int64           `json:"user_id"`
 	Role      domain.StaffRole `json:"role"`
 	IsDefault bool            `json:"is_default"`
 }
@@ -31,7 +32,7 @@ func (h *StaffHandler) AssignStaff(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
 	merchantID := httputil.GetMerchantID(c)
-	if merchantID == "" || req.BranchID == "" || req.UserID == "" || req.Role == "" {
+	if req.BranchID == 0 || req.UserID == 0 || req.Role == "" {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrMissingFields)
 	}
 
@@ -57,7 +58,10 @@ func (h *StaffHandler) AssignStaff(c echo.Context) error {
 }
 
 func (h *StaffHandler) GetStaff(c echo.Context) error {
-	id := c.Param("id")
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
 	staff, err := h.uc.GetStaff(c.Request().Context(), id)
 	if err != nil {
 		if err == domain.ErrStaffNotFound {
@@ -69,7 +73,10 @@ func (h *StaffHandler) GetStaff(c echo.Context) error {
 }
 
 func (h *StaffHandler) ListStaffByBranch(c echo.Context) error {
-	branchID := c.Param("branchId")
+	branchID, err := strconv.ParseInt(c.Param("branchId"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
 	staff, err := h.uc.ListStaffByBranch(c.Request().Context(), branchID)
 	if err != nil {
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
@@ -92,7 +99,10 @@ type updateStaffReq struct {
 }
 
 func (h *StaffHandler) UpdateStaff(c echo.Context) error {
-	id := c.Param("id")
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
 	var req updateStaffReq
 	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
@@ -113,7 +123,10 @@ func (h *StaffHandler) UpdateStaff(c echo.Context) error {
 }
 
 func (h *StaffHandler) RemoveStaff(c echo.Context) error {
-	id := c.Param("id")
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
 	if err := h.uc.RemoveStaff(c.Request().Context(), id); err != nil {
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}
@@ -121,9 +134,12 @@ func (h *StaffHandler) RemoveStaff(c echo.Context) error {
 }
 
 func (h *StaffHandler) MyStaffAssignments(c echo.Context) error {
-	userID, _ := c.Get("user_id").(string)
+	userID, ok := c.Get("user_id").(int64)
+	if !ok {
+		return httputil.WriteError(c, http.StatusUnauthorized, httputil.ErrMissingFields)
+	}
 	merchantID := httputil.GetMerchantID(c)
-	if merchantID == "" {
+	if merchantID == 0 {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrMissingFields)
 	}
 
@@ -135,7 +151,7 @@ func (h *StaffHandler) MyStaffAssignments(c echo.Context) error {
 }
 
 type setDefaultBranchReq struct {
-	BranchID string `json:"branch_id"`
+	BranchID int64 `json:"branch_id"`
 }
 
 func (h *StaffHandler) SetMyDefaultBranch(c echo.Context) error {
@@ -143,11 +159,14 @@ func (h *StaffHandler) SetMyDefaultBranch(c echo.Context) error {
 	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
-	if req.BranchID == "" {
+	if req.BranchID == 0 {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrMissingFields)
 	}
 
-	userID, _ := c.Get("user_id").(string)
+	userID, ok := c.Get("user_id").(int64)
+	if !ok {
+		return httputil.WriteError(c, http.StatusUnauthorized, httputil.ErrMissingFields)
+	}
 	if err := h.uc.SetMyDefaultBranch(c.Request().Context(), userID, req.BranchID); err != nil {
 		switch err {
 		case domain.ErrBranchNotFound:

@@ -11,10 +11,9 @@ func TestStaffRepository_CreateAndGetByID(t *testing.T) {
 	t.Parallel()
 	repo := NewStaffRepository()
 	staff := &domain.StaffMember{
-		ID:         "s1",
-		MerchantID: "m1",
-		BranchID:   "b1",
-		UserID:     "u1",
+		MerchantID: 1,
+		BranchID:   1,
+		UserID:     1,
 		Role:       domain.StaffRoleCashier,
 		Status:     domain.StaffStatusActive,
 	}
@@ -23,13 +22,16 @@ func TestStaffRepository_CreateAndGetByID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	if staff.ID == 0 {
+		t.Fatal("expected non-zero ID after create")
+	}
 
-	got, err := repo.GetByID(context.Background(), "s1")
+	got, err := repo.GetByID(context.Background(), staff.ID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.UserID != "u1" {
-		t.Errorf("expected u1, got %s", got.UserID)
+	if got.UserID != 1 {
+		t.Errorf("expected user ID 1, got %d", got.UserID)
 	}
 	if got.Role != domain.StaffRoleCashier {
 		t.Errorf("expected cashier, got %s", got.Role)
@@ -39,7 +41,7 @@ func TestStaffRepository_CreateAndGetByID(t *testing.T) {
 func TestStaffRepository_GetByID_NotFound(t *testing.T) {
 	t.Parallel()
 	repo := NewStaffRepository()
-	_, err := repo.GetByID(context.Background(), "nonexistent")
+	_, err := repo.GetByID(context.Background(), 999)
 	if err != domain.ErrStaffNotFound {
 		t.Errorf("expected ErrStaffNotFound, got %v", err)
 	}
@@ -48,11 +50,11 @@ func TestStaffRepository_GetByID_NotFound(t *testing.T) {
 func TestStaffRepository_ListByBranch(t *testing.T) {
 	t.Parallel()
 	repo := NewStaffRepository()
-	repo.Create(context.Background(), &domain.StaffMember{ID: "s1", BranchID: "b1"})
-	repo.Create(context.Background(), &domain.StaffMember{ID: "s2", BranchID: "b1"})
-	repo.Create(context.Background(), &domain.StaffMember{ID: "s3", BranchID: "b2"})
+	repo.Create(context.Background(), &domain.StaffMember{BranchID: 1})
+	repo.Create(context.Background(), &domain.StaffMember{BranchID: 1})
+	repo.Create(context.Background(), &domain.StaffMember{BranchID: 2})
 
-	staff, err := repo.ListByBranch(context.Background(), "b1")
+	staff, err := repo.ListByBranch(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -60,7 +62,7 @@ func TestStaffRepository_ListByBranch(t *testing.T) {
 		t.Errorf("expected 2 staff, got %d", len(staff))
 	}
 
-	empty, err := repo.ListByBranch(context.Background(), "nonexistent")
+	empty, err := repo.ListByBranch(context.Background(), 999)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -72,11 +74,11 @@ func TestStaffRepository_ListByBranch(t *testing.T) {
 func TestStaffRepository_ListByMerchant(t *testing.T) {
 	t.Parallel()
 	repo := NewStaffRepository()
-	repo.Create(context.Background(), &domain.StaffMember{ID: "s1", MerchantID: "m1"})
-	repo.Create(context.Background(), &domain.StaffMember{ID: "s2", MerchantID: "m1"})
-	repo.Create(context.Background(), &domain.StaffMember{ID: "s3", MerchantID: "m2"})
+	repo.Create(context.Background(), &domain.StaffMember{MerchantID: 1})
+	repo.Create(context.Background(), &domain.StaffMember{MerchantID: 1})
+	repo.Create(context.Background(), &domain.StaffMember{MerchantID: 2})
 
-	staff, err := repo.ListByMerchant(context.Background(), "m1")
+	staff, err := repo.ListByMerchant(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -88,18 +90,18 @@ func TestStaffRepository_ListByMerchant(t *testing.T) {
 func TestStaffRepository_GetByUserAndBranch(t *testing.T) {
 	t.Parallel()
 	repo := NewStaffRepository()
-	repo.Create(context.Background(), &domain.StaffMember{ID: "s1", UserID: "u1", BranchID: "b1"})
-	repo.Create(context.Background(), &domain.StaffMember{ID: "s2", UserID: "u2", BranchID: "b1"})
+	repo.Create(context.Background(), &domain.StaffMember{UserID: 1, BranchID: 1})
+	repo.Create(context.Background(), &domain.StaffMember{UserID: 2, BranchID: 1})
 
-	got, err := repo.GetByUserAndBranch(context.Background(), "u1", "b1")
+	got, err := repo.GetByUserAndBranch(context.Background(), 1, 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.ID != "s1" {
-		t.Errorf("expected s1, got %s", got.ID)
+	if got.UserID != 1 {
+		t.Errorf("expected user ID 1, got %d", got.UserID)
 	}
 
-	_, err = repo.GetByUserAndBranch(context.Background(), "u1", "b2")
+	_, err = repo.GetByUserAndBranch(context.Background(), 1, 2)
 	if err != domain.ErrStaffNotFound {
 		t.Errorf("expected ErrStaffNotFound, got %v", err)
 	}
@@ -108,14 +110,15 @@ func TestStaffRepository_GetByUserAndBranch(t *testing.T) {
 func TestStaffRepository_Update(t *testing.T) {
 	t.Parallel()
 	repo := NewStaffRepository()
-	repo.Create(context.Background(), &domain.StaffMember{ID: "s1", Role: domain.StaffRoleCashier})
+	s := &domain.StaffMember{Role: domain.StaffRoleCashier}
+	repo.Create(context.Background(), s)
 
-	err := repo.Update(context.Background(), &domain.StaffMember{ID: "s1", Role: domain.StaffRoleManager})
+	err := repo.Update(context.Background(), &domain.StaffMember{ID: s.ID, Role: domain.StaffRoleManager})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	got, _ := repo.GetByID(context.Background(), "s1")
+	got, _ := repo.GetByID(context.Background(), s.ID)
 	if got.Role != domain.StaffRoleManager {
 		t.Errorf("expected manager, got %s", got.Role)
 	}
@@ -124,14 +127,15 @@ func TestStaffRepository_Update(t *testing.T) {
 func TestStaffRepository_Delete(t *testing.T) {
 	t.Parallel()
 	repo := NewStaffRepository()
-	repo.Create(context.Background(), &domain.StaffMember{ID: "s1"})
+	s := &domain.StaffMember{}
+	repo.Create(context.Background(), s)
 
-	err := repo.Delete(context.Background(), "s1")
+	err := repo.Delete(context.Background(), s.ID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	_, err = repo.GetByID(context.Background(), "s1")
+	_, err = repo.GetByID(context.Background(), s.ID)
 	if err != domain.ErrStaffNotFound {
 		t.Errorf("expected ErrStaffNotFound, got %v", err)
 	}

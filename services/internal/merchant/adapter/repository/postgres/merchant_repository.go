@@ -17,27 +17,28 @@ func NewMerchantRepository(pool *otel.TracedPool) *MerchantRepository {
 }
 
 func (r *MerchantRepository) Create(ctx context.Context, merchant *domain.Merchant) error {
-	_, err := r.pool.Exec(ctx, `
-		INSERT INTO merchants (id, name, legal_name, address, phone, email, logo_url, tax_id,
+	err := r.pool.QueryRow(ctx, `
+		INSERT INTO merchants (name, legal_name, address, phone, email, logo_url, tax_id,
 		                       status, tax_rate, currency, timezone, receipt_footer, receipt_logo,
 		                       order_prefix, low_stock_threshold, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8,
-		        $9, $10, $11, $12, $13, $14,
-		        $15, $16, $17, $18)`,
-		merchant.ID, merchant.Name, merchant.LegalName, merchant.Address,
+		VALUES ($1, $2, $3, $4, $5, $6, $7,
+		        $8, $9, $10, $11, $12, $13,
+		        $14, $15, $16, $17)
+		RETURNING id`,
+		merchant.Name, merchant.LegalName, merchant.Address,
 		merchant.Phone, merchant.Email, merchant.LogoURL, merchant.TaxID,
 		merchant.Status, merchant.Settings.TaxRate, merchant.Settings.Currency,
 		merchant.Settings.Timezone, merchant.Settings.ReceiptFooter,
 		merchant.Settings.ReceiptLogo, merchant.Settings.OrderPrefix,
 		merchant.Settings.LowStockThreshold, merchant.CreatedAt, merchant.UpdatedAt,
-	)
+	).Scan(&merchant.ID)
 	if err != nil {
 		return fmt.Errorf("failed to create merchant: %w", err)
 	}
 	return nil
 }
 
-func (r *MerchantRepository) GetByID(ctx context.Context, id string) (*domain.Merchant, error) {
+func (r *MerchantRepository) GetByID(ctx context.Context, id int64) (*domain.Merchant, error) {
 	row := r.pool.QueryRow(ctx, `
 		SELECT id, name, legal_name, address, phone, email, logo_url, tax_id,
 		       status, tax_rate, currency, timezone, receipt_footer, receipt_logo,
@@ -114,7 +115,7 @@ func (r *MerchantRepository) Update(ctx context.Context, merchant *domain.Mercha
 	return nil
 }
 
-func (r *MerchantRepository) Delete(ctx context.Context, id string) error {
+func (r *MerchantRepository) Delete(ctx context.Context, id int64) error {
 	_, err := r.pool.Exec(ctx, `DELETE FROM merchants WHERE id = $1`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete merchant: %w", err)

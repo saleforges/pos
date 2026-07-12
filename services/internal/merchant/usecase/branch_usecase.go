@@ -4,20 +4,19 @@ import (
 	"context"
 	"time"
 
-	"github.com/saleforge/pos/services/pkg/id"
 	"github.com/saleforge/pos/services/internal/merchant/domain"
 )
 
 type BranchUsecase interface {
 	CreateBranch(ctx context.Context, input CreateBranchInput) (*domain.Branch, error)
-	GetBranch(ctx context.Context, id string) (*domain.Branch, error)
-	ListBranches(ctx context.Context, merchantID string) ([]domain.Branch, error)
+	GetBranch(ctx context.Context, id int64) (*domain.Branch, error)
+	ListBranches(ctx context.Context, merchantID int64) ([]domain.Branch, error)
 	UpdateBranch(ctx context.Context, input UpdateBranchInput) (*domain.Branch, error)
-	DeleteBranch(ctx context.Context, id string) error
+	DeleteBranch(ctx context.Context, id int64) error
 }
 
 type CreateBranchInput struct {
-	MerchantID     string
+	MerchantID     int64
 	Name           string
 	Code           string
 	Address        string
@@ -27,7 +26,7 @@ type CreateBranchInput struct {
 }
 
 type UpdateBranchInput struct {
-	ID             string
+	ID             int64
 	Name           *string
 	Address        *string
 	Phone          *string
@@ -37,7 +36,7 @@ type UpdateBranchInput struct {
 }
 
 func (uc *merchantUsecase) CreateBranch(ctx context.Context, input CreateBranchInput) (*domain.Branch, error) {
-	if input.Name == "" || input.MerchantID == "" || input.Code == "" {
+	if input.Name == "" || input.Code == "" {
 		return nil, domain.ErrInvalidBranch
 	}
 
@@ -48,7 +47,6 @@ func (uc *merchantUsecase) CreateBranch(ctx context.Context, input CreateBranchI
 
 	now := time.Now().UTC()
 	branch := &domain.Branch{
-		ID:             id.Generate(),
 		MerchantID:     input.MerchantID,
 		Name:           input.Name,
 		Code:           input.Code,
@@ -67,11 +65,11 @@ func (uc *merchantUsecase) CreateBranch(ctx context.Context, input CreateBranchI
 	return branch, nil
 }
 
-func (uc *merchantUsecase) GetBranch(ctx context.Context, id string) (*domain.Branch, error) {
+func (uc *merchantUsecase) GetBranch(ctx context.Context, id int64) (*domain.Branch, error) {
 	return uc.branchRepo.GetByID(ctx, id)
 }
 
-func (uc *merchantUsecase) ListBranches(ctx context.Context, merchantID string) ([]domain.Branch, error) {
+func (uc *merchantUsecase) ListBranches(ctx context.Context, merchantID int64) ([]domain.Branch, error) {
 	return uc.branchRepo.ListByMerchant(ctx, merchantID)
 }
 
@@ -107,6 +105,6 @@ func (uc *merchantUsecase) UpdateBranch(ctx context.Context, input UpdateBranchI
 	return branch, nil
 }
 
-func (uc *merchantUsecase) DeleteBranch(ctx context.Context, id string) error {
+func (uc *merchantUsecase) DeleteBranch(ctx context.Context, id int64) error {
 	return uc.branchRepo.Delete(ctx, id)
 }

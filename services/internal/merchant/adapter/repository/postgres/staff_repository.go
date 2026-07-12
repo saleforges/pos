@@ -17,19 +17,20 @@ func NewStaffRepository(pool *otel.TracedPool) *StaffRepository {
 }
 
 func (r *StaffRepository) Create(ctx context.Context, staff *domain.StaffMember) error {
-	_, err := r.pool.Exec(ctx, `
-		INSERT INTO staff (id, merchant_id, branch_id, user_id, role, status, is_default, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-		staff.ID, staff.MerchantID, staff.BranchID, staff.UserID,
+	err := r.pool.QueryRow(ctx, `
+		INSERT INTO staff (merchant_id, branch_id, user_id, role, status, is_default, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		RETURNING id`,
+		staff.MerchantID, staff.BranchID, staff.UserID,
 		staff.Role, staff.Status, staff.IsDefault, staff.CreatedAt, staff.UpdatedAt,
-	)
+	).Scan(&staff.ID)
 	if err != nil {
 		return fmt.Errorf("failed to create staff: %w", err)
 	}
 	return nil
 }
 
-func (r *StaffRepository) GetByID(ctx context.Context, id string) (*domain.StaffMember, error) {
+func (r *StaffRepository) GetByID(ctx context.Context, id int64) (*domain.StaffMember, error) {
 	row := r.pool.QueryRow(ctx, `
 		SELECT id, merchant_id, branch_id, user_id, role, status, is_default, created_at, updated_at
 		FROM staff WHERE id = $1`, id)
@@ -46,7 +47,7 @@ func (r *StaffRepository) GetByID(ctx context.Context, id string) (*domain.Staff
 	return s, nil
 }
 
-func (r *StaffRepository) ListByBranch(ctx context.Context, branchID string) ([]domain.StaffMember, error) {
+func (r *StaffRepository) ListByBranch(ctx context.Context, branchID int64) ([]domain.StaffMember, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, merchant_id, branch_id, user_id, role, status, is_default, created_at, updated_at
 		FROM staff WHERE branch_id = $1 ORDER BY created_at`, branchID)
@@ -70,7 +71,7 @@ func (r *StaffRepository) ListByBranch(ctx context.Context, branchID string) ([]
 	return result, nil
 }
 
-func (r *StaffRepository) ListByMerchant(ctx context.Context, merchantID string) ([]domain.StaffMember, error) {
+func (r *StaffRepository) ListByMerchant(ctx context.Context, merchantID int64) ([]domain.StaffMember, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, merchant_id, branch_id, user_id, role, status, is_default, created_at, updated_at
 		FROM staff WHERE merchant_id = $1 ORDER BY created_at`, merchantID)
@@ -94,7 +95,7 @@ func (r *StaffRepository) ListByMerchant(ctx context.Context, merchantID string)
 	return result, nil
 }
 
-func (r *StaffRepository) GetByUserAndBranch(ctx context.Context, userID, branchID string) (*domain.StaffMember, error) {
+func (r *StaffRepository) GetByUserAndBranch(ctx context.Context, userID, branchID int64) (*domain.StaffMember, error) {
 	row := r.pool.QueryRow(ctx, `
 		SELECT id, merchant_id, branch_id, user_id, role, status, is_default, created_at, updated_at
 		FROM staff WHERE user_id = $1 AND branch_id = $2`, userID, branchID)
@@ -111,7 +112,7 @@ func (r *StaffRepository) GetByUserAndBranch(ctx context.Context, userID, branch
 	return s, nil
 }
 
-func (r *StaffRepository) ListByUserAndMerchant(ctx context.Context, userID, merchantID string) ([]domain.StaffMember, error) {
+func (r *StaffRepository) ListByUserAndMerchant(ctx context.Context, userID, merchantID int64) ([]domain.StaffMember, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, merchant_id, branch_id, user_id, role, status, is_default, created_at, updated_at
 		FROM staff WHERE user_id = $1 AND merchant_id = $2 ORDER BY created_at`, userID, merchantID)
@@ -135,7 +136,7 @@ func (r *StaffRepository) ListByUserAndMerchant(ctx context.Context, userID, mer
 	return result, nil
 }
 
-func (r *StaffRepository) SetDefaultBranch(ctx context.Context, userID, branchID string) error {
+func (r *StaffRepository) SetDefaultBranch(ctx context.Context, userID, branchID int64) error {
 	_, err := r.pool.Exec(ctx, `
 		UPDATE staff SET is_default = (branch_id = $2) WHERE user_id = $1`, userID, branchID)
 	if err != nil {
@@ -154,7 +155,7 @@ func (r *StaffRepository) Update(ctx context.Context, staff *domain.StaffMember)
 	return nil
 }
 
-func (r *StaffRepository) Delete(ctx context.Context, id string) error {
+func (r *StaffRepository) Delete(ctx context.Context, id int64) error {
 	_, err := r.pool.Exec(ctx, `DELETE FROM staff WHERE id = $1`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete staff: %w", err)

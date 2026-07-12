@@ -16,16 +16,16 @@ import (
 
 type mockMerchantSvc struct {
 	createMerchantFn func(context.Context, usecase.CreateMerchantInput) (*domain.Merchant, error)
-	getMerchantFn    func(context.Context, string) (*domain.Merchant, error)
+	getMerchantFn    func(context.Context, int64) (*domain.Merchant, error)
 	listMerchantsFn  func(context.Context, int, int) ([]domain.Merchant, error)
 	updateMerchantFn func(context.Context, usecase.UpdateMerchantInput) (*domain.Merchant, error)
-	deleteMerchantFn func(context.Context, string) error
+	deleteMerchantFn func(context.Context, int64) error
 }
 
 func (m *mockMerchantSvc) CreateMerchant(ctx context.Context, i usecase.CreateMerchantInput) (*domain.Merchant, error) {
 	return m.createMerchantFn(ctx, i)
 }
-func (m *mockMerchantSvc) GetMerchant(ctx context.Context, id string) (*domain.Merchant, error) {
+func (m *mockMerchantSvc) GetMerchant(ctx context.Context, id int64) (*domain.Merchant, error) {
 	return m.getMerchantFn(ctx, id)
 }
 func (m *mockMerchantSvc) ListMerchants(ctx context.Context, offset, limit int) ([]domain.Merchant, error) {
@@ -34,7 +34,7 @@ func (m *mockMerchantSvc) ListMerchants(ctx context.Context, offset, limit int) 
 func (m *mockMerchantSvc) UpdateMerchant(ctx context.Context, i usecase.UpdateMerchantInput) (*domain.Merchant, error) {
 	return m.updateMerchantFn(ctx, i)
 }
-func (m *mockMerchantSvc) DeleteMerchant(ctx context.Context, id string) error {
+func (m *mockMerchantSvc) DeleteMerchant(ctx context.Context, id int64) error {
 	return m.deleteMerchantFn(ctx, id)
 }
 
@@ -58,7 +58,7 @@ func TestMerchantHandler_Create(t *testing.T) {
 			mock: &mockMerchantSvc{
 				createMerchantFn: func(_ context.Context, i usecase.CreateMerchantInput) (*domain.Merchant, error) {
 					return &domain.Merchant{
-						ID: "m1", Name: i.Name, LegalName: i.LegalName,
+						ID: 1, Name: i.Name, LegalName: i.LegalName,
 						Address: i.Address, Phone: i.Phone, Email: i.Email, TaxID: i.TaxID,
 						Status: domain.MerchantStatusActive, CreatedAt: now(), UpdatedAt: now(),
 					}, nil
@@ -132,9 +132,9 @@ func TestMerchantHandler_Get(t *testing.T) {
 	}{
 		{
 			name: "success",
-			id:   "m1",
+			id:   "1",
 			mock: &mockMerchantSvc{
-				getMerchantFn: func(_ context.Context, id string) (*domain.Merchant, error) {
+				getMerchantFn: func(_ context.Context, id int64) (*domain.Merchant, error) {
 					return &domain.Merchant{ID: id, Name: "Toko Maju", Status: domain.MerchantStatusActive}, nil
 				},
 			},
@@ -143,9 +143,9 @@ func TestMerchantHandler_Get(t *testing.T) {
 		},
 		{
 			name: "not found",
-			id:   "nonexistent",
+			id:   "999",
 			mock: &mockMerchantSvc{
-				getMerchantFn: func(_ context.Context, _ string) (*domain.Merchant, error) {
+				getMerchantFn: func(_ context.Context, _ int64) (*domain.Merchant, error) {
 					return nil, domain.ErrMerchantNotFound
 				},
 			},
@@ -187,8 +187,8 @@ func TestMerchantHandler_List(t *testing.T) {
 	mock := &mockMerchantSvc{
 		listMerchantsFn: func(_ context.Context, offset, limit int) ([]domain.Merchant, error) {
 			return []domain.Merchant{
-				{ID: "m1", Name: "Toko Maju"},
-				{ID: "m2", Name: "Toko Baru"},
+				{ID: 1, Name: "Toko Maju"},
+				{ID: 2, Name: "Toko Baru"},
 			}, nil
 		},
 	}
@@ -233,7 +233,7 @@ func TestMerchantHandler_Update(t *testing.T) {
 	}{
 		{
 			name: "success",
-			id:   "m1",
+			id:   "1",
 			body: `{"name":"Updated Store"}`,
 			mock: &mockMerchantSvc{
 				updateMerchantFn: func(_ context.Context, i usecase.UpdateMerchantInput) (*domain.Merchant, error) {
@@ -245,7 +245,7 @@ func TestMerchantHandler_Update(t *testing.T) {
 		},
 		{
 			name:       "invalid json",
-			id:         "m1",
+			id:         "1",
 			body:       `{bad}`,
 			mock:       &mockMerchantSvc{},
 			wantStatus: http.StatusBadRequest,
@@ -253,7 +253,7 @@ func TestMerchantHandler_Update(t *testing.T) {
 		},
 		{
 			name: "not found",
-			id:   "nonexistent",
+			id:   "999",
 			body: `{"name":"Updated Store"}`,
 			mock: &mockMerchantSvc{
 				updateMerchantFn: func(_ context.Context, _ usecase.UpdateMerchantInput) (*domain.Merchant, error) {
@@ -304,9 +304,9 @@ func TestMerchantHandler_Delete(t *testing.T) {
 	}{
 		{
 			name: "success",
-			id:   "m1",
+			id:   "1",
 			mock: &mockMerchantSvc{
-				deleteMerchantFn: func(_ context.Context, id string) error {
+				deleteMerchantFn: func(_ context.Context, id int64) error {
 					return nil
 				},
 			},
@@ -314,9 +314,9 @@ func TestMerchantHandler_Delete(t *testing.T) {
 		},
 		{
 			name: "internal error",
-			id:   "m1",
+			id:   "1",
 			mock: &mockMerchantSvc{
-				deleteMerchantFn: func(_ context.Context, _ string) error {
+				deleteMerchantFn: func(_ context.Context, _ int64) error {
 					return domain.ErrInternal
 				},
 			},

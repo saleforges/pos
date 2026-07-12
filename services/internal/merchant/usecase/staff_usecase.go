@@ -4,37 +4,36 @@ import (
 	"context"
 	"time"
 
-	"github.com/saleforge/pos/services/pkg/id"
 	"github.com/saleforge/pos/services/internal/merchant/domain"
 )
 
 type StaffUsecase interface {
 	AssignStaff(ctx context.Context, input AssignStaffInput) (*domain.StaffMember, error)
-	GetStaff(ctx context.Context, id string) (*domain.StaffMember, error)
-	ListStaffByBranch(ctx context.Context, branchID string) ([]domain.StaffMember, error)
-	ListStaffByMerchant(ctx context.Context, merchantID string) ([]domain.StaffMember, error)
-	GetMyStaffAssignments(ctx context.Context, userID, merchantID string) ([]domain.StaffMember, error)
-	SetMyDefaultBranch(ctx context.Context, userID, branchID string) error
+	GetStaff(ctx context.Context, id int64) (*domain.StaffMember, error)
+	ListStaffByBranch(ctx context.Context, branchID int64) ([]domain.StaffMember, error)
+	ListStaffByMerchant(ctx context.Context, merchantID int64) ([]domain.StaffMember, error)
+	GetMyStaffAssignments(ctx context.Context, userID, merchantID int64) ([]domain.StaffMember, error)
+	SetMyDefaultBranch(ctx context.Context, userID, branchID int64) error
 	UpdateStaff(ctx context.Context, input UpdateStaffInput) (*domain.StaffMember, error)
-	RemoveStaff(ctx context.Context, id string) error
+	RemoveStaff(ctx context.Context, id int64) error
 }
 
 type AssignStaffInput struct {
-	MerchantID string
-	BranchID   string
-	UserID     string
+	MerchantID int64
+	BranchID   int64
+	UserID     int64
 	Role       domain.StaffRole
 	IsDefault  bool
 }
 
 type UpdateStaffInput struct {
-	ID     string
+	ID     int64
 	Role   *domain.StaffRole
 	Status *domain.StaffStatus
 }
 
 func (uc *merchantUsecase) AssignStaff(ctx context.Context, input AssignStaffInput) (*domain.StaffMember, error) {
-	if input.MerchantID == "" || input.BranchID == "" || input.UserID == "" || input.Role == "" {
+	if input.BranchID == 0 || input.UserID == 0 || input.Role == "" {
 		return nil, domain.ErrInvalidStaff
 	}
 
@@ -55,7 +54,6 @@ func (uc *merchantUsecase) AssignStaff(ctx context.Context, input AssignStaffInp
 
 	now := time.Now().UTC()
 	staff := &domain.StaffMember{
-		ID:         id.Generate(),
 		MerchantID: input.MerchantID,
 		BranchID:   input.BranchID,
 		UserID:     input.UserID,
@@ -76,15 +74,15 @@ func (uc *merchantUsecase) AssignStaff(ctx context.Context, input AssignStaffInp
 	return staff, nil
 }
 
-func (uc *merchantUsecase) GetStaff(ctx context.Context, id string) (*domain.StaffMember, error) {
+func (uc *merchantUsecase) GetStaff(ctx context.Context, id int64) (*domain.StaffMember, error) {
 	return uc.staffRepo.GetByID(ctx, id)
 }
 
-func (uc *merchantUsecase) ListStaffByBranch(ctx context.Context, branchID string) ([]domain.StaffMember, error) {
+func (uc *merchantUsecase) ListStaffByBranch(ctx context.Context, branchID int64) ([]domain.StaffMember, error) {
 	return uc.staffRepo.ListByBranch(ctx, branchID)
 }
 
-func (uc *merchantUsecase) ListStaffByMerchant(ctx context.Context, merchantID string) ([]domain.StaffMember, error) {
+func (uc *merchantUsecase) ListStaffByMerchant(ctx context.Context, merchantID int64) ([]domain.StaffMember, error) {
 	return uc.staffRepo.ListByMerchant(ctx, merchantID)
 }
 
@@ -108,11 +106,11 @@ func (uc *merchantUsecase) UpdateStaff(ctx context.Context, input UpdateStaffInp
 	return staff, nil
 }
 
-func (uc *merchantUsecase) GetMyStaffAssignments(ctx context.Context, userID, merchantID string) ([]domain.StaffMember, error) {
+func (uc *merchantUsecase) GetMyStaffAssignments(ctx context.Context, userID, merchantID int64) ([]domain.StaffMember, error) {
 	return uc.staffRepo.ListByUserAndMerchant(ctx, userID, merchantID)
 }
 
-func (uc *merchantUsecase) SetMyDefaultBranch(ctx context.Context, userID, branchID string) error {
+func (uc *merchantUsecase) SetMyDefaultBranch(ctx context.Context, userID, branchID int64) error {
 	_, err := uc.branchRepo.GetByID(ctx, branchID)
 	if err != nil {
 		return err
@@ -120,6 +118,6 @@ func (uc *merchantUsecase) SetMyDefaultBranch(ctx context.Context, userID, branc
 	return uc.staffRepo.SetDefaultBranch(ctx, userID, branchID)
 }
 
-func (uc *merchantUsecase) RemoveStaff(ctx context.Context, id string) error {
+func (uc *merchantUsecase) RemoveStaff(ctx context.Context, id int64) error {
 	return uc.staffRepo.Delete(ctx, id)
 }

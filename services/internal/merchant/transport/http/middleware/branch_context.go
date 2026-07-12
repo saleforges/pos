@@ -15,8 +15,8 @@ const (
 )
 
 type BranchAssignment struct {
-	StaffID   string `json:"staff_id"`
-	BranchID  string `json:"branch_id"`
+	StaffID   int64  `json:"staff_id"`
+	BranchID  int64  `json:"branch_id"`
 	Role      string `json:"role"`
 	IsDefault bool   `json:"is_default"`
 }
@@ -24,17 +24,17 @@ type BranchAssignment struct {
 func BranchContext(staffRepo repository.StaffRepository) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			userID, ok := c.Get("user_id").(string)
-			if !ok || userID == "" {
+			userID, ok := c.Get("user_id").(int64)
+			if !ok {
 				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
 			}
 
 			merchantID := httputil.GetMerchantID(c)
 
 			var assignments []BranchAssignment
-			var defaultBranch string
+			var defaultBranch int64
 
-			if merchantID != "" {
+			if merchantID != 0 {
 				staffList, err := staffRepo.ListByUserAndMerchant(c.Request().Context(), userID, merchantID)
 				if err == nil {
 					for _, s := range staffList {

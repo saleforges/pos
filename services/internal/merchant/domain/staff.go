@@ -19,10 +19,10 @@ const (
 )
 
 type StaffMember struct {
-	ID         string      `json:"id"`
-	MerchantID string      `json:"merchant_id"`
-	BranchID   string      `json:"branch_id"`
-	UserID     string      `json:"user_id"`
+	ID         int64       `json:"id"`
+	MerchantID int64       `json:"merchant_id"`
+	BranchID   int64       `json:"branch_id"`
+	UserID     int64       `json:"user_id"`
 	Role       StaffRole   `json:"role"`
 	Status     StaffStatus `json:"status"`
 	IsDefault  bool        `json:"is_default"`

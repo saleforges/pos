@@ -17,26 +17,27 @@ func NewBranchRepository(pool *otel.TracedPool) *BranchRepository {
 }
 
 func (r *BranchRepository) Create(ctx context.Context, branch *domain.Branch) error {
-	_, err := r.pool.Exec(ctx, `
-		INSERT INTO branches (id, merchant_id, name, code, address, phone,
+	err := r.pool.QueryRow(ctx, `
+		INSERT INTO branches (merchant_id, name, code, address, phone,
 		                      status, operating_days, open_time, close_time,
 		                      created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6,
-		        $7, $8, $9, $10,
-		        $11, $12)`,
-		branch.ID, branch.MerchantID, branch.Name, branch.Code,
+		VALUES ($1, $2, $3, $4, $5,
+		        $6, $7, $8, $9,
+		        $10, $11)
+		RETURNING id`,
+		branch.MerchantID, branch.Name, branch.Code,
 		branch.Address, branch.Phone,
 		branch.Status, branch.OperatingDays,
 		branch.OperatingHours.Open, branch.OperatingHours.Close,
 		branch.CreatedAt, branch.UpdatedAt,
-	)
+	).Scan(&branch.ID)
 	if err != nil {
 		return fmt.Errorf("failed to create branch: %w", err)
 	}
 	return nil
 }
 
-func (r *BranchRepository) GetByID(ctx context.Context, id string) (*domain.Branch, error) {
+func (r *BranchRepository) GetByID(ctx context.Context, id int64) (*domain.Branch, error) {
 	row := r.pool.QueryRow(ctx, `
 		SELECT id, merchant_id, name, code, address, phone,
 		       status, operating_days, open_time, close_time,
@@ -61,7 +62,7 @@ func (r *BranchRepository) GetByID(ctx context.Context, id string) (*domain.Bran
 	return b, nil
 }
 
-func (r *BranchRepository) ListByMerchant(ctx context.Context, merchantID string) ([]domain.Branch, error) {
+func (r *BranchRepository) ListByMerchant(ctx context.Context, merchantID int64) ([]domain.Branch, error) {
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, merchant_id, name, code, address, phone,
 		       status, operating_days, open_time, close_time,
@@ -109,7 +110,7 @@ func (r *BranchRepository) Update(ctx context.Context, branch *domain.Branch) er
 	return nil
 }
 
-func (r *BranchRepository) Delete(ctx context.Context, id string) error {
+func (r *BranchRepository) Delete(ctx context.Context, id int64) error {
 	_, err := r.pool.Exec(ctx, `DELETE FROM branches WHERE id = $1`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete branch: %w", err)

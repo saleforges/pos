@@ -42,11 +42,6 @@ func Auth(tokenValidator port.TokenValidator) echo.MiddlewareFunc {
 			c.Set(ContextKeyMerchantID, claims.MerchantID)
 			c.Set(ContextKeyStaff, claims.Staff)
 
-			merchantID := c.Request().Header.Get("X-Merchant-Id")
-			if merchantID != "" {
-				c.Set(ContextKeyMerchantID, merchantID)
-			}
-
 			return next(c)
 		}
 	}

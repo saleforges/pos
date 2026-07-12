@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/merchant/domain"
@@ -33,7 +34,7 @@ func (h *BranchHandler) CreateBranch(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
 	merchantID := httputil.GetMerchantID(c)
-	if req.Name == "" || merchantID == "" || req.Code == "" {
+	if req.Name == "" || req.Code == "" {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrMissingFields)
 	}
 
@@ -56,7 +57,10 @@ func (h *BranchHandler) CreateBranch(c echo.Context) error {
 }
 
 func (h *BranchHandler) GetBranch(c echo.Context) error {
-	id := c.Param("id")
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
 	branch, err := h.uc.GetBranch(c.Request().Context(), id)
 	if err != nil {
 		if err == domain.ErrBranchNotFound {
@@ -86,7 +90,10 @@ type updateBranchReq struct {
 }
 
 func (h *BranchHandler) UpdateBranch(c echo.Context) error {
-	id := c.Param("id")
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
 	var req updateBranchReq
 	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
@@ -111,7 +118,10 @@ func (h *BranchHandler) UpdateBranch(c echo.Context) error {
 }
 
 func (h *BranchHandler) DeleteBranch(c echo.Context) error {
-	id := c.Param("id")
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
 	if err := h.uc.DeleteBranch(c.Request().Context(), id); err != nil {
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}

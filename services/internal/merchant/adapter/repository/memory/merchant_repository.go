@@ -8,22 +8,25 @@ import (
 )
 
 type MerchantRepository struct {
-	mu        sync.RWMutex
-	merchants map[string]*domain.Merchant
+	mu         sync.RWMutex
+	merchants  map[int64]*domain.Merchant
+	seq        int64
 }
 
 func NewMerchantRepository() *MerchantRepository {
-	return &MerchantRepository{merchants: make(map[string]*domain.Merchant)}
+	return &MerchantRepository{merchants: make(map[int64]*domain.Merchant)}
 }
 
 func (r *MerchantRepository) Create(_ context.Context, merchant *domain.Merchant) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.seq++
+	merchant.ID = r.seq
 	r.merchants[merchant.ID] = merchant
 	return nil
 }
 
-func (r *MerchantRepository) GetByID(_ context.Context, id string) (*domain.Merchant, error) {
+func (r *MerchantRepository) GetByID(_ context.Context, id int64) (*domain.Merchant, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	m, ok := r.merchants[id]
@@ -57,7 +60,7 @@ func (r *MerchantRepository) Update(_ context.Context, merchant *domain.Merchant
 	return nil
 }
 
-func (r *MerchantRepository) Delete(_ context.Context, id string) error {
+func (r *MerchantRepository) Delete(_ context.Context, id int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.merchants, id)

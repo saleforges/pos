@@ -16,8 +16,8 @@ type OperatingHours struct {
 }
 
 type Branch struct {
-	ID             string           `json:"id"`
-	MerchantID     string          `json:"merchant_id"`
+	ID             int64            `json:"id"`
+	MerchantID     int64            `json:"merchant_id"`
 	Name           string          `json:"name"`
 	Code           string          `json:"code"`
 	Address        string          `json:"address"`

@@ -9,21 +9,24 @@ import (
 
 type StaffRepository struct {
 	mu    sync.RWMutex
-	staff map[string]*domain.StaffMember
+	staff map[int64]*domain.StaffMember
+	seq   int64
 }
 
 func NewStaffRepository() *StaffRepository {
-	return &StaffRepository{staff: make(map[string]*domain.StaffMember)}
+	return &StaffRepository{staff: make(map[int64]*domain.StaffMember)}
 }
 
 func (r *StaffRepository) Create(_ context.Context, staff *domain.StaffMember) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.seq++
+	staff.ID = r.seq
 	r.staff[staff.ID] = staff
 	return nil
 }
 
-func (r *StaffRepository) GetByID(_ context.Context, id string) (*domain.StaffMember, error) {
+func (r *StaffRepository) GetByID(_ context.Context, id int64) (*domain.StaffMember, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	s, ok := r.staff[id]
@@ -33,7 +36,7 @@ func (r *StaffRepository) GetByID(_ context.Context, id string) (*domain.StaffMe
 	return s, nil
 }
 
-func (r *StaffRepository) ListByBranch(_ context.Context, branchID string) ([]domain.StaffMember, error) {
+func (r *StaffRepository) ListByBranch(_ context.Context, branchID int64) ([]domain.StaffMember, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	var result []domain.StaffMember
@@ -48,7 +51,7 @@ func (r *StaffRepository) ListByBranch(_ context.Context, branchID string) ([]do
 	return result, nil
 }
 
-func (r *StaffRepository) ListByMerchant(_ context.Context, merchantID string) ([]domain.StaffMember, error) {
+func (r *StaffRepository) ListByMerchant(_ context.Context, merchantID int64) ([]domain.StaffMember, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	var result []domain.StaffMember
@@ -63,7 +66,7 @@ func (r *StaffRepository) ListByMerchant(_ context.Context, merchantID string) (
 	return result, nil
 }
 
-func (r *StaffRepository) GetByUserAndBranch(_ context.Context, userID, branchID string) (*domain.StaffMember, error) {
+func (r *StaffRepository) GetByUserAndBranch(_ context.Context, userID, branchID int64) (*domain.StaffMember, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	for _, s := range r.staff {
@@ -74,7 +77,7 @@ func (r *StaffRepository) GetByUserAndBranch(_ context.Context, userID, branchID
 	return nil, domain.ErrStaffNotFound
 }
 
-func (r *StaffRepository) ListByUserAndMerchant(_ context.Context, userID, merchantID string) ([]domain.StaffMember, error) {
+func (r *StaffRepository) ListByUserAndMerchant(_ context.Context, userID, merchantID int64) ([]domain.StaffMember, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	var result []domain.StaffMember
@@ -89,7 +92,7 @@ func (r *StaffRepository) ListByUserAndMerchant(_ context.Context, userID, merch
 	return result, nil
 }
 
-func (r *StaffRepository) SetDefaultBranch(_ context.Context, userID, branchID string) error {
+func (r *StaffRepository) SetDefaultBranch(_ context.Context, userID, branchID int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, s := range r.staff {
@@ -107,7 +110,7 @@ func (r *StaffRepository) Update(_ context.Context, staff *domain.StaffMember) e
 	return nil
 }
 
-func (r *StaffRepository) Delete(_ context.Context, id string) error {
+func (r *StaffRepository) Delete(_ context.Context, id int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.staff, id)

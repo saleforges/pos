@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/merchant/domain"
@@ -54,7 +55,10 @@ func (h *MerchantHandler) Create(c echo.Context) error {
 }
 
 func (h *MerchantHandler) Get(c echo.Context) error {
-	id := c.Param("id")
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
 	merchant, err := h.uc.GetMerchant(c.Request().Context(), id)
 	if err != nil {
 		if err == domain.ErrMerchantNotFound {
@@ -88,7 +92,10 @@ type updateMerchantReq struct {
 }
 
 func (h *MerchantHandler) Update(c echo.Context) error {
-	id := c.Param("id")
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
 	var req updateMerchantReq
 	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
@@ -115,7 +122,10 @@ func (h *MerchantHandler) Update(c echo.Context) error {
 }
 
 func (h *MerchantHandler) Delete(c echo.Context) error {
-	id := c.Param("id")
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
 	if err := h.uc.DeleteMerchant(c.Request().Context(), id); err != nil {
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}

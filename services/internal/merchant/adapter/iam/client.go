@@ -30,10 +30,10 @@ type introspectRequest struct {
 
 type introspectResponse struct {
 	Active       bool                  `json:"active"`
-	UserID       string                `json:"user_id"`
+	UserID       int64                 `json:"user_id"`
 	UserType     string                `json:"user_type"`
 	Roles        []string              `json:"roles"`
-	MerchantID   string                `json:"merchant_id"`
+	MerchantID   int64                 `json:"merchant_id"`
 	Staff        []port.StaffAssignment `json:"staff"`
 	Permissions  []string              `json:"permissions"`
 }

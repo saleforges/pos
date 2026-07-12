@@ -14,37 +14,37 @@ import (
 
 type mockStaffSvc struct {
 	assignStaff         func(context.Context, usecase.AssignStaffInput) (*domain.StaffMember, error)
-	getStaff            func(context.Context, string) (*domain.StaffMember, error)
-	listStaffByBranch   func(context.Context, string) ([]domain.StaffMember, error)
-	listStaffByMerchant func(context.Context, string) ([]domain.StaffMember, error)
+	getStaff            func(context.Context, int64) (*domain.StaffMember, error)
+	listStaffByBranch   func(context.Context, int64) ([]domain.StaffMember, error)
+	listStaffByMerchant func(context.Context, int64) ([]domain.StaffMember, error)
 	updateStaff         func(context.Context, usecase.UpdateStaffInput) (*domain.StaffMember, error)
-	removeStaff         func(context.Context, string) error
-	getMyStaff          func(context.Context, string, string) ([]domain.StaffMember, error)
-	setDefaultBranch    func(context.Context, string, string) error
+	removeStaff         func(context.Context, int64) error
+	getMyStaff          func(context.Context, int64, int64) ([]domain.StaffMember, error)
+	setDefaultBranch    func(context.Context, int64, int64) error
 }
 
 func (m *mockStaffSvc) AssignStaff(ctx context.Context, i usecase.AssignStaffInput) (*domain.StaffMember, error) {
 	return m.assignStaff(ctx, i)
 }
-func (m *mockStaffSvc) GetStaff(ctx context.Context, id string) (*domain.StaffMember, error) {
+func (m *mockStaffSvc) GetStaff(ctx context.Context, id int64) (*domain.StaffMember, error) {
 	return m.getStaff(ctx, id)
 }
-func (m *mockStaffSvc) ListStaffByBranch(ctx context.Context, id string) ([]domain.StaffMember, error) {
+func (m *mockStaffSvc) ListStaffByBranch(ctx context.Context, id int64) ([]domain.StaffMember, error) {
 	return m.listStaffByBranch(ctx, id)
 }
-func (m *mockStaffSvc) ListStaffByMerchant(ctx context.Context, id string) ([]domain.StaffMember, error) {
+func (m *mockStaffSvc) ListStaffByMerchant(ctx context.Context, id int64) ([]domain.StaffMember, error) {
 	return m.listStaffByMerchant(ctx, id)
 }
 func (m *mockStaffSvc) UpdateStaff(ctx context.Context, i usecase.UpdateStaffInput) (*domain.StaffMember, error) {
 	return m.updateStaff(ctx, i)
 }
-func (m *mockStaffSvc) RemoveStaff(ctx context.Context, id string) error {
+func (m *mockStaffSvc) RemoveStaff(ctx context.Context, id int64) error {
 	return m.removeStaff(ctx, id)
 }
-func (m *mockStaffSvc) GetMyStaffAssignments(ctx context.Context, u, mID string) ([]domain.StaffMember, error) {
+func (m *mockStaffSvc) GetMyStaffAssignments(ctx context.Context, u, mID int64) ([]domain.StaffMember, error) {
 	return m.getMyStaff(ctx, u, mID)
 }
-func (m *mockStaffSvc) SetMyDefaultBranch(ctx context.Context, u, b string) error {
+func (m *mockStaffSvc) SetMyDefaultBranch(ctx context.Context, u, b int64) error {
 	return m.setDefaultBranch(ctx, u, b)
 }
 
@@ -59,11 +59,11 @@ func TestStaffHandler_AssignStaff(t *testing.T) {
 	}{
 		{
 			name: "success",
-			body: `{"branch_id":"b1","user_id":"u1","role":"cashier","is_default":true}`,
+			body: `{"branch_id":1,"user_id":1,"role":"cashier","is_default":true}`,
 			mock: &mockStaffSvc{
 				assignStaff: func(_ context.Context, i usecase.AssignStaffInput) (*domain.StaffMember, error) {
 					return &domain.StaffMember{
-						ID: "s1", MerchantID: i.MerchantID, BranchID: i.BranchID,
+						ID: 1, MerchantID: i.MerchantID, BranchID: i.BranchID,
 						UserID: i.UserID, Role: i.Role, IsDefault: i.IsDefault,
 						Status: domain.StaffStatusActive,
 					}, nil
@@ -79,13 +79,13 @@ func TestStaffHandler_AssignStaff(t *testing.T) {
 		},
 		{
 			name:       "missing fields",
-			body:       `{"branch_id":"b1"}`,
+			body:       `{"branch_id":1}`,
 			mock:       &mockStaffSvc{},
 			wantStatus: http.StatusBadRequest,
 		},
 		{
 			name: "conflict",
-			body: `{"branch_id":"b1","user_id":"u1","role":"cashier"}`,
+			body: `{"branch_id":1,"user_id":1,"role":"cashier"}`,
 			mock: &mockStaffSvc{
 				assignStaff: func(_ context.Context, _ usecase.AssignStaffInput) (*domain.StaffMember, error) {
 					return nil, domain.ErrStaffExists
@@ -104,7 +104,7 @@ func TestStaffHandler_AssignStaff(t *testing.T) {
 			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
-			c.Set("merchant_id", "m1")
+			c.Set("merchant_id", int64(1))
 
 			h := NewStaffHandler(tt.mock)
 			err := h.AssignStaff(c)
@@ -130,19 +130,19 @@ func TestStaffHandler_GetStaff(t *testing.T) {
 	}{
 		{
 			name: "success",
-			id:   "s1",
+			id:   "1",
 			mock: &mockStaffSvc{
-				getStaff: func(_ context.Context, id string) (*domain.StaffMember, error) {
-					return &domain.StaffMember{ID: id, UserID: "u1", Role: domain.StaffRoleCashier}, nil
+				getStaff: func(_ context.Context, id int64) (*domain.StaffMember, error) {
+					return &domain.StaffMember{ID: id, UserID: 1, Role: domain.StaffRoleCashier}, nil
 				},
 			},
 			wantStatus: http.StatusOK,
 		},
 		{
 			name: "not found",
-			id:   "nonexistent",
+			id:   "999",
 			mock: &mockStaffSvc{
-				getStaff: func(_ context.Context, _ string) (*domain.StaffMember, error) {
+				getStaff: func(_ context.Context, _ int64) (*domain.StaffMember, error) {
 					return nil, domain.ErrStaffNotFound
 				},
 			},
@@ -178,20 +178,20 @@ func TestStaffHandler_ListStaffByBranch(t *testing.T) {
 	t.Parallel()
 
 	mock := &mockStaffSvc{
-		listStaffByBranch: func(_ context.Context, branchID string) ([]domain.StaffMember, error) {
+		listStaffByBranch: func(_ context.Context, branchID int64) ([]domain.StaffMember, error) {
 			return []domain.StaffMember{
-				{ID: "s1", BranchID: branchID, Role: domain.StaffRoleCashier},
-				{ID: "s2", BranchID: branchID, Role: domain.StaffRoleManager},
+				{ID: 1, BranchID: branchID, Role: domain.StaffRoleCashier},
+				{ID: 2, BranchID: branchID, Role: domain.StaffRoleManager},
 			}, nil
 		},
 	}
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/branches/b1/staff", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/branches/1/staff", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.SetParamNames("branchId")
-	c.SetParamValues("b1")
+	c.SetParamValues("1")
 
 	h := NewStaffHandler(mock)
 	err := h.ListStaffByBranch(c)
@@ -215,12 +215,12 @@ func TestStaffHandler_UpdateStaff(t *testing.T) {
 
 	e := echo.New()
 	body := `{"role":"supervisor"}`
-	req := httptest.NewRequest(http.MethodPatch, "/api/v1/staff/s1", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPatch, "/api/v1/staff/1", strings.NewReader(body))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.SetParamNames("id")
-	c.SetParamValues("s1")
+	c.SetParamValues("1")
 
 	h := NewStaffHandler(mock)
 	err := h.UpdateStaff(c)
@@ -237,17 +237,17 @@ func TestStaffHandler_RemoveStaff(t *testing.T) {
 	t.Parallel()
 
 	mock := &mockStaffSvc{
-		removeStaff: func(_ context.Context, id string) error {
+		removeStaff: func(_ context.Context, id int64) error {
 			return nil
 		},
 	}
 
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/staff/s1", nil)
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/staff/1", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 	c.SetParamNames("id")
-	c.SetParamValues("s1")
+	c.SetParamValues("1")
 
 	h := NewStaffHandler(mock)
 	err := h.RemoveStaff(c)
@@ -264,9 +264,9 @@ func TestStaffHandler_MyStaffAssignments(t *testing.T) {
 	t.Parallel()
 
 	mock := &mockStaffSvc{
-		getMyStaff: func(_ context.Context, userID, merchantID string) ([]domain.StaffMember, error) {
+		getMyStaff: func(_ context.Context, userID, merchantID int64) ([]domain.StaffMember, error) {
 			return []domain.StaffMember{
-				{ID: "s1", UserID: userID, MerchantID: merchantID, BranchID: "b1"},
+				{ID: 1, UserID: userID, MerchantID: merchantID, BranchID: 1},
 			}, nil
 		},
 	}
@@ -275,8 +275,8 @@ func TestStaffHandler_MyStaffAssignments(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/me/assignments", nil)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
-	c.Set("merchant_id", "m1")
-	c.Set("user_id", "u1")
+	c.Set("merchant_id", int64(1))
+	c.Set("user_id", int64(1))
 
 	h := NewStaffHandler(mock)
 	err := h.MyStaffAssignments(c)
@@ -300,9 +300,9 @@ func TestStaffHandler_SetMyDefaultBranch(t *testing.T) {
 	}{
 		{
 			name: "success",
-			body: `{"branch_id":"b1"}`,
+			body: `{"branch_id":1}`,
 			mock: &mockStaffSvc{
-				setDefaultBranch: func(_ context.Context, _, _ string) error { return nil },
+				setDefaultBranch: func(_ context.Context, _, _ int64) error { return nil },
 			},
 			wantStatus: http.StatusOK,
 		},
@@ -314,7 +314,7 @@ func TestStaffHandler_SetMyDefaultBranch(t *testing.T) {
 		},
 		{
 			name:       "empty branch id",
-			body:       `{"branch_id":""}`,
+			body:       `{}`,
 			mock:       &mockStaffSvc{},
 			wantStatus: http.StatusBadRequest,
 		},
@@ -329,7 +329,7 @@ func TestStaffHandler_SetMyDefaultBranch(t *testing.T) {
 			req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 			rec := httptest.NewRecorder()
 			c := e.NewContext(req, rec)
-			c.Set("user_id", "u1")
+			c.Set("user_id", int64(1))
 
 			h := NewStaffHandler(tt.mock)
 			err := h.SetMyDefaultBranch(c)
