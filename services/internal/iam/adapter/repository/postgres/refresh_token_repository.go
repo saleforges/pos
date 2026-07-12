@@ -25,10 +25,10 @@ func hashToken(token string) string {
 }
 
 func (r *RefreshTokenRepository) Create(ctx context.Context, token *domain.RefreshToken) error {
-	_, err := r.pool.Exec(ctx,
-		`INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at, created_at) VALUES ($1, $2, $3, $4, $5)`,
-		token.ID, token.UserID, hashToken(token.Token), token.ExpiresAt, token.CreatedAt,
-	)
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO refresh_tokens (user_id, token_hash, expires_at, created_at) VALUES ($1, $2, $3, $4) RETURNING id`,
+		token.UserID, hashToken(token.Token), token.ExpiresAt, token.CreatedAt,
+	).Scan(&token.ID)
 	return err
 }
 
@@ -50,13 +50,13 @@ func (r *RefreshTokenRepository) GetByToken(ctx context.Context, token string) (
 	return &rt, nil
 }
 
-func (r *RefreshTokenRepository) Revoke(ctx context.Context, id string) error {
+func (r *RefreshTokenRepository) Revoke(ctx context.Context, id int64) error {
 	now := time.Now().UTC()
 	_, err := r.pool.Exec(ctx, `UPDATE refresh_tokens SET revoked_at = $1 WHERE id = $2`, now, id)
 	return err
 }
 
-func (r *RefreshTokenRepository) RevokeByUser(ctx context.Context, userID string) error {
+func (r *RefreshTokenRepository) RevokeByUser(ctx context.Context, userID int64) error {
 	now := time.Now().UTC()
 	_, err := r.pool.Exec(ctx,
 		`UPDATE refresh_tokens SET revoked_at = $1 WHERE user_id = $2 AND revoked_at IS NULL`,

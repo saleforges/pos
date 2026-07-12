@@ -7,6 +7,6 @@ import (
 )
 
 type StaffRepository interface {
-	ListByUserID(ctx context.Context, userID string) ([]domain.StaffInfo, error)
-	Create(ctx context.Context, userID, merchantID, merchantName, role string) error
+	ListByUserID(ctx context.Context, userID int64) ([]domain.UserRoleAssignment, error)
+	Create(ctx context.Context, userID int64, merchantID int64, merchantName, role string) error
 }

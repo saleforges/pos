@@ -37,8 +37,7 @@ const (
 )
 
 type Role struct {
-	ID          string       `json:"id,omitempty"`
-	DisplayID   string       `json:"display_id,omitempty"`
+	ID          int64        `json:"id,omitempty"`
 	Name        string       `json:"name"`
 	Description string       `json:"description"`
 	Permissions []Permission `json:"permissions"`
@@ -63,7 +62,7 @@ var DefaultRoles = map[string]Role{
 	},
 	"owner": {
 		Name:        "owner",
-		Description: "Full system access",
+		Description: "Merchant owner — full access to own merchant",
 		IsSystem:    true,
 		Permissions: []Permission{
 			CatalogRead, CatalogCreate, CatalogUpdate, CatalogDelete,
@@ -74,6 +73,17 @@ var DefaultRoles = map[string]Role{
 			RoleCreate, RoleRead, RoleUpdate, RoleDelete, RoleAssign,
 			PermissionCreate, PermissionRead, PermissionUpdate, PermissionDelete, PermissionAssign,
 			SessionManage, APIKeyManage, AuditView,
+		},
+	},
+	"manager": {
+		Name:        "manager",
+		Description: "Branch manager",
+		IsSystem:    true,
+		Permissions: []Permission{
+			CatalogRead, CatalogCreate, CatalogUpdate,
+			SalesCreate, SalesRead, SalesUpdate, SalesRefund,
+			InventoryRead, InventoryWrite, InventoryAdjust,
+			UserRead, UserList,
 		},
 	},
 	"admin": {

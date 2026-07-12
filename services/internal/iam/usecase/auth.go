@@ -4,7 +4,6 @@ import (
 	"context"
 	"regexp"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/saleforge/pos/services/internal/iam/domain"
@@ -64,28 +63,28 @@ type AuthService interface {
 	ValidateToken(ctx context.Context, tokenString string) (*port.TokenClaims, error)
 	HasPermission(claims *port.TokenClaims, required domain.Permission) bool
 
-	ListStaff(ctx context.Context, userID string) ([]domain.StaffInfo, error)
+	ListStaff(ctx context.Context, userID int64) ([]domain.UserRoleAssignment, error)
 
 	ListUsers(ctx context.Context, offset, limit int) ([]domain.User, error)
-	GetUser(ctx context.Context, id string) (*domain.User, error)
+	GetUser(ctx context.Context, id int64) (*domain.User, error)
 	UpdateUser(ctx context.Context, input UpdateUserInput) (*domain.User, error)
-	DeleteUser(ctx context.Context, id string) error
+	DeleteUser(ctx context.Context, id int64) error
 
 	ListRoles(ctx context.Context) ([]domain.Role, error)
 	CreateRole(ctx context.Context, input CreateRoleInput) (*domain.Role, error)
-	GetRole(ctx context.Context, id string) (*domain.Role, error)
+	GetRole(ctx context.Context, id int64) (*domain.Role, error)
 	UpdateRole(ctx context.Context, input UpdateRoleInput) (*domain.Role, error)
-	DeleteRole(ctx context.Context, id string) error
+	DeleteRole(ctx context.Context, id int64) error
 
 	ListPermissions(ctx context.Context) ([]domain.Permission, error)
 	CreatePermission(ctx context.Context, permission domain.Permission) error
 	DeletePermission(ctx context.Context, permission domain.Permission) error
 
-	AssignRole(ctx context.Context, userID, roleName string) error
-	RemoveRole(ctx context.Context, userID, roleName string) error
+	AssignRole(ctx context.Context, userID int64, roleName string) error
+	RemoveRole(ctx context.Context, userID int64, roleName string) error
 
-	AssignPermission(ctx context.Context, roleID string, permission domain.Permission) error
-	RemovePermission(ctx context.Context, roleID string, permission domain.Permission) error
+	AssignPermission(ctx context.Context, roleID int64, permission domain.Permission) error
+	RemovePermission(ctx context.Context, roleID int64, permission domain.Permission) error
 }
 
 type RegisterInput struct {
@@ -119,21 +118,20 @@ type RefreshTokenInput struct {
 
 type LogoutInput struct {
 	RefreshToken string
-	UserID       string
+	UserID       int64
 }
 
 type IntrospectResult struct {
-	Active       bool                   `json:"active"`
-	UserID       string                 `json:"user_id,omitempty"`
-	UserType     domain.UserType        `json:"user_type"`
-	Roles        []string               `json:"roles,omitempty"`
-	MerchantID   string                 `json:"merchant_id"`
-	Staff        []domain.StaffAssignment `json:"staff,omitempty"`
-	Permissions  []domain.Permission   `json:"permissions,omitempty"`
+	Active      bool                      `json:"active"`
+	UserID      int64                     `json:"user_id,omitempty"`
+	UserType    domain.UserType           `json:"user_type"`
+	RoleName    string                    `json:"role_name,omitempty"`
+	Staff       []domain.UserRoleAssignment `json:"staff,omitempty"`
+	Permissions []domain.Permission       `json:"permissions,omitempty"`
 }
 
 type UpdateUserInput struct {
-	ID       string
+	ID       int64
 	Username *string
 	Email    *string
 	Status   *domain.UserStatus
@@ -146,7 +144,7 @@ type CreateRoleInput struct {
 }
 
 type UpdateRoleInput struct {
-	ID          string
+	ID          int64
 	Description *string
 }
 
@@ -215,11 +213,9 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 		userType = domain.UserTypeMerchant
 	}
 	user := &domain.User{
-		ID:        generateID(),
 		Username:  input.Username,
 		Email:     input.Email,
 		Password:  string(hashed),
-		Roles:     input.Roles,
 		Type:      userType,
 		Status:    domain.UserStatusActive,
 		CreatedAt: now,
@@ -231,18 +227,28 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 		return nil, domain.ErrInternal
 	}
 
-	uc.cacheSet(ctx, user)
+	for _, r := range input.Roles {
+		uc.userRepo.AddRole(ctx, user.ID, r)
+	}
 
-	permissions, err := uc.collectPermissions(ctx, user.Roles)
+	user, err = uc.userRepo.GetByID(ctx, user.ID)
 	if err != nil {
-		logger.Error("register: collect permissions failed", "error", err.Error())
 		return nil, domain.ErrInternal
 	}
+
+	uc.cacheSet(ctx, user)
+
+	systemRoleName := ""
+	if user.SystemRole != nil {
+		systemRoleName = user.SystemRole.Name
+	}
+
+	permissions, _ := uc.collectPermissions(ctx, systemRoleName)
 
 	accessToken, err := uc.tokenSigner.SignAccessToken(port.TokenClaims{
 		UserID:      user.ID,
 		UserType:    user.Type,
-		Roles:       user.Roles,
+		RoleName:    systemRoleName,
 		Permissions: permissions,
 	})
 	if err != nil {
@@ -260,14 +266,13 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 		"user_id":  user.ID,
 		"username": user.Username,
 		"email":    user.Email,
-		"roles":    user.Roles,
 	})
 
 	return &AuthResult{
 		TokenPair: port.TokenPair{
 			AccessToken:  accessToken,
 			RefreshToken: refreshToken,
-			ExpiresIn:    900,
+			ExpiresIn:    3600,
 		},
 	}, nil
 }
@@ -278,7 +283,7 @@ func (uc *AuthUsecase) Login(ctx context.Context, input LoginInput) (*LoginResul
 
 	user, err := uc.userRepo.GetByUsername(ctx, input.Username)
 	if err != nil {
-		uc.auditLogin(ctx, "", input.Username, false, input.IPAddress, input.UserAgent, "user not found")
+		uc.auditLogin(ctx, 0, input.Username, false, input.IPAddress, input.UserAgent, "user not found")
 		return nil, domain.ErrInvalidCredentials
 	}
 
@@ -292,25 +297,20 @@ func (uc *AuthUsecase) Login(ctx context.Context, input LoginInput) (*LoginResul
 		return nil, domain.ErrUserDisabled
 	}
 
-	permissions, err := uc.collectPermissions(ctx, user.Roles)
-	if err != nil {
-		return nil, domain.ErrInternal
+	systemRoleName := ""
+	if user.SystemRole != nil {
+		systemRoleName = user.SystemRole.Name
 	}
 
-	staffList, _ := uc.staffRepo.ListByUserID(ctx, user.ID)
-	staff := make([]domain.StaffAssignment, 0, len(staffList))
-	for _, s := range staffList {
-		staff = append(staff, domain.StaffAssignment{
-			MerchantID: s.MerchantID,
-			Role:       s.Role,
-		})
+	permissions, err := uc.collectPermissions(ctx, systemRoleName)
+	if err != nil {
+		return nil, domain.ErrInternal
 	}
 
 	claims := port.TokenClaims{
 		UserID:      user.ID,
 		UserType:    user.Type,
-		Roles:       user.Roles,
-		Staff:       staff,
+		RoleName:    systemRoleName,
 		Permissions: permissions,
 	}
 
@@ -326,7 +326,6 @@ func (uc *AuthUsecase) Login(ctx context.Context, input LoginInput) (*LoginResul
 
 	now := time.Now().UTC()
 	rt := &domain.RefreshToken{
-		ID:        generateID(),
 		UserID:    user.ID,
 		Token:     refreshTokenStr,
 		ExpiresAt: now.Add(30 * 24 * time.Hour),
@@ -338,11 +337,13 @@ func (uc *AuthUsecase) Login(ctx context.Context, input LoginInput) (*LoginResul
 
 	uc.auditLogin(ctx, user.ID, input.Username, true, input.IPAddress, input.UserAgent, "")
 
+	uc.cacheSet(ctx, user)
+
 	return &LoginResult{
 		TokenPair: port.TokenPair{
 			AccessToken:  accessToken,
 			RefreshToken: refreshTokenStr,
-			ExpiresIn:    900,
+			ExpiresIn:    3600,
 		},
 	}, nil
 }
@@ -383,7 +384,12 @@ func (uc *AuthUsecase) RefreshToken(ctx context.Context, input RefreshTokenInput
 	stored.RevokedAt = &now
 	uc.refreshTokenRepo.Revoke(ctx, stored.ID)
 
-	permissions, err := uc.collectPermissions(ctx, user.Roles)
+	systemRoleName := ""
+	if user.SystemRole != nil {
+		systemRoleName = user.SystemRole.Name
+	}
+
+	permissions, err := uc.collectPermissions(ctx, systemRoleName)
 	if err != nil {
 		return nil, domain.ErrInternal
 	}
@@ -391,7 +397,7 @@ func (uc *AuthUsecase) RefreshToken(ctx context.Context, input RefreshTokenInput
 	claims := port.TokenClaims{
 		UserID:      user.ID,
 		UserType:    user.Type,
-		Roles:       user.Roles,
+		RoleName:    systemRoleName,
 		Permissions: permissions,
 	}
 
@@ -406,7 +412,6 @@ func (uc *AuthUsecase) RefreshToken(ctx context.Context, input RefreshTokenInput
 	}
 
 	rt := &domain.RefreshToken{
-		ID:        generateID(),
 		UserID:    user.ID,
 		Token:     newRefreshTokenStr,
 		ExpiresAt: now.Add(30 * 24 * time.Hour),
@@ -422,7 +427,7 @@ func (uc *AuthUsecase) RefreshToken(ctx context.Context, input RefreshTokenInput
 		TokenPair: port.TokenPair{
 			AccessToken:  accessToken,
 			RefreshToken: newRefreshTokenStr,
-			ExpiresIn:    900,
+			ExpiresIn:    3600,
 		},
 	}, nil
 }
@@ -455,23 +460,15 @@ func (uc *AuthUsecase) Introspect(ctx context.Context, tokenString string) (*Int
 		return &IntrospectResult{Active: false}, nil
 	}
 
-	staffList, _ := uc.staffRepo.ListByUserID(ctx, claims.UserID)
-	staff := make([]domain.StaffAssignment, 0, len(staffList))
-	for _, s := range staffList {
-		staff = append(staff, domain.StaffAssignment{
-			MerchantID: s.MerchantID,
-			Role:       s.Role,
-		})
-	}
+	staff, _ := uc.staffRepo.ListByUserID(ctx, claims.UserID)
 
 	return &IntrospectResult{
-		Active:       true,
-		UserID:       claims.UserID,
-		UserType:     user.Type,
-		Roles:        claims.Roles,
-		MerchantID:   claims.MerchantID,
-		Staff:        staff,
-		Permissions:  claims.Permissions,
+		Active:      true,
+		UserID:      claims.UserID,
+		UserType:    user.Type,
+		RoleName:    claims.RoleName,
+		Staff:       staff,
+		Permissions: claims.Permissions,
 	}, nil
 }
 
@@ -506,7 +503,7 @@ func (uc *AuthUsecase) ListUsers(ctx context.Context, offset, limit int) ([]doma
 	return uc.userRepo.List(ctx, offset, limit)
 }
 
-func (uc *AuthUsecase) GetUser(ctx context.Context, id string) (*domain.User, error) {
+func (uc *AuthUsecase) GetUser(ctx context.Context, id int64) (*domain.User, error) {
 	return uc.userRepo.GetByID(ctx, id)
 }
 
@@ -541,7 +538,7 @@ func (uc *AuthUsecase) UpdateUser(ctx context.Context, input UpdateUserInput) (*
 	return user, nil
 }
 
-func (uc *AuthUsecase) DeleteUser(ctx context.Context, id string) error {
+func (uc *AuthUsecase) DeleteUser(ctx context.Context, id int64) error {
 	if err := uc.userRepo.Delete(ctx, id); err != nil {
 		return domain.ErrUserNotFound
 	}
@@ -577,7 +574,7 @@ func (uc *AuthUsecase) CreateRole(ctx context.Context, input CreateRoleInput) (*
 	return role, nil
 }
 
-func (uc *AuthUsecase) GetRole(ctx context.Context, id string) (*domain.Role, error) {
+func (uc *AuthUsecase) GetRole(ctx context.Context, id int64) (*domain.Role, error) {
 	return uc.roleRepo.GetByID(ctx, id)
 }
 
@@ -598,7 +595,7 @@ func (uc *AuthUsecase) UpdateRole(ctx context.Context, input UpdateRoleInput) (*
 	return role, nil
 }
 
-func (uc *AuthUsecase) DeleteRole(ctx context.Context, id string) error {
+func (uc *AuthUsecase) DeleteRole(ctx context.Context, id int64) error {
 	role, err := uc.roleRepo.GetByID(ctx, id)
 	if err != nil {
 		return domain.ErrInvalidRole
@@ -622,7 +619,7 @@ func (uc *AuthUsecase) DeletePermission(ctx context.Context, permission domain.P
 	return uc.permissionRepo.Delete(ctx, permission)
 }
 
-func (uc *AuthUsecase) AssignRole(ctx context.Context, userID, roleName string) error {
+func (uc *AuthUsecase) AssignRole(ctx context.Context, userID int64, roleName string) error {
 	if _, ok := domain.DefaultRoles[roleName]; !ok {
 		if _, err := uc.roleRepo.GetByName(ctx, roleName); err != nil {
 			return domain.ErrInvalidRole
@@ -643,7 +640,7 @@ func (uc *AuthUsecase) AssignRole(ctx context.Context, userID, roleName string) 
 	return nil
 }
 
-func (uc *AuthUsecase) RemoveRole(ctx context.Context, userID, roleName string) error {
+func (uc *AuthUsecase) RemoveRole(ctx context.Context, userID int64, roleName string) error {
 	if err := uc.userRepo.RemoveRole(ctx, userID, roleName); err != nil {
 		return err
 	}
@@ -658,39 +655,31 @@ func (uc *AuthUsecase) RemoveRole(ctx context.Context, userID, roleName string) 
 	return nil
 }
 
-func (uc *AuthUsecase) AssignPermission(ctx context.Context, roleID string, permission domain.Permission) error {
+func (uc *AuthUsecase) AssignPermission(ctx context.Context, roleID int64, permission domain.Permission) error {
 	return uc.roleRepo.AddPermission(ctx, roleID, permission)
 }
 
-func (uc *AuthUsecase) RemovePermission(ctx context.Context, roleID string, permission domain.Permission) error {
+func (uc *AuthUsecase) RemovePermission(ctx context.Context, roleID int64, permission domain.Permission) error {
 	return uc.roleRepo.RemovePermission(ctx, roleID, permission)
 }
 
-func (uc *AuthUsecase) ListStaff(ctx context.Context, userID string) ([]domain.StaffInfo, error) {
+func (uc *AuthUsecase) ListStaff(ctx context.Context, userID int64) ([]domain.UserRoleAssignment, error) {
 	return uc.staffRepo.ListByUserID(ctx, userID)
 }
 
-func (uc *AuthUsecase) collectPermissions(ctx context.Context, roles []string) ([]domain.Permission, error) {
-	permSet := make(map[domain.Permission]bool)
-	for _, roleName := range roles {
-		role, err := uc.roleRepo.GetByName(ctx, roleName)
-		if err != nil {
-			continue
-		}
-		for _, p := range role.Permissions {
-			permSet[p] = true
-		}
+func (uc *AuthUsecase) collectPermissions(ctx context.Context, roleName string) ([]domain.Permission, error) {
+	if roleName == "" {
+		return nil, nil
 	}
-	result := make([]domain.Permission, 0, len(permSet))
-	for p := range permSet {
-		result = append(result, p)
+	role, err := uc.roleRepo.GetByName(ctx, roleName)
+	if err != nil {
+		return nil, nil
 	}
-	return result, nil
+	return role.Permissions, nil
 }
 
-func (uc *AuthUsecase) auditLogin(ctx context.Context, userID, email string, success bool, ip, userAgent, reason string) {
+func (uc *AuthUsecase) auditLogin(ctx context.Context, userID int64, email string, success bool, ip, userAgent, reason string) {
 	audit := &domain.LoginAudit{
-		ID:        generateID(),
 		UserID:    userID,
 		Email:     email,
 		Success:   success,
@@ -706,40 +695,18 @@ func (uc *AuthUsecase) publishEvent(ctx context.Context, eventName string, paylo
 	uc.eventPublisher.Publish(ctx, eventName, payload)
 }
 
-var idCounter atomic.Int64
-
-func generateID() string {
-	idCounter.Add(1)
-	b := make([]byte, 8)
-	now := time.Now().UnixNano()
-	for i := 0; i < 8; i++ {
-		b[i] = byte(now >> (i * 8))
-	}
-	return formatID(b)
-}
-
-func formatID(b []byte) string {
-	const hex = "0123456789abcdef"
-	buf := make([]byte, 16)
-	for i, v := range b {
-		buf[i*2] = hex[v>>4]
-		buf[i*2+1] = hex[v&0x0f]
-	}
-	return string(buf)
-}
-
-func (uc *AuthUsecase) cacheGet(ctx context.Context, id string) (*domain.User, error) {
+func (uc *AuthUsecase) cacheGet(ctx context.Context, id int64) (*domain.User, error) {
 	span := trace.SpanFromContext(ctx)
 
 	if uc.userCache != nil {
 		if u, ok := uc.userCache.Get(ctx, id); ok {
 			span.AddEvent("cache.hit", trace.WithAttributes(
-				attribute.String("cache.key", id),
+				attribute.Int64("cache.key", id),
 			))
 			return u, nil
 		}
 		span.AddEvent("cache.miss", trace.WithAttributes(
-			attribute.String("cache.key", id),
+			attribute.Int64("cache.key", id),
 		))
 	}
 
@@ -760,7 +727,7 @@ func (uc *AuthUsecase) cacheSet(ctx context.Context, u *domain.User) {
 	}
 }
 
-func (uc *AuthUsecase) cacheDel(ctx context.Context, id string) {
+func (uc *AuthUsecase) cacheDel(ctx context.Context, id int64) {
 	if uc.userCache != nil {
 		uc.userCache.Delete(ctx, id)
 	}

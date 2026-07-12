@@ -17,10 +17,10 @@ func NewLoginAuditRepository(pool *otel.TracedPool) *LoginAuditRepository {
 }
 
 func (r *LoginAuditRepository) Create(ctx context.Context, audit *domain.LoginAudit) error {
-	_, err := r.pool.Exec(ctx,
-		`INSERT INTO login_audits (id, user_id, email, success, ip_address, user_agent, reason, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-		audit.ID, audit.UserID, audit.Email, audit.Success, audit.IPAddress, audit.UserAgent, audit.Reason, time.Now().UTC(),
-	)
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO login_audits (user_id, email, success, ip_address, user_agent, reason, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		audit.UserID, audit.Email, audit.Success, audit.IPAddress, audit.UserAgent, audit.Reason, time.Now().UTC(),
+	).Scan(&audit.ID)
 	return err
 }
 

@@ -20,7 +20,7 @@ func TestBranchAccessMiddleware(t *testing.T) {
 		return c.NoContent(http.StatusOK)
 	}, func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			c.Set(claimsKey, &port.TokenClaims{UserID: "u1"})
+			c.Set(claimsKey, &port.TokenClaims{UserID: 1})
 			return next(c)
 		}
 	}, BranchAccessMiddleware("branch_id", func(_ *port.TokenClaims, branchID string) bool {
@@ -44,7 +44,7 @@ func TestBranchAccessMiddleware(t *testing.T) {
 		c.SetPath("/branches/:branch_id/stock")
 		c.SetParamNames("branch_id")
 		c.SetParamValues("")
-		c.Set(claimsKey, &port.TokenClaims{UserID: "u1"})
+		c.Set(claimsKey, &port.TokenClaims{UserID: 1})
 
 		handler := BranchAccessMiddleware("branch_id", func(_ *port.TokenClaims, branchID string) bool {
 			return branchID == "branch-1"
@@ -100,7 +100,7 @@ func TestRBACMiddlewareRejectsMissingPermission(t *testing.T) {
 	}, func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			c.Set(claimsKey, &port.TokenClaims{
-				UserID:      "u1",
+				UserID:      1,
 				Permissions: []domain.Permission{domain.UserRead},
 			})
 			return next(c)

@@ -2,21 +2,12 @@ package postgres
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/saleforge/pos/services/pkg/otel"
 	"github.com/saleforge/pos/services/internal/iam/domain"
 )
-
-func hexID() string {
-	b := make([]byte, 8)
-	rand.Read(b)
-	return hex.EncodeToString(b)
-}
 
 type UserRepository struct {
 	pool *otel.TracedPool
@@ -28,32 +19,77 @@ func NewUserRepository(pool *otel.TracedPool) *UserRepository {
 
 func scanUser(row pgx.Row) (*domain.User, error) {
 	var u domain.User
-	err := row.Scan(&u.ID, &u.Username, &u.Email, &u.Password, &u.Status, &u.CreatedAt, &u.UpdatedAt)
+	var defaultBranchID *int64
+	err := row.Scan(&u.ID, &u.Username, &u.Email, &u.Password, &u.Type, &u.Status, &defaultBranchID, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, domain.ErrUserNotFound
 		}
 		return nil, err
 	}
+	if defaultBranchID != nil {
+		u.DefaultBranch = &domain.DefaultBranch{ID: *defaultBranchID}
+	}
 	return &u, nil
 }
 
-func loadUserRoles(ctx context.Context, pool *otel.TracedPool, userID string) ([]string, error) {
-	rows, err := pool.Query(ctx, `SELECT r.name FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = $1 ORDER BY r.name`, userID)
+func loadUserSystemRole(ctx context.Context, pool *otel.TracedPool, userID int64) *domain.Role {
+	var r domain.Role
+	err := pool.QueryRow(ctx,
+		`SELECT r.id, r.name, r.description, r.is_system
+		 FROM user_roles ur JOIN roles r ON ur.role_id = r.id
+		 WHERE ur.user_id = $1 AND ur.merchant_id IS NULL
+		 LIMIT 1`, userID,
+	).Scan(&r.ID, &r.Name, &r.Description, &r.IsSystem)
 	if err != nil {
-		return nil, err
+		return nil
 	}
-	defer rows.Close()
+	r.Permissions, _ = loadRolePermissions(ctx, pool, r.ID)
+	return &r
+}
 
-	var roles []string
-	for rows.Next() {
-		var role string
-		if err := rows.Scan(&role); err != nil {
-			return nil, err
+func loadScopedRoles(ctx context.Context, pool *otel.TracedPool, userID int64) []domain.UserRoleAssignment {
+	var result []domain.UserRoleAssignment
+
+	// merchant-wide roles from user_roles (owner)
+	rows, err := pool.Query(ctx,
+		`SELECT ur.merchant_id, m.name, r.id, r.name, r.description, r.is_system
+		 FROM user_roles ur
+		 JOIN roles r ON r.id = ur.role_id
+		 JOIN merchants m ON m.id = ur.merchant_id
+		 WHERE ur.user_id = $1 AND ur.merchant_id IS NOT NULL AND ur.branch_id IS NULL`, userID)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var a domain.UserRoleAssignment
+			if err := rows.Scan(&a.MerchantID, &a.MerchantName,
+				&a.Role.ID, &a.Role.Name, &a.Role.Description, &a.Role.IsSystem); err == nil {
+				result = append(result, a)
+			}
 		}
-		roles = append(roles, role)
 	}
-	return roles, rows.Err()
+
+	// branch-specific roles from staff table
+	rows2, err := pool.Query(ctx,
+		`SELECT s.merchant_id, m.name, s.branch_id, COALESCE(b.name, ''), r.id, r.name, r.description, r.is_system, s.is_default
+		 FROM staff s
+		 JOIN roles r ON r.name = s.role
+		 JOIN merchants m ON m.id = s.merchant_id
+		 LEFT JOIN branches b ON b.id = s.branch_id
+		 WHERE s.user_id = $1 AND s.status = 'active'
+		 ORDER BY m.name, b.name`, userID)
+	if err == nil {
+		defer rows2.Close()
+		for rows2.Next() {
+			var a domain.UserRoleAssignment
+			if err := rows2.Scan(&a.MerchantID, &a.MerchantName, &a.BranchID, &a.BranchName,
+				&a.Role.ID, &a.Role.Name, &a.Role.Description, &a.Role.IsSystem, &a.IsDefault); err == nil {
+				result = append(result, a)
+			}
+		}
+	}
+
+	return result
 }
 
 func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
@@ -63,72 +99,75 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 	}
 	defer tx.Rollback(ctx)
 
-	_, err = tx.Exec(ctx,
-		`INSERT INTO users (id, username, email, password, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		user.ID, user.Username, user.Email, user.Password, user.Status, user.CreatedAt, user.UpdatedAt,
-	)
+	err = tx.QueryRow(ctx,
+		`INSERT INTO users (username, email, password, type, status, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+		user.Username, user.Email, user.Password, user.Type, user.Status, user.CreatedAt, user.UpdatedAt,
+	).Scan(&user.ID)
 	if err != nil {
 		return err
 	}
 
-	for _, role := range user.Roles {
-		_, err = tx.Exec(ctx,
-			`INSERT INTO user_roles (user_id, role_id) SELECT $1, id FROM roles WHERE name = $2 ON CONFLICT DO NOTHING`,
-			user.ID, role,
-		)
-		if err != nil {
-			return err
-		}
-	}
-
-	return tx.Commit(ctx)
+	_ = tx.Commit(ctx)
+	return nil
 }
 
-func (r *UserRepository) GetByID(ctx context.Context, id string) (*domain.User, error) {
+func (r *UserRepository) GetByID(ctx context.Context, id int64) (*domain.User, error) {
 	user, err := scanUser(r.pool.QueryRow(ctx,
-		`SELECT id, username, email, password, status, created_at, updated_at FROM users WHERE id = $1`, id,
+		`SELECT id, username, email, password, type, status, default_branch_id, created_at, updated_at FROM users WHERE id = $1`, id,
 	))
 	if err != nil {
 		return nil, err
 	}
-	user.Roles, err = loadUserRoles(ctx, r.pool, id)
-	if err != nil {
-		return nil, err
+	user.SystemRole = loadUserSystemRole(ctx, r.pool, user.ID)
+	user.Roles = loadScopedRoles(ctx, r.pool, user.ID)
+	if user.Roles == nil {
+		user.Roles = []domain.UserRoleAssignment{}
+	}
+	if user.DefaultBranch != nil {
+		user.DefaultBranch = loadDefaultBranch(ctx, r.pool, user.DefaultBranch.ID)
 	}
 	return user, nil
 }
 
 func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
 	user, err := scanUser(r.pool.QueryRow(ctx,
-		`SELECT id, username, email, password, status, created_at, updated_at FROM users WHERE username = $1`, username,
+		`SELECT id, username, email, password, type, status, default_branch_id, created_at, updated_at FROM users WHERE username = $1`, username,
 	))
 	if err != nil {
 		return nil, err
 	}
-	user.Roles, err = loadUserRoles(ctx, r.pool, user.ID)
-	if err != nil {
-		return nil, err
+	user.SystemRole = loadUserSystemRole(ctx, r.pool, user.ID)
+	user.Roles = loadScopedRoles(ctx, r.pool, user.ID)
+	if user.Roles == nil {
+		user.Roles = []domain.UserRoleAssignment{}
+	}
+	if user.DefaultBranch != nil {
+		user.DefaultBranch = loadDefaultBranch(ctx, r.pool, user.DefaultBranch.ID)
 	}
 	return user, nil
 }
 
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	user, err := scanUser(r.pool.QueryRow(ctx,
-		`SELECT id, username, email, password, status, created_at, updated_at FROM users WHERE email = $1`, email,
+		`SELECT id, username, email, password, type, status, default_branch_id, created_at, updated_at FROM users WHERE email = $1`, email,
 	))
 	if err != nil {
 		return nil, err
 	}
-	user.Roles, err = loadUserRoles(ctx, r.pool, user.ID)
-	if err != nil {
-		return nil, err
+	user.SystemRole = loadUserSystemRole(ctx, r.pool, user.ID)
+	user.Roles = loadScopedRoles(ctx, r.pool, user.ID)
+	if user.Roles == nil {
+		user.Roles = []domain.UserRoleAssignment{}
+	}
+	if user.DefaultBranch != nil {
+		user.DefaultBranch = loadDefaultBranch(ctx, r.pool, user.DefaultBranch.ID)
 	}
 	return user, nil
 }
 
 func (r *UserRepository) List(ctx context.Context, offset, limit int) ([]domain.User, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, username, email, password, status, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+		`SELECT id, username, email, password, type, status, default_branch_id, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
 		limit, offset,
 	)
 	if err != nil {
@@ -139,12 +178,17 @@ func (r *UserRepository) List(ctx context.Context, offset, limit int) ([]domain.
 	var users []domain.User
 	for rows.Next() {
 		var u domain.User
-		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Password, &u.Status, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		var defaultBranchID *int64
+		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Password, &u.Type, &u.Status, &defaultBranchID, &u.CreatedAt, &u.UpdatedAt); err != nil {
 			return nil, err
 		}
-		u.Roles, err = loadUserRoles(ctx, r.pool, u.ID)
-		if err != nil {
-			return nil, err
+		if defaultBranchID != nil {
+			u.DefaultBranch = &domain.DefaultBranch{ID: *defaultBranchID}
+		}
+		u.SystemRole = loadUserSystemRole(ctx, r.pool, u.ID)
+		u.Roles = loadScopedRoles(ctx, r.pool, u.ID)
+		if u.Roles == nil {
+			u.Roles = []domain.UserRoleAssignment{}
 		}
 		users = append(users, u)
 	}
@@ -159,7 +203,7 @@ func (r *UserRepository) Update(ctx context.Context, user *domain.User) error {
 	return err
 }
 
-func (r *UserRepository) Delete(ctx context.Context, id string) error {
+func (r *UserRepository) Delete(ctx context.Context, id int64) error {
 	_, err := r.pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
 	if err != nil {
 		return domain.ErrUserNotFound
@@ -167,7 +211,7 @@ func (r *UserRepository) Delete(ctx context.Context, id string) error {
 	return nil
 }
 
-func (r *UserRepository) AddRole(ctx context.Context, userID, roleName string) error {
+func (r *UserRepository) AddRole(ctx context.Context, userID int64, roleName string) error {
 	_, err := r.pool.Exec(ctx,
 		`INSERT INTO user_roles (user_id, role_id) SELECT $1, id FROM roles WHERE name = $2 ON CONFLICT DO NOTHING`,
 		userID, roleName,
@@ -175,7 +219,7 @@ func (r *UserRepository) AddRole(ctx context.Context, userID, roleName string) e
 	return err
 }
 
-func (r *UserRepository) RemoveRole(ctx context.Context, userID, roleName string) error {
+func (r *UserRepository) RemoveRole(ctx context.Context, userID int64, roleName string) error {
 	_, err := r.pool.Exec(ctx,
 		`DELETE FROM user_roles USING roles WHERE user_roles.role_id = roles.id AND user_roles.user_id = $1 AND roles.name = $2`,
 		userID, roleName,
@@ -191,9 +235,9 @@ func NewRoleRepository(pool *otel.TracedPool) *RoleRepository {
 	return &RoleRepository{pool: pool}
 }
 
-func loadRolePermissions(ctx context.Context, pool *otel.TracedPool, roleID string) ([]domain.Permission, error) {
+func loadRolePermissions(ctx context.Context, pool *otel.TracedPool, roleID int64) ([]domain.Permission, error) {
 	rows, err := pool.Query(ctx,
-		`SELECT permission_name FROM role_permissions WHERE role_id = $1 ORDER BY permission_name`, roleID,
+		`SELECT p.name FROM role_permissions rp JOIN permissions p ON p.id = rp.permission_id WHERE rp.role_id = $1 ORDER BY p.name`, roleID,
 	)
 	if err != nil {
 		return nil, err
@@ -218,24 +262,17 @@ func (r *RoleRepository) Create(ctx context.Context, role *domain.Role) error {
 	}
 	defer tx.Rollback(ctx)
 
-	if role.ID == "" {
-		role.ID = uuid.NewString()
-	}
-	if role.DisplayID == "" {
-		role.DisplayID = "role_" + hexID()
-	}
-
-	_, err = tx.Exec(ctx,
-		`INSERT INTO roles (id, display_id, name, description, is_system, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())`,
-		role.ID, role.DisplayID, role.Name, role.Description, role.IsSystem,
-	)
+	err = tx.QueryRow(ctx,
+		`INSERT INTO roles (name, description, is_system, created_at, updated_at) VALUES ($1, $2, $3, NOW(), NOW()) RETURNING id`,
+		role.Name, role.Description, role.IsSystem,
+	).Scan(&role.ID)
 	if err != nil {
 		return err
 	}
 
 	for _, p := range role.Permissions {
 		_, err = tx.Exec(ctx,
-			`INSERT INTO role_permissions (role_id, permission_name) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+			`INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, (SELECT id FROM permissions WHERE name = $2)) ON CONFLICT DO NOTHING`,
 			role.ID, string(p),
 		)
 		if err != nil {
@@ -248,7 +285,7 @@ func (r *RoleRepository) Create(ctx context.Context, role *domain.Role) error {
 
 func scanRole(row pgx.Row) (*domain.Role, error) {
 	var role domain.Role
-	err := row.Scan(&role.ID, &role.DisplayID, &role.Name, &role.Description, &role.IsSystem)
+	err := row.Scan(&role.ID, &role.Name, &role.Description, &role.IsSystem)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, domain.ErrInvalidRole
@@ -258,9 +295,9 @@ func scanRole(row pgx.Row) (*domain.Role, error) {
 	return &role, nil
 }
 
-func (r *RoleRepository) GetByID(ctx context.Context, id string) (*domain.Role, error) {
+func (r *RoleRepository) GetByID(ctx context.Context, id int64) (*domain.Role, error) {
 	role, err := scanRole(r.pool.QueryRow(ctx,
-		`SELECT id, display_id, name, description, is_system FROM roles WHERE id = $1 OR display_id = $1`, id,
+		`SELECT id, name, description, is_system FROM roles WHERE id = $1`, id,
 	))
 	if err != nil {
 		return nil, err
@@ -274,7 +311,7 @@ func (r *RoleRepository) GetByID(ctx context.Context, id string) (*domain.Role, 
 
 func (r *RoleRepository) GetByName(ctx context.Context, name string) (*domain.Role, error) {
 	role, err := scanRole(r.pool.QueryRow(ctx,
-		`SELECT id, display_id, name, description, is_system FROM roles WHERE name = $1`, name,
+		`SELECT id, name, description, is_system FROM roles WHERE name = $1`, name,
 	))
 	if err != nil {
 		return nil, err
@@ -287,7 +324,7 @@ func (r *RoleRepository) GetByName(ctx context.Context, name string) (*domain.Ro
 }
 
 func (r *RoleRepository) List(ctx context.Context) ([]domain.Role, error) {
-	rows, err := r.pool.Query(ctx, `SELECT id, display_id, name, description, is_system FROM roles ORDER BY name`)
+	rows, err := r.pool.Query(ctx, `SELECT id, name, description, is_system FROM roles ORDER BY name`)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +333,7 @@ func (r *RoleRepository) List(ctx context.Context) ([]domain.Role, error) {
 	var roles []domain.Role
 	for rows.Next() {
 		var role domain.Role
-		if err := rows.Scan(&role.ID, &role.DisplayID, &role.Name, &role.Description, &role.IsSystem); err != nil {
+		if err := rows.Scan(&role.ID, &role.Name, &role.Description, &role.IsSystem); err != nil {
 			return nil, err
 		}
 		role.Permissions, err = loadRolePermissions(ctx, r.pool, role.ID)
@@ -316,27 +353,38 @@ func (r *RoleRepository) Update(ctx context.Context, role *domain.Role) error {
 	return err
 }
 
-func (r *RoleRepository) Delete(ctx context.Context, id string) error {
+func (r *RoleRepository) Delete(ctx context.Context, id int64) error {
 	_, err := r.pool.Exec(ctx, `DELETE FROM roles WHERE id = $1 AND is_system = false`, id)
 	return err
 }
 
-func (r *RoleRepository) AddPermission(ctx context.Context, roleID string, permission domain.Permission) error {
+func (r *RoleRepository) AddPermission(ctx context.Context, roleID int64, permission domain.Permission) error {
 	_, err := r.pool.Exec(ctx,
-		`INSERT INTO role_permissions (role_id, permission_name) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+		`INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, (SELECT id FROM permissions WHERE name = $2)) ON CONFLICT DO NOTHING`,
 		roleID, string(permission),
 	)
 	return err
 }
 
-func (r *RoleRepository) RemovePermission(ctx context.Context, roleID string, permission domain.Permission) error {
+func (r *RoleRepository) RemovePermission(ctx context.Context, roleID int64, permission domain.Permission) error {
 	_, err := r.pool.Exec(ctx,
-		`DELETE FROM role_permissions WHERE role_id = $1 AND permission_name = $2`,
+		`DELETE FROM role_permissions WHERE role_id = $1 AND permission_id = (SELECT id FROM permissions WHERE name = $2)`,
 		roleID, string(permission),
 	)
 	return err
 }
 
-func (r *RoleRepository) GetPermissions(ctx context.Context, roleID string) ([]domain.Permission, error) {
+func (r *RoleRepository) GetPermissions(ctx context.Context, roleID int64) ([]domain.Permission, error) {
 	return loadRolePermissions(ctx, r.pool, roleID)
+}
+
+func loadDefaultBranch(ctx context.Context, pool *otel.TracedPool, branchID int64) *domain.DefaultBranch {
+	var b domain.DefaultBranch
+	err := pool.QueryRow(ctx,
+		`SELECT b.id, b.name, m.id, m.name FROM branches b JOIN merchants m ON m.id = b.merchant_id WHERE b.id = $1`, branchID,
+	).Scan(&b.ID, &b.Name, &b.MerchantID, &b.MerchantName)
+	if err != nil {
+		return nil
+	}
+	return &b
 }

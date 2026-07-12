@@ -61,15 +61,16 @@ func NewJWTSigner(privateKeyPEM []byte, keyID string) (*JWTSigner, error) {
 }
 
 type jwtAccessClaims struct {
-	UserID      string              `json:"user_id"`
-	Roles       []string            `json:"roles"`
-	Permissions []domain.Permission `json:"permissions"`
+	UserID      int64               `json:"user_id"`
+	RoleName    string              `json:"role_name,omitempty"`
+	UserType    string              `json:"user_type,omitempty"`
+	Permissions []domain.Permission `json:"permissions,omitempty"`
 	Type        string              `json:"type"`
 	jwt.RegisteredClaims
 }
 
 type jwtRefreshClaims struct {
-	UserID string `json:"user_id"`
+	UserID int64 `json:"user_id"`
 	Type   string `json:"type"`
 	jwt.RegisteredClaims
 }
@@ -77,7 +78,8 @@ type jwtRefreshClaims struct {
 func (s *JWTSigner) SignAccessToken(claims port.TokenClaims) (string, error) {
 	c := jwtAccessClaims{
 		UserID:      claims.UserID,
-		Roles:       claims.Roles,
+		RoleName:    claims.RoleName,
+		UserType:    string(claims.UserType),
 		Permissions: claims.Permissions,
 		Type:        "access",
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -92,7 +94,7 @@ func (s *JWTSigner) SignAccessToken(claims port.TokenClaims) (string, error) {
 	return token.SignedString(s.privateKey)
 }
 
-func (s *JWTSigner) SignRefreshToken(userID string) (string, error) {
+func (s *JWTSigner) SignRefreshToken(userID int64) (string, error) {
 	c := jwtRefreshClaims{
 		UserID: userID,
 		Type:   "refresh",
@@ -133,32 +135,33 @@ func (s *JWTSigner) VerifyAccessToken(tokenString string) (*port.TokenClaims, er
 
 	return &port.TokenClaims{
 		UserID:      claims.UserID,
-		Roles:       claims.Roles,
+		RoleName:    claims.RoleName,
+		UserType:    domain.UserType(claims.UserType),
 		Permissions: claims.Permissions,
 	}, nil
 }
 
-func (s *JWTSigner) VerifyRefreshToken(tokenString string) (string, error) {
+func (s *JWTSigner) VerifyRefreshToken(tokenString string) (int64, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &jwtRefreshClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
-			return "", domain.ErrInvalidRefreshToken
+			return 0, domain.ErrInvalidRefreshToken
 		}
 		if kid, _ := t.Header["kid"].(string); kid != "" && kid != s.keyID {
-			return "", domain.ErrInvalidRefreshToken
+			return 0, domain.ErrInvalidRefreshToken
 		}
 		return s.publicKey, nil
 	})
 	if err != nil {
-		return "", domain.ErrInvalidRefreshToken
+		return 0, domain.ErrInvalidRefreshToken
 	}
 
 	claims, ok := token.Claims.(*jwtRefreshClaims)
 	if !ok || !token.Valid {
-		return "", domain.ErrInvalidRefreshToken
+		return 0, domain.ErrInvalidRefreshToken
 	}
 
 	if claims.Type != "refresh" {
-		return "", domain.ErrInvalidRefreshToken
+		return 0, domain.ErrInvalidRefreshToken
 	}
 
 	return claims.UserID, nil

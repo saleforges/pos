@@ -152,12 +152,5 @@ func (h *AuthHandler) Me(c echo.Context) error {
 		return writeError(c, http.StatusUnauthorized, errUnauthorized)
 	}
 
-	merchants, _ := h.authUsecase.ListStaff(c.Request().Context(), claims.UserID)
-	if merchants == nil {
-		merchants = []domain.StaffInfo{}
-	}
-
-	u := toUserResponse(*user)
-	u.Merchants = merchants
-	return writeJSON(c, http.StatusOK, u)
+	return writeJSON(c, http.StatusOK, toMeResponse(*user))
 }

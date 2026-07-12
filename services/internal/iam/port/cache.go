@@ -8,8 +8,8 @@ import (
 )
 
 type UserCache interface {
-	Get(ctx context.Context, id string) (*domain.User, bool)
+	Get(ctx context.Context, id int64) (*domain.User, bool)
 	Set(ctx context.Context, u *domain.User, ttl time.Duration)
-	Delete(ctx context.Context, id string)
+	Delete(ctx context.Context, id int64)
 	Close() error
 }

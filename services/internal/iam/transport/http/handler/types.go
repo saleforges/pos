@@ -1,7 +1,5 @@
 package handler
 
-import "github.com/saleforge/pos/services/internal/iam/domain"
-
 type registerRequest struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
@@ -28,15 +26,43 @@ type authResponse struct {
 }
 
 type userResponse struct {
-	ID        string             `json:"id"`
-	Username  string             `json:"username"`
-	Email     string             `json:"email"`
-	Roles     []string           `json:"roles"`
-	Type      string             `json:"type"`
-	Status    string             `json:"status"`
-	CreatedAt string             `json:"createdAt"`
-	UpdatedAt string             `json:"updatedAt"`
-	Merchants []domain.StaffInfo `json:"merchants"`
+	ID        int64      `json:"id"`
+	Username  string     `json:"username"`
+	Email     string     `json:"email"`
+	Role      string     `json:"role"`
+	Type      string     `json:"type"`
+	Status    string     `json:"status"`
+	CreatedAt string     `json:"createdAt"`
+	UpdatedAt string     `json:"updatedAt"`
+}
+
+type merchantDTO struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+type branchDTO struct {
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+}
+
+type roleResponse struct {
+	ID       int64        `json:"id"`
+	Name     string       `json:"name"`
+	Merchant *merchantDTO `json:"merchant"`
+	Branch   *branchDTO   `json:"branch"`
+}
+
+type meResponse struct {
+	ID             int64          `json:"id"`
+	Username       string         `json:"username"`
+	Email          string         `json:"email"`
+	Type           string         `json:"type"`
+	Status         string         `json:"status"`
+	Roles          []roleResponse `json:"roles"`
+	DefaultBranch  *branchDTO     `json:"defaultBranch"`
+	CreatedAt      string         `json:"createdAt"`
+	UpdatedAt      string         `json:"updatedAt"`
 }
 
 type createUserRequest struct {

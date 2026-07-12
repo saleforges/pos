@@ -2,43 +2,37 @@ package memory
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port/repository"
 )
 
-func hexID() string {
-	b := make([]byte, 8)
-	rand.Read(b)
-	return hex.EncodeToString(b)
-}
-
 type UserRepository struct {
 	mu    sync.RWMutex
-	users map[string]*domain.User
+	users map[int64]*domain.User
+	seq   int64
 }
 
 var _ repository.UserRepository = (*UserRepository)(nil)
 
 func NewUserRepository() *UserRepository {
 	return &UserRepository{
-		users: make(map[string]*domain.User),
+		users: make(map[int64]*domain.User),
 	}
 }
 
 func (r *UserRepository) Create(_ context.Context, user *domain.User) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.seq++
+	user.ID = r.seq
 	r.users[user.ID] = user
 	return nil
 }
 
-func (r *UserRepository) GetByID(_ context.Context, id string) (*domain.User, error) {
+func (r *UserRepository) GetByID(_ context.Context, id int64) (*domain.User, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	user, ok := r.users[id]
@@ -94,40 +88,40 @@ func (r *UserRepository) Update(_ context.Context, user *domain.User) error {
 	return nil
 }
 
-func (r *UserRepository) Delete(_ context.Context, id string) error {
+func (r *UserRepository) Delete(_ context.Context, id int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	delete(r.users, id)
 	return nil
 }
 
-func (r *UserRepository) AddRole(_ context.Context, userID, roleName string) error {
+func (r *UserRepository) AddRole(_ context.Context, userID int64, roleName string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	user, ok := r.users[userID]
 	if !ok {
 		return domain.ErrUserNotFound
 	}
-	for _, r := range user.Roles {
-		if r == roleName {
+	for _, rl := range user.Roles {
+		if rl.Role.Name == roleName && rl.MerchantID == 0 {
 			return nil
 		}
 	}
-	user.Roles = append(user.Roles, roleName)
+	user.Roles = append(user.Roles, domain.UserRoleAssignment{Role: domain.Role{Name: roleName}})
 	return nil
 }
 
-func (r *UserRepository) RemoveRole(_ context.Context, userID, roleName string) error {
+func (r *UserRepository) RemoveRole(_ context.Context, userID int64, roleName string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	user, ok := r.users[userID]
 	if !ok {
 		return domain.ErrUserNotFound
 	}
-	roles := make([]string, 0, len(user.Roles))
-	for _, r := range user.Roles {
-		if r != roleName {
-			roles = append(roles, r)
+	roles := make([]domain.UserRoleAssignment, 0, len(user.Roles))
+	for _, rl := range user.Roles {
+		if rl.Role.Name != roleName || rl.MerchantID != 0 {
+			roles = append(roles, rl)
 		}
 	}
 	user.Roles = roles
@@ -136,21 +130,22 @@ func (r *UserRepository) RemoveRole(_ context.Context, userID, roleName string) 
 
 type RoleRepository struct {
 	mu       sync.RWMutex
-	roles    map[string]*domain.Role
-	nameToID map[string]string
+	roles    map[int64]*domain.Role
+	nameToID map[string]int64
+	seq      int64
 }
 
 var _ repository.RoleRepository = (*RoleRepository)(nil)
 
 func NewRoleRepository() *RoleRepository {
 	r := &RoleRepository{
-		roles:    make(map[string]*domain.Role),
-		nameToID: make(map[string]string),
+		roles:    make(map[int64]*domain.Role),
+		nameToID: make(map[string]int64),
 	}
 	for name, role := range domain.DefaultRoles {
 		cp := role
-		cp.ID = uuid.NewString()
-		cp.DisplayID = "role_" + hexID()
+		r.seq++
+		cp.ID = r.seq
 		r.roles[cp.ID] = &cp
 		r.nameToID[name] = cp.ID
 	}
@@ -160,30 +155,17 @@ func NewRoleRepository() *RoleRepository {
 func (r *RoleRepository) Create(_ context.Context, role *domain.Role) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if role.ID == "" {
-		role.ID = uuid.NewString()
-	}
-	if role.DisplayID == "" {
-		role.DisplayID = "role_" + hexID()
-	}
+	r.seq++
+	role.ID = r.seq
 	r.roles[role.ID] = role
 	r.nameToID[role.Name] = role.ID
 	return nil
 }
 
-func (r *RoleRepository) GetByID(_ context.Context, id string) (*domain.Role, error) {
+func (r *RoleRepository) GetByID(_ context.Context, id int64) (*domain.Role, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	role, ok := r.roles[id]
-	if !ok {
-		for _, rl := range r.roles {
-			if rl.DisplayID == id {
-				role = rl
-				ok = true
-				break
-			}
-		}
-	}
 	if !ok {
 		return nil, domain.ErrInvalidRole
 	}
@@ -224,7 +206,7 @@ func (r *RoleRepository) Update(_ context.Context, role *domain.Role) error {
 	return nil
 }
 
-func (r *RoleRepository) Delete(_ context.Context, id string) error {
+func (r *RoleRepository) Delete(_ context.Context, id int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	role, ok := r.roles[id]
@@ -239,7 +221,7 @@ func (r *RoleRepository) Delete(_ context.Context, id string) error {
 	return nil
 }
 
-func (r *RoleRepository) AddPermission(_ context.Context, roleID string, permission domain.Permission) error {
+func (r *RoleRepository) AddPermission(_ context.Context, roleID int64, permission domain.Permission) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	role, ok := r.roles[roleID]
@@ -255,7 +237,7 @@ func (r *RoleRepository) AddPermission(_ context.Context, roleID string, permiss
 	return nil
 }
 
-func (r *RoleRepository) RemovePermission(_ context.Context, roleID string, permission domain.Permission) error {
+func (r *RoleRepository) RemovePermission(_ context.Context, roleID int64, permission domain.Permission) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	role, ok := r.roles[roleID]
@@ -272,7 +254,7 @@ func (r *RoleRepository) RemovePermission(_ context.Context, roleID string, perm
 	return nil
 }
 
-func (r *RoleRepository) GetPermissions(_ context.Context, roleID string) ([]domain.Permission, error) {
+func (r *RoleRepository) GetPermissions(_ context.Context, roleID int64) ([]domain.Permission, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	role, ok := r.roles[roleID]
@@ -327,20 +309,23 @@ func (r *PermissionRepository) Delete(_ context.Context, permission domain.Permi
 
 type RefreshTokenRepository struct {
 	mu     sync.RWMutex
-	tokens map[string]*domain.RefreshToken
+	tokens map[int64]*domain.RefreshToken
+	seq    int64
 }
 
 var _ repository.RefreshTokenRepository = (*RefreshTokenRepository)(nil)
 
 func NewRefreshTokenRepository() *RefreshTokenRepository {
 	return &RefreshTokenRepository{
-		tokens: make(map[string]*domain.RefreshToken),
+		tokens: make(map[int64]*domain.RefreshToken),
 	}
 }
 
 func (r *RefreshTokenRepository) Create(_ context.Context, token *domain.RefreshToken) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.seq++
+	token.ID = r.seq
 	r.tokens[token.ID] = token
 	return nil
 }
@@ -356,7 +341,7 @@ func (r *RefreshTokenRepository) GetByToken(_ context.Context, token string) (*d
 	return nil, domain.ErrInvalidRefreshToken
 }
 
-func (r *RefreshTokenRepository) Revoke(_ context.Context, id string) error {
+func (r *RefreshTokenRepository) Revoke(_ context.Context, id int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	t, ok := r.tokens[id]
@@ -368,7 +353,7 @@ func (r *RefreshTokenRepository) Revoke(_ context.Context, id string) error {
 	return nil
 }
 
-func (r *RefreshTokenRepository) RevokeByUser(_ context.Context, userID string) error {
+func (r *RefreshTokenRepository) RevokeByUser(_ context.Context, userID int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	now := nowFunc()

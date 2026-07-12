@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/iam/domain"
@@ -10,16 +11,63 @@ import (
 )
 
 func toUserResponse(u domain.User) userResponse {
-	return userResponse{
+	r := userResponse{
 		ID:        u.ID,
 		Username:  u.Username,
 		Email:     u.Email,
-		Roles:     u.Roles,
 		Type:      string(u.Type),
 		Status:    string(u.Status),
 		CreatedAt: u.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		UpdatedAt: u.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
+	if u.SystemRole != nil {
+		r.Role = u.SystemRole.Name
+	}
+	return r
+}
+
+func toMeResponse(u domain.User) meResponse {
+	r := meResponse{
+		ID:        u.ID,
+		Username:  u.Username,
+		Email:     u.Email,
+		Type:      string(u.Type),
+		Status:    string(u.Status),
+		Roles:     make([]roleResponse, 0),
+		CreatedAt: u.CreatedAt.Format("2006-01-02T15:04:05Z"),
+		UpdatedAt: u.UpdatedAt.Format("2006-01-02T15:04:05Z"),
+	}
+	if u.DefaultBranch != nil {
+		r.DefaultBranch = &branchDTO{
+			ID:   u.DefaultBranch.ID,
+			Name: u.DefaultBranch.Name,
+		}
+	}
+
+	if u.SystemRole != nil {
+		r.Roles = append(r.Roles, roleResponse{
+			ID:   u.SystemRole.ID,
+			Name: u.SystemRole.Name,
+		})
+	}
+
+	for _, ra := range u.Roles {
+		role := roleResponse{
+			ID:   ra.Role.ID,
+			Name: ra.Role.Name,
+		}
+		if ra.MerchantID != 0 {
+			role.Merchant = &merchantDTO{ID: ra.MerchantID, Name: ra.MerchantName}
+		}
+		if ra.BranchID != nil {
+			role.Branch = &branchDTO{
+				ID:   *ra.BranchID,
+				Name: ra.BranchName,
+			}
+		}
+		r.Roles = append(r.Roles, role)
+	}
+	return r
 }
 
 func (h *AuthHandler) ListUsers(c echo.Context) error {
@@ -66,7 +114,11 @@ func (h *AuthHandler) CreateUser(c echo.Context) error {
 }
 
 func (h *AuthHandler) GetUser(c echo.Context) error {
-	user, err := h.authUsecase.GetUser(c.Request().Context(), c.Param("id"))
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return writeError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+	}
+	user, err := h.authUsecase.GetUser(c.Request().Context(), id)
 	if err != nil {
 		return writeError(c, http.StatusNotFound, domain.ErrUserNotFound)
 	}
@@ -75,6 +127,10 @@ func (h *AuthHandler) GetUser(c echo.Context) error {
 }
 
 func (h *AuthHandler) UpdateUser(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return writeError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+	}
 	var req updateUserRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 		return writeError(c, http.StatusBadRequest, errInvalidBody)
@@ -87,7 +143,7 @@ func (h *AuthHandler) UpdateUser(c echo.Context) error {
 	}
 
 	user, err := h.authUsecase.UpdateUser(c.Request().Context(), usecase.UpdateUserInput{
-		ID:       c.Param("id"),
+		ID:       id,
 		Username: req.Username,
 		Email:    req.Email,
 		Status:   status,
@@ -103,7 +159,11 @@ func (h *AuthHandler) UpdateUser(c echo.Context) error {
 }
 
 func (h *AuthHandler) DeleteUser(c echo.Context) error {
-	if err := h.authUsecase.DeleteUser(c.Request().Context(), c.Param("id")); err != nil {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return writeError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+	}
+	if err := h.authUsecase.DeleteUser(c.Request().Context(), id); err != nil {
 		return writeError(c, http.StatusNotFound, domain.ErrUserNotFound)
 	}
 

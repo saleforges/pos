@@ -11,29 +11,12 @@ import (
 )
 
 func devPasswordHash(password string) string {
-	salt := []byte("pos-dev-salt-1234") // fixed for reproducibility
+	salt := []byte("pos-dev-salt-123") // 16 bytes, fixed for reproducibility
 	hash := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
 	var buf bytes.Buffer
 	buf.Write(salt)
 	buf.Write(hash)
 	return base64.RawStdEncoding.EncodeToString(buf.Bytes())
-}
-
-func roleDisplayID(name string) string {
-	switch name {
-	case "owner":
-		return "role_owner"
-	case "admin":
-		return "role_admin"
-	case "supervisor":
-		return "role_supervisor"
-	case "cashier":
-		return "role_cashier"
-	case "viewer":
-		return "role_viewer"
-	default:
-		return "role_" + name
-	}
 }
 
 var defaultPermissions = []string{
@@ -58,15 +41,24 @@ var defaultRoles = []struct {
 		Permissions: defaultPermissions,
 	},
 	{
-		Name: "owner", Description: "Full system access",
+		Name: "admin", Description: "Platform administrator — custom permissions",
 		Permissions: defaultPermissions,
 	},
 	{
-		Name: "admin", Description: "Administrative access",
+		Name: "owner", Description: "Merchant owner — full access to own merchant",
 		Permissions: defaultPermissions,
 	},
 	{
-		Name: "supervisor", Description: "Supervisory access",
+		Name: "manager", Description: "Branch manager",
+		Permissions: []string{
+			"catalog.read", "catalog.create", "catalog.update",
+			"sales.create", "sales.read", "sales.update", "sales.refund",
+			"inventory.read", "inventory.write", "inventory.adjust",
+			"user.read", "user.list",
+		},
+	},
+	{
+		Name: "supervisor", Description: "Branch supervisor",
 		Permissions: []string{
 			"catalog.read", "catalog.create", "catalog.update",
 			"sales.create", "sales.read", "sales.update", "sales.refund",
@@ -108,8 +100,8 @@ func SeedData(ctx context.Context, pool *otel.TracedPool) error {
 
 	for _, r := range defaultRoles {
 		_, err := pool.Exec(ctx,
-			`INSERT INTO roles (id, display_id, name, description, is_system, created_at, updated_at) VALUES (gen_random_uuid(), $1, $2, $3, true, $4, $4) ON CONFLICT DO NOTHING`,
-			roleDisplayID(r.Name), r.Name, r.Description, now,
+			`INSERT INTO roles (name, description, is_system, created_at, updated_at) VALUES ($1, $2, true, $3, $3) ON CONFLICT DO NOTHING`,
+			r.Name, r.Description, now,
 		)
 		if err != nil {
 			return err
@@ -117,7 +109,7 @@ func SeedData(ctx context.Context, pool *otel.TracedPool) error {
 
 		for _, p := range r.Permissions {
 			_, err = pool.Exec(ctx,
-				`INSERT INTO role_permissions (role_id, permission_name) SELECT id, $2 FROM roles WHERE name = $1 ON CONFLICT DO NOTHING`,
+				`INSERT INTO role_permissions (role_id, permission_id) SELECT r.id, p.id FROM roles r, permissions p WHERE r.name = $1 AND p.name = $2 ON CONFLICT DO NOTHING`,
 				r.Name, p,
 			)
 			if err != nil {
@@ -127,47 +119,77 @@ func SeedData(ctx context.Context, pool *otel.TracedPool) error {
 	}
 
 	seedUsers := []struct {
-		ID       string
-		Username string
-		Email    string
-		Password string
-		Type     string
-		Roles    []string
+		Username   string
+		Email      string
+		Password   string
+		Type       string
+		RoleName   string
+		MerchantID *int64
+		BranchID   *int64
 	}{
 		{
-			ID: "usr_superadmin", Username: "superadmin", Email: "superadmin@pos.com",
+			Username: "superadmin", Email: "superadmin@pos.com",
 			Password: devPasswordHash("Admin123"),
 			Type:     "platform",
-			Roles:    []string{"superadmin"},
+			RoleName: "superadmin",
 		},
 		{
-			ID: "usr_owner", Username: "owner", Email: "owner@merchant.com",
+			Username: "owner", Email: "owner@merchant.com",
 			Password: devPasswordHash("Owner123"),
 			Type:     "merchant",
-			Roles:    []string{"owner"},
+			RoleName: "owner",
+			MerchantID: ptrInt64(1),
+		},
+		{
+			Username: "cashier1", Email: "cashier1@merchant.com",
+			Password: devPasswordHash("Cashier123"),
+			Type:     "merchant",
+			RoleName: "cashier",
+			MerchantID: ptrInt64(1),
+			BranchID:   ptrInt64(1),
 		},
 	}
 
 	for _, u := range seedUsers {
 		_, err := pool.Exec(ctx,
-			`INSERT INTO users (id, username, email, password, type, status, created_at, updated_at)
-			 VALUES ($1, $2, $3, $4, $5, 'active', $6, $6) ON CONFLICT DO NOTHING`,
-			u.ID, u.Username, u.Email, u.Password, u.Type, now,
+			`INSERT INTO users (username, email, password, type, status, default_branch_id, created_at, updated_at)
+			 VALUES ($1, $2, $3, $4, 'active', $5, $6, $6) ON CONFLICT DO NOTHING`,
+			u.Username, u.Email, u.Password, u.Type, u.BranchID, now,
 		)
 		if err != nil {
 			return err
 		}
 
-		for _, role := range u.Roles {
-			_, err = pool.Exec(ctx,
-				`INSERT INTO user_roles (user_id, role_id) SELECT $1, id FROM roles WHERE name = $2 ON CONFLICT DO NOTHING`,
-				u.ID, role,
-			)
-			if err != nil {
-				return err
-			}
+		_, err = pool.Exec(ctx,
+			`INSERT INTO user_roles (user_id, role_id, merchant_id, branch_id)
+			 SELECT u.id, r.id, $3, $4 FROM users u, roles r WHERE u.username = $1 AND r.name = $2
+			 ON CONFLICT DO NOTHING`,
+			u.Username, u.RoleName, u.MerchantID, u.BranchID,
+		)
+		if err != nil {
+			return err
 		}
 	}
 
+	// set default branch for owner (merchant-wide, so not in user_roles.branch_id)
+	_, _ = pool.Exec(ctx,
+		`UPDATE users SET default_branch_id = 1 WHERE username = 'owner'`)
+
+	// seed merchant + branch for dev testing
+	_, _ = pool.Exec(ctx,
+		`INSERT INTO merchants (id, name, email) VALUES (1, 'Warung Makmur', 'owner@merchant.com') ON CONFLICT DO NOTHING`)
+
+	_, _ = pool.Exec(ctx,
+		`INSERT INTO branches (merchant_id, name, code) VALUES (1, 'Cabang A', 'A001') ON CONFLICT DO NOTHING`)
+
+	_, _ = pool.Exec(ctx,
+		`INSERT INTO staff (merchant_id, branch_id, user_id, role, is_default)
+		 VALUES (1, 1, (SELECT id FROM users WHERE username = 'cashier1'), 'cashier', false)
+		 ON CONFLICT DO NOTHING`)
+
 	return nil
+}
+
+func ptrInt64(v int64) *int64 {
+	return &v
 }

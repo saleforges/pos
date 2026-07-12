@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/iam/domain"
@@ -44,8 +45,16 @@ func (h *AuthHandler) CreateRole(c echo.Context) error {
 	return writeJSON(c, http.StatusCreated, role)
 }
 
+func parseID(c echo.Context) (int64, error) {
+	return strconv.ParseInt(c.Param("id"), 10, 64)
+}
+
 func (h *AuthHandler) GetRole(c echo.Context) error {
-	role, err := h.authUsecase.GetRole(c.Request().Context(), c.Param("id"))
+	id, err := parseID(c)
+	if err != nil {
+		return writeError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+	}
+	role, err := h.authUsecase.GetRole(c.Request().Context(), id)
 	if err != nil {
 		return writeError(c, http.StatusNotFound, domain.ErrInvalidRole)
 	}
@@ -54,13 +63,17 @@ func (h *AuthHandler) GetRole(c echo.Context) error {
 }
 
 func (h *AuthHandler) UpdateRole(c echo.Context) error {
+	id, err := parseID(c)
+	if err != nil {
+		return writeError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+	}
 	var req updateRoleRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 		return writeError(c, http.StatusBadRequest, errInvalidBody)
 	}
 
 	role, err := h.authUsecase.UpdateRole(c.Request().Context(), usecase.UpdateRoleInput{
-		ID:          c.Param("id"),
+		ID:          id,
 		Description: req.Description,
 	})
 	if err != nil {
@@ -74,7 +87,11 @@ func (h *AuthHandler) UpdateRole(c echo.Context) error {
 }
 
 func (h *AuthHandler) DeleteRole(c echo.Context) error {
-	if err := h.authUsecase.DeleteRole(c.Request().Context(), c.Param("id")); err != nil {
+	id, err := parseID(c)
+	if err != nil {
+		return writeError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+	}
+	if err := h.authUsecase.DeleteRole(c.Request().Context(), id); err != nil {
 		return writeError(c, http.StatusConflict, domain.ErrInvalidRole)
 	}
 
@@ -82,6 +99,10 @@ func (h *AuthHandler) DeleteRole(c echo.Context) error {
 }
 
 func (h *AuthHandler) AssignRole(c echo.Context) error {
+	id, err := parseID(c)
+	if err != nil {
+		return writeError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+	}
 	var req struct {
 		Role string `json:"role"`
 	}
@@ -89,7 +110,7 @@ func (h *AuthHandler) AssignRole(c echo.Context) error {
 		return writeError(c, http.StatusBadRequest, errInvalidBody)
 	}
 
-	if err := h.authUsecase.AssignRole(c.Request().Context(), c.Param("id"), req.Role); err != nil {
+	if err := h.authUsecase.AssignRole(c.Request().Context(), id, req.Role); err != nil {
 		if err == domain.ErrInvalidRole || err == domain.ErrUserNotFound {
 			return writeError(c, http.StatusNotFound, err)
 		}
@@ -100,7 +121,11 @@ func (h *AuthHandler) AssignRole(c echo.Context) error {
 }
 
 func (h *AuthHandler) RemoveRole(c echo.Context) error {
-	if err := h.authUsecase.RemoveRole(c.Request().Context(), c.Param("id"), c.Param("roleId")); err != nil {
+	id, err := parseID(c)
+	if err != nil {
+		return writeError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+	}
+	if err := h.authUsecase.RemoveRole(c.Request().Context(), id, c.Param("roleId")); err != nil {
 		return writeError(c, http.StatusNotFound, err)
 	}
 
@@ -108,6 +133,10 @@ func (h *AuthHandler) RemoveRole(c echo.Context) error {
 }
 
 func (h *AuthHandler) AssignPermission(c echo.Context) error {
+	id, err := parseID(c)
+	if err != nil {
+		return writeError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+	}
 	var req struct {
 		Permission string `json:"permission"`
 	}
@@ -115,7 +144,7 @@ func (h *AuthHandler) AssignPermission(c echo.Context) error {
 		return writeError(c, http.StatusBadRequest, errInvalidBody)
 	}
 
-	if err := h.authUsecase.AssignPermission(c.Request().Context(), c.Param("id"), domain.Permission(req.Permission)); err != nil {
+	if err := h.authUsecase.AssignPermission(c.Request().Context(), id, domain.Permission(req.Permission)); err != nil {
 		if err == domain.ErrInvalidRole {
 			return writeError(c, http.StatusNotFound, err)
 		}
@@ -126,7 +155,11 @@ func (h *AuthHandler) AssignPermission(c echo.Context) error {
 }
 
 func (h *AuthHandler) RemovePermission(c echo.Context) error {
-	if err := h.authUsecase.RemovePermission(c.Request().Context(), c.Param("id"), domain.Permission(c.Param("permissionId"))); err != nil {
+	id, err := parseID(c)
+	if err != nil {
+		return writeError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+	}
+	if err := h.authUsecase.RemovePermission(c.Request().Context(), id, domain.Permission(c.Param("permissionId"))); err != nil {
 		if err == domain.ErrInvalidRole {
 			return writeError(c, http.StatusNotFound, err)
 		}

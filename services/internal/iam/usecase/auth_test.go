@@ -12,7 +12,8 @@ import (
 )
 
 type mockUserRepo struct {
-	users map[string]*domain.User
+	users map[int64]*domain.User
+	seq   int64
 	err   error
 }
 
@@ -21,13 +22,15 @@ func (m *mockUserRepo) Create(_ context.Context, user *domain.User) error {
 		return m.err
 	}
 	if m.users == nil {
-		m.users = make(map[string]*domain.User)
+		m.users = make(map[int64]*domain.User)
 	}
+	m.seq++
+	user.ID = m.seq
 	m.users[user.ID] = user
 	return nil
 }
 
-func (m *mockUserRepo) GetByID(_ context.Context, id string) (*domain.User, error) {
+func (m *mockUserRepo) GetByID(_ context.Context, id int64) (*domain.User, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -74,7 +77,7 @@ func (m *mockUserRepo) Update(_ context.Context, user *domain.User) error {
 	return nil
 }
 
-func (m *mockUserRepo) Delete(_ context.Context, id string) error {
+func (m *mockUserRepo) Delete(_ context.Context, id int64) error {
 	if m.err != nil {
 		return m.err
 	}
@@ -82,17 +85,17 @@ func (m *mockUserRepo) Delete(_ context.Context, id string) error {
 	return nil
 }
 
-func (m *mockUserRepo) AddRole(_ context.Context, userID, roleName string) error {
+func (m *mockUserRepo) AddRole(_ context.Context, userID int64, roleName string) error {
 	return nil
 }
 
-func (m *mockUserRepo) RemoveRole(_ context.Context, userID, roleName string) error {
+func (m *mockUserRepo) RemoveRole(_ context.Context, userID int64, roleName string) error {
 	return nil
 }
 
 type mockRoleRepo struct {
-	roles       map[string]*domain.Role
-	permissions map[string][]domain.Permission
+	roles       map[int64]*domain.Role
+	permissions map[int64][]domain.Permission
 	err         error
 }
 
@@ -101,26 +104,20 @@ func (m *mockRoleRepo) Create(_ context.Context, role *domain.Role) error {
 		return m.err
 	}
 	if m.roles == nil {
-		m.roles = make(map[string]*domain.Role)
+		m.roles = make(map[int64]*domain.Role)
 	}
-	role.ID = role.Name + "-uuid"
-	role.DisplayID = "role_" + role.Name
+	role.ID = int64(len(m.roles) + 1)
 	m.roles[role.ID] = role
 	return nil
 }
 
-func (m *mockRoleRepo) GetByID(_ context.Context, id string) (*domain.Role, error) {
+func (m *mockRoleRepo) GetByID(_ context.Context, id int64) (*domain.Role, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	if m.roles != nil {
 		if r, ok := m.roles[id]; ok {
 			return r, nil
-		}
-		for _, r := range m.roles {
-			if r.DisplayID == id {
-				return r, nil
-			}
 		}
 	}
 	return nil, domain.ErrInvalidRole
@@ -154,19 +151,19 @@ func (m *mockRoleRepo) Update(_ context.Context, role *domain.Role) error {
 	return nil
 }
 
-func (m *mockRoleRepo) Delete(_ context.Context, id string) error {
+func (m *mockRoleRepo) Delete(_ context.Context, id int64) error {
 	return nil
 }
 
-func (m *mockRoleRepo) AddPermission(_ context.Context, roleID string, permission domain.Permission) error {
+func (m *mockRoleRepo) AddPermission(_ context.Context, roleID int64, permission domain.Permission) error {
 	return nil
 }
 
-func (m *mockRoleRepo) RemovePermission(_ context.Context, roleID string, permission domain.Permission) error {
+func (m *mockRoleRepo) RemovePermission(_ context.Context, roleID int64, permission domain.Permission) error {
 	return nil
 }
 
-func (m *mockRoleRepo) GetPermissions(_ context.Context, roleID string) ([]domain.Permission, error) {
+func (m *mockRoleRepo) GetPermissions(_ context.Context, roleID int64) ([]domain.Permission, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
@@ -199,14 +196,15 @@ func (m *mockPermissionRepo) Delete(_ context.Context, p domain.Permission) erro
 }
 
 type mockRefreshTokenRepo struct {
-	tokens map[string]*domain.RefreshToken
+	tokens map[int64]*domain.RefreshToken
 	err    error
 }
 
 func (m *mockRefreshTokenRepo) Create(_ context.Context, token *domain.RefreshToken) error {
 	if m.tokens == nil {
-		m.tokens = make(map[string]*domain.RefreshToken)
+		m.tokens = make(map[int64]*domain.RefreshToken)
 	}
+	token.ID = int64(len(m.tokens) + 1)
 	m.tokens[token.ID] = token
 	return nil
 }
@@ -215,11 +213,11 @@ func (m *mockRefreshTokenRepo) GetByToken(_ context.Context, token string) (*dom
 	return nil, domain.ErrInvalidRefreshToken
 }
 
-func (m *mockRefreshTokenRepo) Revoke(_ context.Context, id string) error {
+func (m *mockRefreshTokenRepo) Revoke(_ context.Context, id int64) error {
 	return nil
 }
 
-func (m *mockRefreshTokenRepo) RevokeByUser(_ context.Context, userID string) error {
+func (m *mockRefreshTokenRepo) RevokeByUser(_ context.Context, userID int64) error {
 	return nil
 }
 
@@ -330,7 +328,7 @@ type mockTokenSigner struct {
 	claims           *port.TokenClaims
 	signErr          error
 	verifyErr        error
-	refreshUserID    string
+	refreshUserID    int64
 	refreshSignErr   error
 	refreshVerifyErr error
 }
@@ -342,7 +340,7 @@ func (m *mockTokenSigner) SignAccessToken(_ port.TokenClaims) (string, error) {
 	return m.signedToken, nil
 }
 
-func (m *mockTokenSigner) SignRefreshToken(_ string) (string, error) {
+func (m *mockTokenSigner) SignRefreshToken(_ int64) (string, error) {
 	if m.refreshSignErr != nil {
 		return "", m.refreshSignErr
 	}
@@ -356,9 +354,9 @@ func (m *mockTokenSigner) VerifyAccessToken(_ string) (*port.TokenClaims, error)
 	return m.claims, nil
 }
 
-func (m *mockTokenSigner) VerifyRefreshToken(_ string) (string, error) {
+func (m *mockTokenSigner) VerifyRefreshToken(_ string) (int64, error) {
 	if m.refreshVerifyErr != nil {
-		return "", m.refreshVerifyErr
+		return 0, m.refreshVerifyErr
 	}
 	return m.refreshUserID, nil
 }
@@ -407,8 +405,8 @@ func TestAuthUsecase_Register(t *testing.T) {
 			},
 			userRepo: &mockUserRepo{},
 			roleRepo: &mockRoleRepo{
-				roles: map[string]*domain.Role{
-					"v1": {ID: "v1", Name: "viewer", Permissions: validPerms},
+				roles: map[int64]*domain.Role{
+					1: {ID: 1, Name: "viewer", Permissions: validPerms},
 				},
 			},
 			passwordHasher: &mockPasswordHasher{},
@@ -437,8 +435,8 @@ func TestAuthUsecase_Register(t *testing.T) {
 				Roles:    []string{"viewer"},
 			},
 			userRepo: &mockUserRepo{
-				users: map[string]*domain.User{
-					"1": {Username: "existinguser", Email: "old@example.com"},
+				users: map[int64]*domain.User{
+					1: {Username: "existinguser", Email: "old@example.com"},
 				},
 			},
 			roleRepo:       &mockRoleRepo{},
@@ -455,8 +453,8 @@ func TestAuthUsecase_Register(t *testing.T) {
 				Roles:    []string{"viewer"},
 			},
 			userRepo: &mockUserRepo{
-				users: map[string]*domain.User{
-					"1": {Username: "other", Email: "dup@example.com"},
+				users: map[int64]*domain.User{
+					1: {Username: "other", Email: "dup@example.com"},
 				},
 			},
 			roleRepo:       &mockRoleRepo{},
@@ -530,13 +528,13 @@ func TestAuthUsecase_Login(t *testing.T) {
 				Password: "securepass123",
 			},
 			userRepo: &mockUserRepo{
-				users: map[string]*domain.User{
-					"u1": {ID: "u1", Username: "johndoe", Password: "hashed:securepass123", Roles: []string{"viewer"}},
+				users: map[int64]*domain.User{
+					1: {ID: 1, Username: "johndoe", Password: "hashed:securepass123"},
 				},
 			},
 			roleRepo: &mockRoleRepo{
-				roles: map[string]*domain.Role{
-					"v1": {ID: "v1", Name: "viewer", Permissions: []domain.Permission{domain.UserRead}},
+				roles: map[int64]*domain.Role{
+					1: {ID: 1, Name: "viewer", Permissions: []domain.Permission{domain.UserRead}},
 				},
 			},
 			passwordHasher: &mockPasswordHasher{},
@@ -578,21 +576,21 @@ func TestAuthUsecase_ValidateToken(t *testing.T) {
 		passwordHasher port.PasswordHasher
 		tokenSigner    port.TokenSigner
 		wantErr        error
-		wantUserID     string
+		wantUserID     int64
 	}{
 		{
 			name:        "valid token",
 			tokenString: "valid.jwt.token",
 			userRepo: &mockUserRepo{
-				users: map[string]*domain.User{
-					"user-1": {ID: "user-1"},
+				users: map[int64]*domain.User{
+					1: {ID: 1},
 				},
 			},
 			passwordHasher: &mockPasswordHasher{},
 			tokenSigner: &mockTokenSigner{
-				claims: &port.TokenClaims{UserID: "user-1"},
+				claims: &port.TokenClaims{UserID: 1},
 			},
-			wantUserID: "user-1",
+			wantUserID: 1,
 		},
 		{
 			name:           "user not found",
@@ -600,7 +598,7 @@ func TestAuthUsecase_ValidateToken(t *testing.T) {
 			userRepo:       &mockUserRepo{},
 			passwordHasher: &mockPasswordHasher{},
 			tokenSigner: &mockTokenSigner{
-				claims: &port.TokenClaims{UserID: "missing-user"},
+				claims: &port.TokenClaims{UserID: 999},
 			},
 			wantErr: domain.ErrInvalidToken,
 		},
@@ -635,7 +633,7 @@ func TestAuthUsecase_ValidateToken(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			if claims.UserID != tt.wantUserID {
-				t.Errorf("expected user ID %s, got %s", tt.wantUserID, claims.UserID)
+				t.Errorf("expected user ID %d, got %d", tt.wantUserID, claims.UserID)
 			}
 		})
 	}

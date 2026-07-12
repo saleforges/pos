@@ -10,15 +10,17 @@ import (
 func TestUserRepository_CreateAndGetByID(t *testing.T) {
 	t.Parallel()
 	repo := NewUserRepository()
-	user := &domain.User{ID: "u1", Username: "alice", Email: "alice@test.com"}
-	user.Roles = []string{"viewer"}
+	user := &domain.User{Username: "alice", Email: "alice@test.com"}
 
 	err := repo.Create(context.Background(), user)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	if user.ID == 0 {
+		t.Fatal("expected non-zero ID after create")
+	}
 
-	got, err := repo.GetByID(context.Background(), "u1")
+	got, err := repo.GetByID(context.Background(), user.ID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -30,7 +32,7 @@ func TestUserRepository_CreateAndGetByID(t *testing.T) {
 func TestUserRepository_GetByID_NotFound(t *testing.T) {
 	t.Parallel()
 	repo := NewUserRepository()
-	_, err := repo.GetByID(context.Background(), "nonexistent")
+	_, err := repo.GetByID(context.Background(), 999)
 	if err != domain.ErrUserNotFound {
 		t.Errorf("expected ErrUserNotFound, got %v", err)
 	}
@@ -39,14 +41,14 @@ func TestUserRepository_GetByID_NotFound(t *testing.T) {
 func TestUserRepository_GetByUsername(t *testing.T) {
 	t.Parallel()
 	repo := NewUserRepository()
-	repo.Create(context.Background(), &domain.User{ID: "u1", Username: "bob", Email: "bob@test.com"})
+	repo.Create(context.Background(), &domain.User{Username: "bob", Email: "bob@test.com"})
 
 	got, err := repo.GetByUsername(context.Background(), "bob")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.ID != "u1" {
-		t.Errorf("expected u1, got %s", got.ID)
+	if got.Username != "bob" {
+		t.Errorf("expected bob, got %s", got.Username)
 	}
 
 	_, err = repo.GetByUsername(context.Background(), "missing")
@@ -58,14 +60,14 @@ func TestUserRepository_GetByUsername(t *testing.T) {
 func TestUserRepository_GetByEmail(t *testing.T) {
 	t.Parallel()
 	repo := NewUserRepository()
-	repo.Create(context.Background(), &domain.User{ID: "u1", Username: "carol", Email: "carol@test.com"})
+	repo.Create(context.Background(), &domain.User{Username: "carol", Email: "carol@test.com"})
 
 	got, err := repo.GetByEmail(context.Background(), "carol@test.com")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.ID != "u1" {
-		t.Errorf("expected u1, got %s", got.ID)
+	if got.Username != "carol" {
+		t.Errorf("expected carol, got %s", got.Username)
 	}
 
 	_, err = repo.GetByEmail(context.Background(), "missing@test.com")
@@ -77,9 +79,9 @@ func TestUserRepository_GetByEmail(t *testing.T) {
 func TestUserRepository_List(t *testing.T) {
 	t.Parallel()
 	repo := NewUserRepository()
-	repo.Create(context.Background(), &domain.User{ID: "u1", Username: "a"})
-	repo.Create(context.Background(), &domain.User{ID: "u2", Username: "b"})
-	repo.Create(context.Background(), &domain.User{ID: "u3", Username: "c"})
+	repo.Create(context.Background(), &domain.User{Username: "a"})
+	repo.Create(context.Background(), &domain.User{Username: "b"})
+	repo.Create(context.Background(), &domain.User{Username: "c"})
 
 	all, err := repo.List(context.Background(), 0, 10)
 	if err != nil {
@@ -109,15 +111,15 @@ func TestUserRepository_List(t *testing.T) {
 func TestUserRepository_Update(t *testing.T) {
 	t.Parallel()
 	repo := NewUserRepository()
-	repo.Create(context.Background(), &domain.User{ID: "u1", Username: "dave"})
-	repo.Create(context.Background(), &domain.User{ID: "u1", Username: "dave"})
+	u1 := &domain.User{Username: "dave"}
+	repo.Create(context.Background(), u1)
 
-	err := repo.Update(context.Background(), &domain.User{ID: "u1", Username: "dave"})
+	err := repo.Update(context.Background(), &domain.User{ID: u1.ID, Username: "dave"})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	got, _ := repo.GetByID(context.Background(), "u1")
+	got, _ := repo.GetByID(context.Background(), u1.ID)
 	if got.Username != "dave" {
 		t.Errorf("expected dave, got %s", got.Username)
 	}
@@ -126,14 +128,15 @@ func TestUserRepository_Update(t *testing.T) {
 func TestUserRepository_Delete(t *testing.T) {
 	t.Parallel()
 	repo := NewUserRepository()
-	repo.Create(context.Background(), &domain.User{ID: "u1", Username: "eve"})
+	u1 := &domain.User{Username: "eve"}
+	repo.Create(context.Background(), u1)
 
-	err := repo.Delete(context.Background(), "u1")
+	err := repo.Delete(context.Background(), u1.ID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	_, err = repo.GetByID(context.Background(), "u1")
+	_, err = repo.GetByID(context.Background(), u1.ID)
 	if err != domain.ErrUserNotFound {
 		t.Errorf("expected ErrUserNotFound, got %v", err)
 	}
@@ -156,7 +159,7 @@ func TestRoleRepository_GetPermissions(t *testing.T) {
 		t.Error("expected non-empty permissions for admin")
 	}
 
-	_, err = repo.GetPermissions(context.Background(), "nonexistent-id")
+	_, err = repo.GetPermissions(context.Background(), 999)
 	if err != domain.ErrInvalidRole {
 		t.Errorf("expected ErrInvalidRole, got %v", err)
 	}
@@ -165,21 +168,22 @@ func TestRoleRepository_GetPermissions(t *testing.T) {
 func TestRoleRepository_AssignRole(t *testing.T) {
 	t.Parallel()
 	userRepo := NewUserRepository()
-	userRepo.Create(context.Background(), &domain.User{ID: "u1", Username: "test"})
+	u1 := &domain.User{Username: "test"}
+	userRepo.Create(context.Background(), u1)
 
-	err := userRepo.AddRole(context.Background(), "u1", "admin")
+	err := userRepo.AddRole(context.Background(), u1.ID, "admin")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	user, err := userRepo.GetByID(context.Background(), "u1")
+	user, err := userRepo.GetByID(context.Background(), u1.ID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
 	found := false
 	for _, r := range user.Roles {
-		if r == "admin" {
+		if r.Role.Name == "admin" {
 			found = true
 			break
 		}

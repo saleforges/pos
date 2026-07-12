@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -39,12 +40,12 @@ func NewUserCache(addr string, ttl time.Duration) port.UserCache {
 	}
 }
 
-func (c *UserCache) Get(ctx context.Context, id string) (*domain.User, bool) {
+func (c *UserCache) Get(ctx context.Context, id int64) (*domain.User, bool) {
 	if c.rdb == nil {
 		return c.fallback.Get(ctx, id)
 	}
 
-	data, err := c.rdb.Get(ctx, "user:"+id).Bytes()
+	data, err := c.rdb.Get(ctx, fmt.Sprintf("user:%d", id)).Bytes()
 	if err != nil {
 		return c.fallback.Get(ctx, id)
 	}
@@ -71,12 +72,12 @@ func (c *UserCache) Set(ctx context.Context, u *domain.User, ttl time.Duration) 
 	if ttl == 0 {
 		ttl = c.ttl
 	}
-	c.rdb.Set(ctx, "user:"+u.ID, data, ttl)
+	c.rdb.Set(ctx, fmt.Sprintf("user:%d", u.ID), data, ttl)
 }
 
-func (c *UserCache) Delete(ctx context.Context, id string) {
+func (c *UserCache) Delete(ctx context.Context, id int64) {
 	if c.rdb != nil {
-		c.rdb.Del(ctx, "user:"+id)
+		c.rdb.Del(ctx, fmt.Sprintf("user:%d", id))
 	}
 	c.fallback.Delete(ctx, id)
 }

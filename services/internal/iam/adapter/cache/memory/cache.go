@@ -15,14 +15,14 @@ type item struct {
 
 type UserCache struct {
 	mu       sync.RWMutex
-	items    map[string]*item
+	items    map[int64]*item
 	ttl      time.Duration
 	stopCh   chan struct{}
 }
 
 func NewUserCache(ttl time.Duration, cleanupInterval time.Duration) *UserCache {
 	c := &UserCache{
-		items:  make(map[string]*item),
+		items:  make(map[int64]*item),
 		ttl:    ttl,
 		stopCh: make(chan struct{}),
 	}
@@ -30,7 +30,7 @@ func NewUserCache(ttl time.Duration, cleanupInterval time.Duration) *UserCache {
 	return c
 }
 
-func (c *UserCache) Get(_ context.Context, id string) (*domain.User, bool) {
+func (c *UserCache) Get(_ context.Context, id int64) (*domain.User, bool) {
 	c.mu.RLock()
 	it, ok := c.items[id]
 	c.mu.RUnlock()
@@ -57,7 +57,7 @@ func (c *UserCache) Set(_ context.Context, u *domain.User, ttl time.Duration) {
 	c.mu.Unlock()
 }
 
-func (c *UserCache) Delete(_ context.Context, id string) {
+func (c *UserCache) Delete(_ context.Context, id int64) {
 	c.mu.Lock()
 	delete(c.items, id)
 	c.mu.Unlock()
