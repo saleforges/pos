@@ -1,7 +1,7 @@
 meta {
-  name: Login
+  name: Login Cashier
   type: http
-  seq: 2
+  seq: 3
 }
 
 post {
@@ -14,10 +14,10 @@ headers {
   Content-Type: application/json
 }
 
-  body:json {
+body:json {
   {
-    "username": "{{owner_user}}",
-    "password": "{{owner_pass}}"
+    "username": "{{cashier_user}}",
+    "password": "{{cashier_pass}}"
   }
 }
 
@@ -25,4 +25,3 @@ script:post-response {
   bru.setVar("access_token", res.body.data.access_token);
   bru.setVar("refresh_token", res.body.data.refresh_token);
 }
-
