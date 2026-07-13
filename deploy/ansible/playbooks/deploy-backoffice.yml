@@ -1,11 +1,12 @@
 - name: Deploy Backoffice
   hosts: all
-  become: yes
+  become: true
   vars_files:
     - ../vars/vault.yml
   vars:
     ghcr_username: "{{ vault_ghcr_username | default('') }}"
     ghcr_token: "{{ vault_ghcr_token | default('') }}"
+    api_proxy_target: "{{ vault_api_proxy_target | default('https://api-dev.saleforges.com') }}"
   tasks:
     - name: Login to GHCR
       community.docker.docker_login:
@@ -24,3 +25,5 @@
         pull: true
         networks:
           - name: pos
+        env:
+          API_PROXY_TARGET: "{{ api_proxy_target }}"

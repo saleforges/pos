@@ -1,14 +1,11 @@
-// features/auth/context/AuthContext.tsx
 import { createContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { authApi } from '../api/authApi';
-
-type User = { id: string; name: string; role: string };
+import { authApi, type User } from '../api/authApi';
 
 type AuthContextType = {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -19,14 +16,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    authApi.me()
+    authApi
+      .me()
       .then(setUser)
       .catch(() => setUser(null))
       .finally(() => setIsLoading(false));
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const res = await authApi.login(email, password);
+  const login = async (username: string, password: string) => {
+    const res = await authApi.login(username, password);
     setUser(res.user);
   };
 

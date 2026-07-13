@@ -1,10 +1,9 @@
-// pages/LoginPage.tsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -16,10 +15,12 @@ export default function LoginPage() {
     setError('');
     setIsSubmitting(true);
     try {
-      await login(email, password);
+      await login(username, password);
       navigate('/dashboard');
     } catch (err) {
-      setError('Invalid email or password');
+      const msg = err instanceof Error ? err.message : 'Login failed';
+      setError(msg);
+      console.error('[LoginPage] error', msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -37,11 +38,11 @@ export default function LoginPage() {
         )}
 
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">Email</label>
+          <label className="block text-sm font-medium mb-1">Username</label>
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
             className="w-full border rounded px-3 py-2"
             required
           />
