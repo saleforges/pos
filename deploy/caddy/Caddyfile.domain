@@ -1,18 +1,19 @@
-api.saleforges.local {
+api.saleforges.test {
     tls internal
-    @iam path /v1/auth/* /v1/users/* /v1/roles/* /v1/permissions/*
+
+    @iam path /v1/auth /v1/auth/* /v1/users /v1/users/* /v1/roles /v1/roles/* /v1/permissions /v1/permissions/*
     handle @iam {
         rewrite * /api{path}
         reverse_proxy localhost:{env.IAM_PORT}
     }
 
-    @merchant path /v1/merchants/* /v1/branches/*
+    @merchant path /v1/merchants/* /v1/branches/* /v1/staff/* /v1/me/*
     handle @merchant {
         rewrite * /api{path}
         reverse_proxy localhost:{env.MERCHANT_PORT}
     }
 
-    @catalog path /v1/catalog/*
+    @catalog path /v1/categories/* /v1/products/* /v1/images/*
     handle @catalog {
         rewrite * /api{path}
         reverse_proxy localhost:{env.CATALOG_PORT}

@@ -186,7 +186,7 @@ func (r *RoleRepository) GetByName(_ context.Context, name string) (*domain.Role
 	return role, nil
 }
 
-func (r *RoleRepository) List(_ context.Context) ([]domain.Role, error) {
+func (r *RoleRepository) List(_ context.Context, _ *int64) ([]domain.Role, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	result := make([]domain.Role, 0, len(r.roles))

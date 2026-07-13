@@ -37,12 +37,6 @@ func toMeResponse(u domain.User) meResponse {
 		CreatedAt: u.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		UpdatedAt: u.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
-	if u.DefaultBranch != nil {
-		r.DefaultBranch = &branchDTO{
-			ID:   u.DefaultBranch.ID,
-			Name: u.DefaultBranch.Name,
-		}
-	}
 
 	if u.SystemRole != nil {
 		r.Roles = append(r.Roles, roleResponse{
@@ -53,8 +47,9 @@ func toMeResponse(u domain.User) meResponse {
 
 	for _, ra := range u.Roles {
 		role := roleResponse{
-			ID:   ra.Role.ID,
-			Name: ra.Role.Name,
+			ID:          ra.Role.ID,
+			Name:        ra.Role.Name,
+			BranchScope: string(ra.BranchScope),
 		}
 		if ra.MerchantID != 0 {
 			role.Merchant = &merchantDTO{ID: ra.MerchantID, Name: ra.MerchantName}

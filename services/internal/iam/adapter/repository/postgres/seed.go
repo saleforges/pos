@@ -152,9 +152,9 @@ func SeedData(ctx context.Context, pool *otel.TracedPool) error {
 
 	for _, u := range seedUsers {
 		_, err := pool.Exec(ctx,
-			`INSERT INTO users (username, email, password, type, status, default_branch_id, created_at, updated_at)
-			 VALUES ($1, $2, $3, $4, 'active', $5, $6, $6) ON CONFLICT DO NOTHING`,
-			u.Username, u.Email, u.Password, u.Type, u.BranchID, now,
+			`INSERT INTO users (username, email, password, type, status, created_at, updated_at)
+			 VALUES ($1, $2, $3, $4, 'active', $5, $5) ON CONFLICT DO NOTHING`,
+			u.Username, u.Email, u.Password, u.Type, now,
 		)
 		if err != nil {
 			return err
@@ -170,10 +170,6 @@ func SeedData(ctx context.Context, pool *otel.TracedPool) error {
 			return err
 		}
 	}
-
-	// set default branch for owner (merchant-wide, so not in user_roles.branch_id)
-	_, _ = pool.Exec(ctx,
-		`UPDATE users SET default_branch_id = 1 WHERE username = 'owner'`)
 
 	// seed merchant + branch for dev testing
 	_, _ = pool.Exec(ctx,

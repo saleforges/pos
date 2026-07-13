@@ -9,6 +9,14 @@ const (
 	UserStatusDisabled UserStatus = "disabled"
 )
 
+type BranchScope string
+
+const (
+	BranchScopeAll      BranchScope = "all"
+	BranchScopeAssigned BranchScope = "assigned"
+	BranchScopeNone     BranchScope = "none"
+)
+
 type UserRoleAssignment struct {
 	Role         Role
 	MerchantID   int64
@@ -16,27 +24,20 @@ type UserRoleAssignment struct {
 	BranchID     *int64
 	BranchName   string
 	IsDefault    bool
-}
-
-type DefaultBranch struct {
-	ID           int64
-	Name         string
-	MerchantID   int64
-	MerchantName string
+	BranchScope  BranchScope
 }
 
 type User struct {
-	ID            int64                  `json:"id"`
-	Username      string                 `json:"username"`
-	Email         string                 `json:"email"`
-	Password      string                 `json:"-"`
-	SystemRole    *Role                  `json:"-"`
-	Roles         []UserRoleAssignment   `json:"roles"`
-	DefaultBranch *DefaultBranch         `json:"-"`
-	Type          UserType               `json:"type"`
-	Status        UserStatus             `json:"status"`
-	CreatedAt     time.Time              `json:"created_at"`
-	UpdatedAt     time.Time              `json:"updated_at"`
+	ID        int64                  `json:"id"`
+	Username  string                 `json:"username"`
+	Email     string                 `json:"email"`
+	Password  string                 `json:"-"`
+	SystemRole *Role                 `json:"-"`
+	Roles     []UserRoleAssignment   `json:"roles"`
+	Type      UserType               `json:"type"`
+	Status    UserStatus             `json:"status"`
+	CreatedAt time.Time              `json:"created_at"`
+	UpdatedAt time.Time              `json:"updated_at"`
 }
 
 type RefreshToken struct {

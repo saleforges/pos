@@ -70,7 +70,7 @@ type AuthService interface {
 	UpdateUser(ctx context.Context, input UpdateUserInput) (*domain.User, error)
 	DeleteUser(ctx context.Context, id int64) error
 
-	ListRoles(ctx context.Context) ([]domain.Role, error)
+	ListRoles(ctx context.Context, merchantID *int64) ([]domain.Role, error)
 	CreateRole(ctx context.Context, input CreateRoleInput) (*domain.Role, error)
 	GetRole(ctx context.Context, id int64) (*domain.Role, error)
 	UpdateRole(ctx context.Context, input UpdateRoleInput) (*domain.Role, error)
@@ -552,8 +552,8 @@ func (uc *AuthUsecase) DeleteUser(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (uc *AuthUsecase) ListRoles(ctx context.Context) ([]domain.Role, error) {
-	return uc.roleRepo.List(ctx)
+func (uc *AuthUsecase) ListRoles(ctx context.Context, merchantID *int64) ([]domain.Role, error) {
+	return uc.roleRepo.List(ctx, merchantID)
 }
 
 func (uc *AuthUsecase) CreateRole(ctx context.Context, input CreateRoleInput) (*domain.Role, error) {

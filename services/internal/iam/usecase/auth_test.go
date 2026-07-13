@@ -137,7 +137,7 @@ func (m *mockRoleRepo) GetByName(_ context.Context, name string) (*domain.Role, 
 	return nil, domain.ErrInvalidRole
 }
 
-func (m *mockRoleRepo) List(_ context.Context) ([]domain.Role, error) {
+func (m *mockRoleRepo) List(_ context.Context, _ *int64) ([]domain.Role, error) {
 	return nil, nil
 }
 

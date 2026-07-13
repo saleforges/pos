@@ -19,16 +19,12 @@ func NewUserRepository(pool *otel.TracedPool) *UserRepository {
 
 func scanUser(row pgx.Row) (*domain.User, error) {
 	var u domain.User
-	var defaultBranchID *int64
-	err := row.Scan(&u.ID, &u.Username, &u.Email, &u.Password, &u.Type, &u.Status, &defaultBranchID, &u.CreatedAt, &u.UpdatedAt)
+	err := row.Scan(&u.ID, &u.Username, &u.Email, &u.Password, &u.Type, &u.Status, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, domain.ErrUserNotFound
 		}
 		return nil, err
-	}
-	if defaultBranchID != nil {
-		u.DefaultBranch = &domain.DefaultBranch{ID: *defaultBranchID}
 	}
 	return &u, nil
 }
@@ -51,7 +47,7 @@ func loadUserSystemRole(ctx context.Context, pool *otel.TracedPool, userID int64
 func loadScopedRoles(ctx context.Context, pool *otel.TracedPool, userID int64) []domain.UserRoleAssignment {
 	var result []domain.UserRoleAssignment
 
-	// merchant-wide roles from user_roles (owner)
+	// merchant-wide roles from user_roles (owner, scope=all)
 	rows, err := pool.Query(ctx,
 		`SELECT ur.merchant_id, m.name, r.id, r.name, r.description, r.is_system
 		 FROM user_roles ur
@@ -64,12 +60,13 @@ func loadScopedRoles(ctx context.Context, pool *otel.TracedPool, userID int64) [
 			var a domain.UserRoleAssignment
 			if err := rows.Scan(&a.MerchantID, &a.MerchantName,
 				&a.Role.ID, &a.Role.Name, &a.Role.Description, &a.Role.IsSystem); err == nil {
+				a.BranchScope = domain.BranchScopeAll
 				result = append(result, a)
 			}
 		}
 	}
 
-	// branch-specific roles from staff table
+	// branch-specific roles from staff table (scope=assigned)
 	rows2, err := pool.Query(ctx,
 		`SELECT s.merchant_id, m.name, s.branch_id, COALESCE(b.name, ''), r.id, r.name, r.description, r.is_system, s.is_default
 		 FROM staff s
@@ -84,6 +81,7 @@ func loadScopedRoles(ctx context.Context, pool *otel.TracedPool, userID int64) [
 			var a domain.UserRoleAssignment
 			if err := rows2.Scan(&a.MerchantID, &a.MerchantName, &a.BranchID, &a.BranchName,
 				&a.Role.ID, &a.Role.Name, &a.Role.Description, &a.Role.IsSystem, &a.IsDefault); err == nil {
+				a.BranchScope = domain.BranchScopeAssigned
 				result = append(result, a)
 			}
 		}
@@ -113,7 +111,7 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 
 func (r *UserRepository) GetByID(ctx context.Context, id int64) (*domain.User, error) {
 	user, err := scanUser(r.pool.QueryRow(ctx,
-		`SELECT id, username, email, password, type, status, default_branch_id, created_at, updated_at FROM users WHERE id = $1`, id,
+		`SELECT id, username, email, password, type, status, created_at, updated_at FROM users WHERE id = $1`, id,
 	))
 	if err != nil {
 		return nil, err
@@ -122,16 +120,13 @@ func (r *UserRepository) GetByID(ctx context.Context, id int64) (*domain.User, e
 	user.Roles = loadScopedRoles(ctx, r.pool, user.ID)
 	if user.Roles == nil {
 		user.Roles = []domain.UserRoleAssignment{}
-	}
-	if user.DefaultBranch != nil {
-		user.DefaultBranch = loadDefaultBranch(ctx, r.pool, user.DefaultBranch.ID)
 	}
 	return user, nil
 }
 
 func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*domain.User, error) {
 	user, err := scanUser(r.pool.QueryRow(ctx,
-		`SELECT id, username, email, password, type, status, default_branch_id, created_at, updated_at FROM users WHERE username = $1`, username,
+		`SELECT id, username, email, password, type, status, created_at, updated_at FROM users WHERE username = $1`, username,
 	))
 	if err != nil {
 		return nil, err
@@ -140,16 +135,13 @@ func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*d
 	user.Roles = loadScopedRoles(ctx, r.pool, user.ID)
 	if user.Roles == nil {
 		user.Roles = []domain.UserRoleAssignment{}
-	}
-	if user.DefaultBranch != nil {
-		user.DefaultBranch = loadDefaultBranch(ctx, r.pool, user.DefaultBranch.ID)
 	}
 	return user, nil
 }
 
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
 	user, err := scanUser(r.pool.QueryRow(ctx,
-		`SELECT id, username, email, password, type, status, default_branch_id, created_at, updated_at FROM users WHERE email = $1`, email,
+		`SELECT id, username, email, password, type, status, created_at, updated_at FROM users WHERE email = $1`, email,
 	))
 	if err != nil {
 		return nil, err
@@ -159,15 +151,12 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 	if user.Roles == nil {
 		user.Roles = []domain.UserRoleAssignment{}
 	}
-	if user.DefaultBranch != nil {
-		user.DefaultBranch = loadDefaultBranch(ctx, r.pool, user.DefaultBranch.ID)
-	}
 	return user, nil
 }
 
 func (r *UserRepository) List(ctx context.Context, offset, limit int) ([]domain.User, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, username, email, password, type, status, default_branch_id, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
+		`SELECT id, username, email, password, type, status, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
 		limit, offset,
 	)
 	if err != nil {
@@ -178,12 +167,8 @@ func (r *UserRepository) List(ctx context.Context, offset, limit int) ([]domain.
 	var users []domain.User
 	for rows.Next() {
 		var u domain.User
-		var defaultBranchID *int64
-		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Password, &u.Type, &u.Status, &defaultBranchID, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Password, &u.Type, &u.Status, &u.CreatedAt, &u.UpdatedAt); err != nil {
 			return nil, err
-		}
-		if defaultBranchID != nil {
-			u.DefaultBranch = &domain.DefaultBranch{ID: *defaultBranchID}
 		}
 		u.SystemRole = loadUserSystemRole(ctx, r.pool, u.ID)
 		u.Roles = loadScopedRoles(ctx, r.pool, u.ID)
@@ -323,8 +308,19 @@ func (r *RoleRepository) GetByName(ctx context.Context, name string) (*domain.Ro
 	return role, nil
 }
 
-func (r *RoleRepository) List(ctx context.Context) ([]domain.Role, error) {
-	rows, err := r.pool.Query(ctx, `SELECT id, name, description, is_system FROM roles ORDER BY name`)
+func (r *RoleRepository) List(ctx context.Context, merchantID *int64) ([]domain.Role, error) {
+	var rows pgx.Rows
+	var err error
+	if merchantID != nil {
+		rows, err = r.pool.Query(ctx,
+			`SELECT DISTINCT r.id, r.name, r.description, r.is_system
+			 FROM roles r
+			 JOIN user_roles ur ON ur.role_id = r.id
+			 WHERE ur.merchant_id = $1
+			 ORDER BY r.id`, *merchantID)
+	} else {
+		rows, err = r.pool.Query(ctx, `SELECT id, name, description, is_system FROM roles ORDER BY id`)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -378,13 +374,4 @@ func (r *RoleRepository) GetPermissions(ctx context.Context, roleID int64) ([]do
 	return loadRolePermissions(ctx, r.pool, roleID)
 }
 
-func loadDefaultBranch(ctx context.Context, pool *otel.TracedPool, branchID int64) *domain.DefaultBranch {
-	var b domain.DefaultBranch
-	err := pool.QueryRow(ctx,
-		`SELECT b.id, b.name, m.id, m.name FROM branches b JOIN merchants m ON m.id = b.merchant_id WHERE b.id = $1`, branchID,
-	).Scan(&b.ID, &b.Name, &b.MerchantID, &b.MerchantName)
-	if err != nil {
-		return nil
-	}
-	return &b
-}
+

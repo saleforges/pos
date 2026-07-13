@@ -11,7 +11,13 @@ import (
 )
 
 func (h *AuthHandler) ListRoles(c echo.Context) error {
-	roles, err := h.authUsecase.ListRoles(c.Request().Context())
+	var mid *int64
+	if s := c.Request().Header.Get("X-Merchant-Id"); s != "" {
+		if id, err := strconv.ParseInt(s, 10, 64); err == nil {
+			mid = &id
+		}
+	}
+	roles, err := h.authUsecase.ListRoles(c.Request().Context(), mid)
 	if err != nil {
 		return writeError(c, http.StatusInternalServerError, err)
 	}

@@ -47,22 +47,22 @@ type branchDTO struct {
 }
 
 type roleResponse struct {
-	ID       int64        `json:"id"`
-	Name     string       `json:"name"`
-	Merchant *merchantDTO `json:"merchant"`
-	Branch   *branchDTO   `json:"branch"`
+	ID          int64        `json:"id"`
+	Name        string       `json:"name"`
+	Merchant    *merchantDTO `json:"merchant"`
+	Branch      *branchDTO   `json:"branch"`
+	BranchScope string       `json:"branchScope"`
 }
 
 type meResponse struct {
-	ID             int64          `json:"id"`
-	Username       string         `json:"username"`
-	Email          string         `json:"email"`
-	Type           string         `json:"type"`
-	Status         string         `json:"status"`
-	Roles          []roleResponse `json:"roles"`
-	DefaultBranch  *branchDTO     `json:"defaultBranch"`
-	CreatedAt      string         `json:"createdAt"`
-	UpdatedAt      string         `json:"updatedAt"`
+	ID        int64          `json:"id"`
+	Username  string         `json:"username"`
+	Email     string         `json:"email"`
+	Type      string         `json:"type"`
+	Status    string         `json:"status"`
+	Roles     []roleResponse `json:"roles"`
+	CreatedAt string         `json:"createdAt"`
+	UpdatedAt string         `json:"updatedAt"`
 }
 
 type createUserRequest struct {

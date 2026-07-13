@@ -10,7 +10,6 @@ import (
 
 const (
 	ContextKeyStaffBranches  = "staff_branches"
-	ContextKeyDefaultBranch  = "default_branch"
 	ContextKeyCurrentStaffID = "current_staff_id"
 )
 
@@ -32,7 +31,6 @@ func BranchContext(staffRepo repository.StaffRepository) echo.MiddlewareFunc {
 			merchantID := httputil.GetMerchantID(c)
 
 			var assignments []BranchAssignment
-			var defaultBranch int64
 
 			if merchantID != 0 {
 				staffList, err := staffRepo.ListByUserAndMerchant(c.Request().Context(), userID, merchantID)
@@ -44,15 +42,11 @@ func BranchContext(staffRepo repository.StaffRepository) echo.MiddlewareFunc {
 							Role:      string(s.Role),
 							IsDefault: s.IsDefault,
 						})
-						if s.IsDefault {
-							defaultBranch = s.BranchID
-						}
 					}
 				}
 			}
 
 			c.Set(ContextKeyStaffBranches, assignments)
-			c.Set(ContextKeyDefaultBranch, defaultBranch)
 
 			return next(c)
 		}
