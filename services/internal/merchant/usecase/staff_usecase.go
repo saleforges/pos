@@ -65,7 +65,7 @@ func (uc *merchantUsecase) AssignStaff(ctx context.Context, input AssignStaffInp
 	}
 
 	if input.IsDefault {
-		_ = uc.staffRepo.SetDefaultBranch(ctx, input.UserID, staff.ID)
+		_ = uc.staffRepo.SetDefaultBranch(ctx, input.UserID, input.BranchID)
 	}
 
 	if err := uc.staffRepo.Create(ctx, staff); err != nil {
