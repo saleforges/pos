@@ -1,0 +1,15 @@
+server {
+  listen 80;
+
+  location /api/ {
+    rewrite ^/api/(.*) /$1 break;
+    proxy_pass $ {
+      API_PROXY_TARGE
+    }
+    ;
+    proxy_set_header Host $proxy_host;
+    proxy_set_header X-Real-IP $remote_addr;
+  }
+
+  location / {
+    root /usr/share/nginx/html;

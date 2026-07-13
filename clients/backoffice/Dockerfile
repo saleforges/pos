@@ -15,6 +15,6 @@ RUN bunx turbo run build --filter=backoffice
 
 FROM nginx:alpine AS runner
 COPY --from=build /app/backoffice/dist /usr/share/nginx/html
-COPY backoffice/nginx.conf /etc/nginx/conf.d/default.conf
+COPY backoffice/nginx.conf.template /etc/nginx/templates/default.conf.template
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
