@@ -256,9 +256,19 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 		return nil, domain.ErrInternal
 	}
 
-	refreshToken, err := uc.tokenSigner.SignRefreshToken(user.ID)
+	refreshTokenStr, err := uc.tokenSigner.SignRefreshToken(user.ID)
 	if err != nil {
 		logger.Error("register: sign refresh token failed", "error", err.Error())
+		return nil, domain.ErrInternal
+	}
+
+	rt := &domain.RefreshToken{
+		UserID:    user.ID,
+		Token:     refreshTokenStr,
+		ExpiresAt: now.Add(30 * 24 * time.Hour),
+		CreatedAt: now,
+	}
+	if err := uc.refreshTokenRepo.Create(ctx, rt); err != nil {
 		return nil, domain.ErrInternal
 	}
 
@@ -271,7 +281,7 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 	return &AuthResult{
 		TokenPair: port.TokenPair{
 			AccessToken:  accessToken,
-			RefreshToken: refreshToken,
+			RefreshToken: refreshTokenStr,
 			ExpiresIn:    3600,
 		},
 	}, nil
@@ -485,6 +495,11 @@ func (uc *AuthUsecase) ValidateToken(ctx context.Context, tokenString string) (*
 
 	if user.Status == domain.UserStatusDisabled {
 		return nil, domain.ErrUserDisabled
+	}
+
+	has, err := uc.refreshTokenRepo.HasActiveTokens(ctx, claims.UserID)
+	if err != nil || !has {
+		return nil, domain.ErrInvalidToken
 	}
 
 	return claims, nil

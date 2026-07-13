@@ -221,6 +221,10 @@ func (m *mockRefreshTokenRepo) RevokeByUser(_ context.Context, userID int64) err
 	return nil
 }
 
+func (m *mockRefreshTokenRepo) HasActiveTokens(_ context.Context, _ int64) (bool, error) {
+	return true, nil
+}
+
 type mockSessionRepo struct {
 	err error
 }

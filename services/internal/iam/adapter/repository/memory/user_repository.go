@@ -365,6 +365,18 @@ func (r *RefreshTokenRepository) RevokeByUser(_ context.Context, userID int64) e
 	return nil
 }
 
+func (r *RefreshTokenRepository) HasActiveTokens(_ context.Context, userID int64) (bool, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	now := nowFunc()
+	for _, t := range r.tokens {
+		if t.UserID == userID && t.RevokedAt == nil && t.ExpiresAt.After(now) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 type LoginAuditRepository struct {
 	mu     sync.RWMutex
 	audits []domain.LoginAudit

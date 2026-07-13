@@ -11,4 +11,5 @@ type RefreshTokenRepository interface {
 	GetByToken(ctx context.Context, token string) (*domain.RefreshToken, error)
 	Revoke(ctx context.Context, id int64) error
 	RevokeByUser(ctx context.Context, userID int64) error
+	HasActiveTokens(ctx context.Context, userID int64) (bool, error)
 }

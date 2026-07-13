@@ -64,3 +64,12 @@ func (r *RefreshTokenRepository) RevokeByUser(ctx context.Context, userID int64)
 	)
 	return err
 }
+
+func (r *RefreshTokenRepository) HasActiveTokens(ctx context.Context, userID int64) (bool, error) {
+	var exists bool
+	err := r.pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM refresh_tokens WHERE user_id = $1 AND revoked_at IS NULL AND expires_at > NOW())`,
+		userID,
+	).Scan(&exists)
+	return exists, err
+}
