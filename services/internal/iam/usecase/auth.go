@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -277,6 +278,7 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 	}
 
 	accessToken, err := uc.tokenSigner.SignAccessToken(port.TokenClaims{
+		Subject:     strconv.FormatInt(user.ID, 10),
 		SessionID:   sessionID,
 		UserID:      user.ID,
 		UserType:    user.Type,
@@ -355,8 +357,19 @@ func (uc *AuthUsecase) Login(ctx context.Context, input LoginInput) (*LoginResul
 		return nil, domain.ErrInternal
 	}
 
+	roleID, merchantID, branchID := uc.resolveActiveRole(ctx, user.ID)
+	if roleID != 0 {
+		session.ActiveUserRoleID = roleID
+		session.UpdatedAt = now
+		uc.sessionStore.Update(ctx, session)
+	}
+
 	claims := port.TokenClaims{
+		Subject:     strconv.FormatInt(user.ID, 10),
 		SessionID:   sessionID,
+		RoleID:      roleID,
+		MerchantID:  merchantID,
+		BranchID:    branchID,
 		UserID:      user.ID,
 		UserType:    user.Type,
 		RoleName:    systemRoleName,
@@ -440,8 +453,14 @@ func (uc *AuthUsecase) RefreshToken(ctx context.Context, input RefreshTokenInput
 		return nil, domain.ErrInternal
 	}
 
+	roleID, merchantID, branchID := uc.resolveActiveRole(ctx, user.ID)
+
 	accessToken, err := uc.tokenSigner.SignAccessToken(port.TokenClaims{
+		Subject:     strconv.FormatInt(user.ID, 10),
 		SessionID:   sessionID,
+		RoleID:      roleID,
+		MerchantID:  merchantID,
+		BranchID:    branchID,
 		UserID:      user.ID,
 		UserType:    user.Type,
 		RoleName:    systemRoleName,
@@ -707,6 +726,26 @@ func (uc *AuthUsecase) collectPermissions(ctx context.Context, roleName string) 
 		return nil, nil
 	}
 	return role.Permissions, nil
+}
+
+func (uc *AuthUsecase) resolveActiveRole(ctx context.Context, userID int64) (roleID, merchantID, branchID int64) {
+	staff, err := uc.staffRepo.ListByUserID(ctx, userID)
+	if err != nil || len(staff) == 0 {
+		return 0, 0, 0
+	}
+	for _, s := range staff {
+		if s.IsDefault {
+			if s.BranchID != nil {
+				return s.ID, s.MerchantID, *s.BranchID
+			}
+			return s.ID, s.MerchantID, 0
+		}
+	}
+	s := staff[0]
+	if s.BranchID != nil {
+		return s.ID, s.MerchantID, *s.BranchID
+	}
+	return s.ID, s.MerchantID, 0
 }
 
 func (uc *AuthUsecase) auditLogin(ctx context.Context, userID int64, email string, success bool, ip, userAgent, reason string) {

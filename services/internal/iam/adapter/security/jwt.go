@@ -61,7 +61,11 @@ func NewJWTSigner(privateKeyPEM []byte, keyID string) (*JWTSigner, error) {
 }
 
 type jwtAccessClaims struct {
+	Subject     string              `json:"sub,omitempty"`
 	SessionID   string              `json:"sid,omitempty"`
+	RoleID      int64               `json:"rid,omitempty"`
+	MerchantID  int64               `json:"mid,omitempty"`
+	BranchID    int64               `json:"bid,omitempty"`
 	UserID      int64               `json:"user_id"`
 	RoleName    string              `json:"role_name,omitempty"`
 	UserType    string              `json:"user_type,omitempty"`
@@ -79,7 +83,11 @@ type jwtRefreshClaims struct {
 
 func (s *JWTSigner) SignAccessToken(claims port.TokenClaims) (string, error) {
 	c := jwtAccessClaims{
+		Subject:     claims.Subject,
 		SessionID:   claims.SessionID,
+		RoleID:      claims.RoleID,
+		MerchantID:  claims.MerchantID,
+		BranchID:    claims.BranchID,
 		UserID:      claims.UserID,
 		RoleName:    claims.RoleName,
 		UserType:    string(claims.UserType),
@@ -138,7 +146,11 @@ func (s *JWTSigner) VerifyAccessToken(tokenString string) (*port.TokenClaims, er
 	}
 
 	return &port.TokenClaims{
+		Subject:     claims.Subject,
 		SessionID:   claims.SessionID,
+		RoleID:      claims.RoleID,
+		MerchantID:  claims.MerchantID,
+		BranchID:    claims.BranchID,
 		UserID:      claims.UserID,
 		RoleName:    claims.RoleName,
 		UserType:    domain.UserType(claims.UserType),
