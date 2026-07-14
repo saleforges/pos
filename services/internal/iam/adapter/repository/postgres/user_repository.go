@@ -53,7 +53,7 @@ func loadScopedRoles(ctx context.Context, pool *otel.TracedPool, userID int64) [
 		 JOIN roles r ON r.id = ur.role_id
 		 LEFT JOIN merchants m ON m.id = ur.merchant_id
 		 LEFT JOIN branches b ON b.id = ur.branch_id
-		 WHERE ur.user_id = $1 AND ur.status = 'active'
+		 WHERE ur.user_id = $1 AND ur.status = 'active' AND ur.merchant_id IS NOT NULL
 		 ORDER BY m.name, b.name`, userID)
 	if err == nil {
 		defer rows.Close()
