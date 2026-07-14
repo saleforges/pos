@@ -59,6 +59,9 @@ func New(cfg Config) (*App, error) {
 		if err := postgres.RunMigrations(cfg.DatabaseURL); err != nil {
 			return nil, err
 		}
+		if err := postgres.SeedData(ctx, pool); err != nil {
+			logger.Warn("seed data error", "error", err.Error())
+		}
 		merchantRepo = postgres.NewMerchantRepository(pool)
 		branchRepo = postgres.NewBranchRepository(pool)
 		staffRepo = postgres.NewStaffRepository(pool)

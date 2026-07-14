@@ -170,14 +170,6 @@ func SeedData(ctx context.Context, pool *otel.TracedPool) error {
 			return err
 		}
 	}
-
-	// seed merchant + branch for dev testing
-	_, _ = pool.Exec(ctx,
-		`INSERT INTO merchants (id, name, email) VALUES (1, 'Warung Makmur', 'owner@merchant.com') ON CONFLICT DO NOTHING`)
-
-	_, _ = pool.Exec(ctx,
-		`INSERT INTO branches (merchant_id, name, code) VALUES (1, 'Cabang A', 'A001') ON CONFLICT DO NOTHING`)
-
 	return nil
 }
 
