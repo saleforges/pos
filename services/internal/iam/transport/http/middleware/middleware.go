@@ -20,6 +20,7 @@ func CORSMiddleware() echo.MiddlewareFunc {
 			c.Response().Header().Set("Access-Control-Allow-Origin", "*")
 			c.Response().Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			c.Response().Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			c.Response().Header().Set("Access-Control-Allow-Credentials", "true")
 			if c.Request().Method == http.MethodOptions {
 				return c.NoContent(http.StatusNoContent)
 			}
@@ -31,17 +32,12 @@ func CORSMiddleware() echo.MiddlewareFunc {
 func AuthMiddleware(tokenVerifier func(context.Context, string) (*port.TokenClaims, error)) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			authHeader := c.Request().Header.Get("Authorization")
-			if authHeader == "" {
+			token := extractToken(c)
+			if token == "" {
 				return writeError(c, http.StatusUnauthorized, domain.ErrInvalidToken)
 			}
 
-			parts := strings.SplitN(authHeader, " ", 2)
-			if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-				return writeError(c, http.StatusUnauthorized, domain.ErrInvalidToken)
-			}
-
-			claims, err := tokenVerifier(c.Request().Context(), parts[1])
+			claims, err := tokenVerifier(c.Request().Context(), token)
 			if err != nil {
 				return writeError(c, http.StatusUnauthorized, err)
 			}
@@ -50,6 +46,24 @@ func AuthMiddleware(tokenVerifier func(context.Context, string) (*port.TokenClai
 			return next(c)
 		}
 	}
+}
+
+func extractToken(c echo.Context) string {
+	// try Authorization header first
+	authHeader := c.Request().Header.Get("Authorization")
+	if authHeader != "" {
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+			return parts[1]
+		}
+	}
+
+	// fallback to access_token cookie
+	cookie, err := c.Cookie("access_token")
+	if err != nil {
+		return ""
+	}
+	return cookie.Value
 }
 
 func RBACMiddleware(required domain.Permission, hasPermission func(*port.TokenClaims, domain.Permission) bool) echo.MiddlewareFunc {

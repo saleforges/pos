@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/iam/domain"
@@ -10,6 +11,55 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/usecase"
 	"github.com/saleforge/pos/services/pkg/logger"
 )
+
+const (
+	accessCookieName  = "access_token"
+	refreshCookieName = "refresh_token"
+)
+
+func setTokenCookies(c echo.Context, accessToken, refreshToken string, expiresIn int) {
+	secure := c.Request().TLS != nil
+	accessMaxAge := expiresIn
+	refreshMaxAge := 30 * 24 * 3600 // 30 days
+
+	c.SetCookie(&http.Cookie{
+		Name:     accessCookieName,
+		Value:    accessToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   accessMaxAge,
+	})
+	c.SetCookie(&http.Cookie{
+		Name:     refreshCookieName,
+		Value:    refreshToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   refreshMaxAge,
+	})
+}
+
+func clearTokenCookies(c echo.Context) {
+	c.SetCookie(&http.Cookie{
+		Name:     accessCookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		MaxAge:   -1,
+		Expires:  time.Unix(0, 0),
+	})
+	c.SetCookie(&http.Cookie{
+		Name:     refreshCookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		MaxAge:   -1,
+		Expires:  time.Unix(0, 0),
+	})
+}
 
 func (h *AuthHandler) Register(c echo.Context) error {
 	var req registerRequest
@@ -38,6 +88,8 @@ func (h *AuthHandler) Register(c echo.Context) error {
 		logger.Error("register failed", "error", err.Error())
 		return writeError(c, http.StatusInternalServerError, err)
 	}
+
+	setTokenCookies(c, result.AccessToken, result.RefreshToken, result.ExpiresIn)
 
 	return writeJSON(c, http.StatusCreated, authResponse{
 		AccessToken:  result.AccessToken,
@@ -69,6 +121,8 @@ func (h *AuthHandler) Login(c echo.Context) error {
 		return writeError(c, http.StatusInternalServerError, err)
 	}
 
+	setTokenCookies(c, result.AccessToken, result.RefreshToken, result.ExpiresIn)
+
 	return writeJSON(c, http.StatusOK, authResponse{
 		AccessToken:  result.AccessToken,
 		RefreshToken: result.RefreshToken,
@@ -82,17 +136,26 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 		return writeError(c, http.StatusBadRequest, errInvalidBody)
 	}
 
-	if req.RefreshToken == "" {
+	refreshToken := req.RefreshToken
+	if refreshToken == "" {
+		cookie, err := c.Cookie(refreshCookieName)
+		if err == nil && cookie.Value != "" {
+			refreshToken = cookie.Value
+		}
+	}
+
+	if refreshToken == "" {
 		return writeError(c, http.StatusBadRequest, errMissingFields)
 	}
 
 	result, err := h.authUsecase.RefreshToken(c.Request().Context(), usecase.RefreshTokenInput{
-		RefreshToken: req.RefreshToken,
+		RefreshToken: refreshToken,
 		IPAddress:    c.RealIP(),
 		UserAgent:    c.Request().UserAgent(),
 	})
 	if err != nil {
 		if err == domain.ErrInvalidRefreshToken {
+			clearTokenCookies(c)
 			return writeError(c, http.StatusUnauthorized, err)
 		}
 		if err == domain.ErrUserDisabled {
@@ -100,6 +163,8 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 		}
 		return writeError(c, http.StatusInternalServerError, err)
 	}
+
+	setTokenCookies(c, result.AccessToken, result.RefreshToken, result.ExpiresIn)
 
 	return writeJSON(c, http.StatusOK, authResponse{
 		AccessToken:  result.AccessToken,
@@ -118,6 +183,7 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 		return writeError(c, http.StatusInternalServerError, err)
 	}
 
+	clearTokenCookies(c)
 	return writeJSON(c, http.StatusOK, nil)
 }
 
