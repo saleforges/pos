@@ -49,7 +49,7 @@ func loadScopedRoles(ctx context.Context, pool *otel.TracedPool, userID int64) [
 
 	// merchant-wide roles from user_roles (owner, scope=all)
 	rows, err := pool.Query(ctx,
-		`SELECT ur.merchant_id, m.name, r.id, r.name, r.description, r.is_system
+		`SELECT ur.id, ur.merchant_id, m.name, r.id, r.name, r.description, r.is_system
 		 FROM user_roles ur
 		 JOIN roles r ON r.id = ur.role_id
 		 JOIN merchants m ON m.id = ur.merchant_id
@@ -58,7 +58,7 @@ func loadScopedRoles(ctx context.Context, pool *otel.TracedPool, userID int64) [
 		defer rows.Close()
 		for rows.Next() {
 			var a domain.UserRoleAssignment
-			if err := rows.Scan(&a.MerchantID, &a.MerchantName,
+			if err := rows.Scan(&a.ID, &a.MerchantID, &a.MerchantName,
 				&a.Role.ID, &a.Role.Name, &a.Role.Description, &a.Role.IsSystem); err == nil {
 				a.BranchScope = domain.BranchScopeAll
 				result = append(result, a)
@@ -68,7 +68,7 @@ func loadScopedRoles(ctx context.Context, pool *otel.TracedPool, userID int64) [
 
 	// branch-specific roles from staff table (scope=assigned)
 	rows2, err := pool.Query(ctx,
-		`SELECT s.merchant_id, m.name, s.branch_id, COALESCE(b.name, ''), r.id, r.name, r.description, r.is_system, s.is_default
+		`SELECT s.id, s.merchant_id, m.name, s.branch_id, COALESCE(b.name, ''), r.id, r.name, r.description, r.is_system, s.is_default
 		 FROM staff s
 		 JOIN roles r ON r.name = s.role
 		 JOIN merchants m ON m.id = s.merchant_id
@@ -79,7 +79,7 @@ func loadScopedRoles(ctx context.Context, pool *otel.TracedPool, userID int64) [
 		defer rows2.Close()
 		for rows2.Next() {
 			var a domain.UserRoleAssignment
-			if err := rows2.Scan(&a.MerchantID, &a.MerchantName, &a.BranchID, &a.BranchName,
+			if err := rows2.Scan(&a.ID, &a.MerchantID, &a.MerchantName, &a.BranchID, &a.BranchName,
 				&a.Role.ID, &a.Role.Name, &a.Role.Description, &a.Role.IsSystem, &a.IsDefault); err == nil {
 				a.BranchScope = domain.BranchScopeAssigned
 				result = append(result, a)

@@ -494,15 +494,15 @@ func (uc *AuthUsecase) SwitchContext(ctx context.Context, sessionID string, user
 		return nil, domain.ErrSessionNotFound
 	}
 
-	staff, err := uc.staffRepo.ListByUserID(ctx, session.UserID)
+	user, err := uc.userRepo.GetByID(ctx, session.UserID)
 	if err != nil {
 		return nil, domain.ErrForbidden
 	}
 
 	var found *domain.UserRoleAssignment
-	for _, s := range staff {
-		if s.ID == userRoleID {
-			found = &s
+	for _, r := range user.Roles {
+		if r.ID == userRoleID {
+			found = &r
 			break
 		}
 	}
@@ -514,11 +514,6 @@ func (uc *AuthUsecase) SwitchContext(ctx context.Context, sessionID string, user
 	session.UpdatedAt = time.Now().UTC()
 	if err := uc.sessionStore.Update(ctx, session); err != nil {
 		return nil, domain.ErrInternal
-	}
-
-	user, err := uc.cacheGet(ctx, session.UserID)
-	if err != nil {
-		return nil, domain.ErrInvalidToken
 	}
 
 	systemRoleName := ""
@@ -803,23 +798,23 @@ func (uc *AuthUsecase) collectPermissions(ctx context.Context, roleName string) 
 }
 
 func (uc *AuthUsecase) resolveActiveRole(ctx context.Context, userID int64) (roleID, merchantID, branchID int64) {
-	staff, err := uc.staffRepo.ListByUserID(ctx, userID)
-	if err != nil || len(staff) == 0 {
+	user, err := uc.userRepo.GetByID(ctx, userID)
+	if err != nil || len(user.Roles) == 0 {
 		return 0, 0, 0
 	}
-	for _, s := range staff {
-		if s.IsDefault {
-			if s.BranchID != nil {
-				return s.ID, s.MerchantID, *s.BranchID
+	for _, r := range user.Roles {
+		if r.IsDefault {
+			if r.BranchID != nil {
+				return r.ID, r.MerchantID, *r.BranchID
 			}
-			return s.ID, s.MerchantID, 0
+			return r.ID, r.MerchantID, 0
 		}
 	}
-	s := staff[0]
-	if s.BranchID != nil {
-		return s.ID, s.MerchantID, *s.BranchID
+	r := user.Roles[0]
+	if r.BranchID != nil {
+		return r.ID, r.MerchantID, *r.BranchID
 	}
-	return s.ID, s.MerchantID, 0
+	return r.ID, r.MerchantID, 0
 }
 
 func (uc *AuthUsecase) auditLogin(ctx context.Context, userID int64, email string, success bool, ip, userAgent, reason string) {

@@ -47,7 +47,7 @@ func toMeResponse(u domain.User) meResponse {
 
 	for _, ra := range u.Roles {
 		role := roleResponse{
-			ID:          ra.Role.ID,
+			ID:          ra.ID,
 			Name:        ra.Role.Name,
 			BranchScope: string(ra.BranchScope),
 		}
