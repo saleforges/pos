@@ -25,7 +25,5 @@
         pull: true
         networks:
           - name: pos
-        etc_hosts:
-          "api-dev.saleforges.com": "host-gateway"
         env:
           API_PROXY_TARGET: "{{ api_proxy_target }}"
