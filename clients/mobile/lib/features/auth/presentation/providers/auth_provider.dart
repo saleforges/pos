@@ -16,22 +16,26 @@ enum AuthStatus { initial, loading, authenticated, unauthenticated, error }
 class AuthState {
   final AuthStatus status;
   final User? user;
+  final Branch? selectedBranch;
   final String? error;
 
   AuthState({
     this.status = AuthStatus.initial,
     this.user,
+    this.selectedBranch,
     this.error,
   });
 
   AuthState copyWith({
     AuthStatus? status,
     User? user,
+    Branch? selectedBranch,
     String? error,
   }) {
     return AuthState(
       status: status ?? this.status,
       user: user ?? this.user,
+      selectedBranch: selectedBranch ?? this.selectedBranch,
       error: error ?? this.error,
     );
   }
@@ -50,7 +54,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       try {
         final user = await _repository.getCurrentUser();
         state = AuthState(status: AuthStatus.authenticated, user: user);
-      } catch (e) {
+      } catch (_) {
         state = AuthState(status: AuthStatus.unauthenticated);
       }
     } else {
@@ -74,6 +78,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         error: e.toString().replaceFirst('Exception: ', ''),
       );
     }
+  }
+
+  void selectBranch(Branch? branch) {
+    state = state.copyWith(selectedBranch: branch);
   }
 
   Future<void> logout() async {

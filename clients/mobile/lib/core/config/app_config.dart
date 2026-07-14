@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AppConfig {
-  static const String appName = 'POS Mobile';
+  static String get appName => dotenv.get('APP_NAME', fallback: 'Saleforge');
   static const String appVersion = '1.0.0';
   static const bool isProduction = kReleaseMode;
   static const bool isDevelopment = kDebugMode;
