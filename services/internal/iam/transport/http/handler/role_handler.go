@@ -7,15 +7,14 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/iam/domain"
+	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/usecase"
 )
 
 func (h *AuthHandler) ListRoles(c echo.Context) error {
 	var mid *int64
-	if s := c.Request().Header.Get("X-Merchant-Id"); s != "" {
-		if id, err := strconv.ParseInt(s, 10, 64); err == nil {
-			mid = &id
-		}
+	if claims, ok := c.Get(claimsKey).(*port.TokenClaims); ok && claims.MerchantID > 0 {
+		mid = &claims.MerchantID
 	}
 	roles, err := h.authUsecase.ListRoles(c.Request().Context(), mid)
 	if err != nil {
