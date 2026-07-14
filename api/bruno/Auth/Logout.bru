@@ -6,20 +6,10 @@ meta {
 
 post {
   url: {{base_url}}/v1/auth/logout
-  body: json
+  body: none
   auth: bearer
-}
-
-headers {
-  Content-Type: application/json
 }
 
 auth:bearer {
   token: {{access_token}}
-}
-
-body:json {
-  {
-    "refresh_token": "{{refresh_token}}"
-  }
 }

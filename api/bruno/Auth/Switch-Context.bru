@@ -1,0 +1,33 @@
+meta {
+  name: Switch Context
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/v1/auth/switch-context
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "userRoleId": {{role_id}}
+  }
+}
+
+vars:pre-request {
+  role_id: 1
+}
+
+script:post-response {
+  bru.setVar("access_token", res.body.data.access_token);
+}
