@@ -69,6 +69,7 @@ type AuthService interface {
 	RefreshToken(ctx context.Context, input RefreshTokenInput) (*LoginResult, error)
 	Logout(ctx context.Context, input LogoutInput) error
 	SwitchContext(ctx context.Context, sessionID string, userRoleID int64) (*AuthResult, error)
+	SetDefaultRole(ctx context.Context, userID, roleID int64) error
 	Introspect(ctx context.Context, tokenString string) (*IntrospectResult, error)
 	ValidateToken(ctx context.Context, tokenString string) (*port.TokenClaims, error)
 	HasPermission(claims *port.TokenClaims, required domain.Permission) bool
@@ -501,7 +502,7 @@ func (uc *AuthUsecase) SwitchContext(ctx context.Context, sessionID string, user
 
 	var found *domain.UserRoleAssignment
 	for _, r := range user.Roles {
-		if r.ID == userRoleID {
+		if r.Role.ID == userRoleID {
 			found = &r
 			break
 		}
@@ -510,7 +511,7 @@ func (uc *AuthUsecase) SwitchContext(ctx context.Context, sessionID string, user
 		return nil, domain.ErrForbidden
 	}
 
-	session.ActiveUserRoleID = userRoleID
+	session.ActiveUserRoleID = found.Role.ID
 	session.UpdatedAt = time.Now().UTC()
 	if err := uc.sessionStore.Update(ctx, session); err != nil {
 		return nil, domain.ErrInternal
@@ -531,7 +532,7 @@ func (uc *AuthUsecase) SwitchContext(ctx context.Context, sessionID string, user
 	accessToken, err := uc.tokenSigner.SignAccessToken(port.TokenClaims{
 		Subject:     strconv.FormatInt(user.ID, 10),
 		SessionID:   sessionID,
-		RoleID:      found.ID,
+		RoleID:      found.Role.ID,
 		MerchantID:  found.MerchantID,
 		BranchID:    branchID,
 		UserID:      user.ID,
@@ -550,6 +551,10 @@ func (uc *AuthUsecase) SwitchContext(ctx context.Context, sessionID string, user
 			ExpiresIn:    3600,
 		},
 	}, nil
+}
+
+func (uc *AuthUsecase) SetDefaultRole(ctx context.Context, userID, roleID int64) error {
+	return uc.staffRepo.SetDefaultRole(ctx, userID, roleID)
 }
 
 func (uc *AuthUsecase) Introspect(ctx context.Context, tokenString string) (*IntrospectResult, error) {
@@ -805,16 +810,16 @@ func (uc *AuthUsecase) resolveActiveRole(ctx context.Context, userID int64) (rol
 	for _, r := range user.Roles {
 		if r.IsDefault {
 			if r.BranchID != nil {
-				return r.ID, r.MerchantID, *r.BranchID
+				return r.Role.ID, r.MerchantID, *r.BranchID
 			}
-			return r.ID, r.MerchantID, 0
+			return r.Role.ID, r.MerchantID, 0
 		}
 	}
 	r := user.Roles[0]
 	if r.BranchID != nil {
-		return r.ID, r.MerchantID, *r.BranchID
+		return r.Role.ID, r.MerchantID, *r.BranchID
 	}
-	return r.ID, r.MerchantID, 0
+	return r.Role.ID, r.MerchantID, 0
 }
 
 func (uc *AuthUsecase) auditLogin(ctx context.Context, userID int64, email string, success bool, ip, userAgent, reason string) {

@@ -37,6 +37,15 @@ func (r *StaffRepository) ListByUserID(_ context.Context, userID int64) ([]domai
 	return result, nil
 }
 
+func (r *StaffRepository) SetDefaultRole(_ context.Context, userID, roleID int64) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, idx := range r.index[userID] {
+		r.staff[idx].IsDefault = r.staff[idx].Role.ID == roleID
+	}
+	return nil
+}
+
 func (r *StaffRepository) Create(_ context.Context, userID int64, merchantID int64, merchantName, role string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -213,6 +213,23 @@ func (h *AuthHandler) SwitchContext(c echo.Context) error {
 	})
 }
 
+func (h *AuthHandler) SetDefaultRole(c echo.Context) error {
+	var req struct {
+		RoleID int64 `json:"userRoleId"`
+	}
+	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
+		return writeError(c, http.StatusBadRequest, errInvalidBody)
+	}
+
+	claims := c.Get(claimsKey).(*port.TokenClaims)
+
+	if err := h.authUsecase.SetDefaultRole(c.Request().Context(), claims.UserID, req.RoleID); err != nil {
+		return writeError(c, http.StatusInternalServerError, err)
+	}
+
+	return writeJSON(c, http.StatusOK, nil)
+}
+
 func (h *AuthHandler) Introspect(c echo.Context) error {
 	var req struct {
 		Token string `json:"token"`

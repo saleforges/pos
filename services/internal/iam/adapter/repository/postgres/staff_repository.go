@@ -44,6 +44,28 @@ func (r *StaffRepository) ListByUserID(ctx context.Context, userID int64) ([]dom
 	return result, rows.Err()
 }
 
+func (r *StaffRepository) SetDefaultRole(ctx context.Context, userID, roleID int64) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	_, err = tx.Exec(ctx,
+		`UPDATE user_roles SET is_default = false WHERE user_id = $1`, userID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(ctx,
+		`UPDATE user_roles SET is_default = true WHERE user_id = $1 AND role_id = $2`, userID, roleID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
 func (r *StaffRepository) Create(ctx context.Context, userID int64, merchantID int64, merchantName, role string) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
