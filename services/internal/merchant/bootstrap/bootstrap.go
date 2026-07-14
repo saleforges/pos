@@ -2,14 +2,15 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/labstack/echo/v4"
-	"github.com/saleforge/pos/services/internal/merchant/adapter/iam"
 	"github.com/saleforge/pos/services/internal/merchant/adapter/repository/memory"
 	"github.com/saleforge/pos/services/internal/merchant/adapter/repository/postgres"
 	httptransport "github.com/saleforge/pos/services/internal/merchant/transport/http"
 	"github.com/saleforge/pos/services/internal/merchant/transport/http/handler"
 	"github.com/saleforge/pos/services/internal/merchant/usecase"
+	"github.com/saleforge/pos/services/pkg/jwks"
 	"github.com/saleforge/pos/services/pkg/logger"
 	"github.com/saleforge/pos/services/pkg/otel"
 	por "github.com/saleforge/pos/services/internal/merchant/port/repository"
@@ -27,11 +28,12 @@ type App struct {
 }
 
 func New(cfg Config) (*App, error) {
-	iamBaseURL := cfg.IAMBaseURL
-	if iamBaseURL == "" {
-		iamBaseURL = "http://localhost:8080"
+	jwksURL := cfg.IAMBaseURL
+	if jwksURL == "" {
+		jwksURL = "http://localhost:8080"
 	}
-	tokenValidator := iam.NewTokenValidator(iamBaseURL)
+	jwksURL = fmt.Sprintf("%s/.well-known/jwks.json", jwksURL)
+	verifier := jwks.New(jwksURL)
 
 	otelShutdown, err := otel.Init(context.Background(), otel.Config{
 		ServiceName:  "merchant-service",
@@ -72,7 +74,7 @@ func New(cfg Config) (*App, error) {
 	merchantHandler := handler.NewMerchantHandler(uc)
 	branchHandler := handler.NewBranchHandler(uc)
 	staffHandler := handler.NewStaffHandler(uc)
-	e := httptransport.NewRouter(merchantHandler, branchHandler, staffHandler, tokenValidator, staffRepo)
+	e := httptransport.NewRouter(merchantHandler, branchHandler, staffHandler, verifier, staffRepo)
 
 	return &App{router: e, otelShutdown: otelShutdown}, nil
 }

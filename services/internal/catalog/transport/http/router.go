@@ -2,19 +2,54 @@ package http
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/handler"
 	"github.com/saleforge/pos/services/pkg/httputil"
+	"github.com/saleforge/pos/services/pkg/jwks"
 	"github.com/saleforge/pos/services/pkg/otel"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 )
+
+func authMiddleware(verifier *jwks.Verifier) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			token := ""
+			authHeader := c.Request().Header.Get("Authorization")
+			if authHeader != "" {
+				parts := strings.SplitN(authHeader, " ", 2)
+				if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+					token = parts[1]
+				}
+			}
+			if token == "" {
+				if cookie, err := c.Cookie("access_token"); err == nil {
+					token = cookie.Value
+				}
+			}
+			if token == "" {
+				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+			}
+
+			claims, err := verifier.Verify(token)
+			if err != nil {
+				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid token"})
+			}
+
+			c.Set(httputil.ContextKeyMerchantID, claims.MerchantID)
+			c.Set(httputil.ContextKeyUserType, claims.UserType)
+			return next(c)
+		}
+	}
+}
 
 func NewRouter(
 	catHandler *handler.CategoryHandler,
 	prodHandler *handler.ProductHandler,
 	varHandler *handler.VariantHandler,
 	imgHandler *handler.ImageHandler,
+	verifier *jwks.Verifier,
 ) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
@@ -27,7 +62,7 @@ func NewRouter(
 		return nil
 	})
 
-	api := e.Group("/api/v1")
+	api := e.Group("/api/v1", authMiddleware(verifier))
 
 	api.GET("/health", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})

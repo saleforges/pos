@@ -15,10 +15,15 @@ const (
 func MerchantMiddleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			// check context first (set by auth middleware from JWT claims)
+			if mid, ok := c.Get(ContextKeyMerchantID).(int64); ok && mid != 0 {
+				return next(c)
+			}
+
+			// fallback: X-Merchant-Id header
 			merchantIDStr := c.Request().Header.Get("X-Merchant-Id")
 			userType, _ := c.Get(ContextKeyUserType).(string)
 
-			// Platform user: header optional
 			if userType == "platform" {
 				if merchantIDStr != "" {
 					if id, err := strconv.ParseInt(merchantIDStr, 10, 64); err == nil {
@@ -28,7 +33,6 @@ func MerchantMiddleware() echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			// Merchant user or unknown: header required
 			if merchantIDStr == "" {
 				return c.JSON(http.StatusBadRequest, map[string]string{
 					"error": "X-Merchant-Id header is required",

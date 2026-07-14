@@ -2,16 +2,16 @@ package httptransport
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/saleforge/pos/services/internal/merchant/port"
 	"github.com/saleforge/pos/services/internal/merchant/port/repository"
 	"github.com/saleforge/pos/services/internal/merchant/transport/http/handler"
 	"github.com/saleforge/pos/services/internal/merchant/transport/http/middleware"
 	"github.com/saleforge/pos/services/pkg/httputil"
+	"github.com/saleforge/pos/services/pkg/jwks"
 	"github.com/saleforge/pos/services/pkg/otel"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 )
 
-func NewRouter(merchantHandler *handler.MerchantHandler, branchHandler *handler.BranchHandler, staffHandler *handler.StaffHandler, tokenValidator port.TokenValidator, staffRepo repository.StaffRepository) *echo.Echo {
+func NewRouter(merchantHandler *handler.MerchantHandler, branchHandler *handler.BranchHandler, staffHandler *handler.StaffHandler, verifier *jwks.Verifier, staffRepo repository.StaffRepository) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
 
@@ -28,7 +28,7 @@ func NewRouter(merchantHandler *handler.MerchantHandler, branchHandler *handler.
 	})
 
 	auth := e.Group("")
-	auth.Use(middleware.Auth(tokenValidator))
+	auth.Use(middleware.Auth(verifier))
 
 	// Merchant
 	auth.POST("/api/v1/merchants", merchantHandler.Create)

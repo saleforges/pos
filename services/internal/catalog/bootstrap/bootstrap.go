@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/catalog/adapter/repository/memory"
@@ -11,12 +12,14 @@ import (
 	httptransport "github.com/saleforge/pos/services/internal/catalog/transport/http"
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/handler"
 	"github.com/saleforge/pos/services/internal/catalog/usecase"
+	"github.com/saleforge/pos/services/pkg/jwks"
 	"github.com/saleforge/pos/services/pkg/logger"
 	"github.com/saleforge/pos/services/pkg/otel"
 )
 
 type Config struct {
 	DatabaseURL  string
+	IAMBaseURL   string
 	OtelEndpoint string
 	Minio        minioadapter.Config
 }
@@ -84,7 +87,14 @@ func New(cfg Config) (*App, error) {
 		logger.Warn("minio not configured, image upload disabled")
 	}
 
-	router := httptransport.NewRouter(catHandler, prodHandler, varHandler, imgHandler)
+	jwksURL := cfg.IAMBaseURL
+	if jwksURL == "" {
+		jwksURL = "http://iam-service:8080"
+	}
+	jwksURL = fmt.Sprintf("%s/.well-known/jwks.json", jwksURL)
+	verifier := jwks.New(jwksURL)
+
+	router := httptransport.NewRouter(catHandler, prodHandler, varHandler, imgHandler, verifier)
 
 	return &App{router: router, otelShutdown: otelShutdown}, nil
 }
