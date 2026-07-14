@@ -187,6 +187,32 @@ func (h *AuthHandler) Logout(c echo.Context) error {
 	return writeJSON(c, http.StatusOK, nil)
 }
 
+func (h *AuthHandler) SwitchContext(c echo.Context) error {
+	var req struct {
+		UserRoleID int64 `json:"userRoleId"`
+	}
+	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
+		return writeError(c, http.StatusBadRequest, errInvalidBody)
+	}
+
+	claims := c.Get(claimsKey).(*port.TokenClaims)
+
+	result, err := h.authUsecase.SwitchContext(c.Request().Context(), claims.SessionID, req.UserRoleID)
+	if err != nil {
+		if err == domain.ErrSessionNotFound || err == domain.ErrForbidden {
+			return writeError(c, http.StatusForbidden, err)
+		}
+		return writeError(c, http.StatusInternalServerError, err)
+	}
+
+	setTokenCookies(c, result.AccessToken, "", result.ExpiresIn)
+
+	return writeJSON(c, http.StatusOK, authResponse{
+		AccessToken: result.AccessToken,
+		ExpiresIn:   result.ExpiresIn,
+	})
+}
+
 func (h *AuthHandler) Introspect(c echo.Context) error {
 	var req struct {
 		Token string `json:"token"`

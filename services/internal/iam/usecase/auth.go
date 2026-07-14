@@ -68,6 +68,7 @@ type AuthService interface {
 	Login(ctx context.Context, input LoginInput) (*LoginResult, error)
 	RefreshToken(ctx context.Context, input RefreshTokenInput) (*LoginResult, error)
 	Logout(ctx context.Context, input LogoutInput) error
+	SwitchContext(ctx context.Context, sessionID string, userRoleID int64) (*AuthResult, error)
 	Introspect(ctx context.Context, tokenString string) (*IntrospectResult, error)
 	ValidateToken(ctx context.Context, tokenString string) (*port.TokenClaims, error)
 	HasPermission(claims *port.TokenClaims, required domain.Permission) bool
@@ -481,6 +482,79 @@ func (uc *AuthUsecase) RefreshToken(ctx context.Context, input RefreshTokenInput
 
 func (uc *AuthUsecase) Logout(ctx context.Context, input LogoutInput) error {
 	return uc.sessionStore.Delete(ctx, input.SessionID)
+}
+
+type SwitchContextInput struct {
+	UserRoleID int64
+}
+
+func (uc *AuthUsecase) SwitchContext(ctx context.Context, sessionID string, userRoleID int64) (*AuthResult, error) {
+	session, err := uc.sessionStore.Get(ctx, sessionID)
+	if err != nil {
+		return nil, domain.ErrSessionNotFound
+	}
+
+	staff, err := uc.staffRepo.ListByUserID(ctx, session.UserID)
+	if err != nil {
+		return nil, domain.ErrForbidden
+	}
+
+	var found *domain.UserRoleAssignment
+	for _, s := range staff {
+		if s.ID == userRoleID {
+			found = &s
+			break
+		}
+	}
+	if found == nil {
+		return nil, domain.ErrForbidden
+	}
+
+	session.ActiveUserRoleID = userRoleID
+	session.UpdatedAt = time.Now().UTC()
+	if err := uc.sessionStore.Update(ctx, session); err != nil {
+		return nil, domain.ErrInternal
+	}
+
+	user, err := uc.cacheGet(ctx, session.UserID)
+	if err != nil {
+		return nil, domain.ErrInvalidToken
+	}
+
+	systemRoleName := ""
+	if user.SystemRole != nil {
+		systemRoleName = user.SystemRole.Name
+	}
+
+	permissions, _ := uc.collectPermissions(ctx, systemRoleName)
+
+	var branchID int64
+	if found.BranchID != nil {
+		branchID = *found.BranchID
+	}
+
+	accessToken, err := uc.tokenSigner.SignAccessToken(port.TokenClaims{
+		Subject:     strconv.FormatInt(user.ID, 10),
+		SessionID:   sessionID,
+		RoleID:      found.ID,
+		MerchantID:  found.MerchantID,
+		BranchID:    branchID,
+		UserID:      user.ID,
+		UserType:    user.Type,
+		RoleName:    systemRoleName,
+		Permissions: permissions,
+	})
+	if err != nil {
+		return nil, domain.ErrInternal
+	}
+
+	return &AuthResult{
+		TokenPair: port.TokenPair{
+			AccessToken:  accessToken,
+			RefreshToken: "",
+			ExpiresIn:    3600,
+		},
+	}, nil
 }
 
 func (uc *AuthUsecase) Introspect(ctx context.Context, tokenString string) (*IntrospectResult, error) {

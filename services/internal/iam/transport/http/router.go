@@ -49,6 +49,7 @@ func NewRouter(
 	protected := middleware.AuthMiddleware(authUsecase.ValidateToken)
 
 	api.POST("/auth/logout", authHandler.Logout, protected)
+	api.POST("/auth/switch-context", authHandler.SwitchContext, protected)
 	api.GET("/auth/me", authHandler.Me, protected)
 
 	userManage := middleware.RBACMiddleware(domain.UserList, authUsecase.HasPermission)
