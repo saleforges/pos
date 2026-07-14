@@ -9,6 +9,7 @@ import (
 	redisadapter "github.com/saleforge/pos/services/internal/iam/adapter/cache/redis"
 	"github.com/saleforge/pos/services/internal/iam/adapter/repository/memory"
 	"github.com/saleforge/pos/services/internal/iam/adapter/repository/postgres"
+	sessionmem "github.com/saleforge/pos/services/internal/iam/adapter/session/memory"
 	"github.com/saleforge/pos/services/internal/iam/adapter/security"
 	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/port/repository"
@@ -61,7 +62,6 @@ func New(cfg Config) (*App, error) {
 		userRepo         repository.UserRepository
 		roleRepo         repository.RoleRepository
 		permissionRepo   repository.PermissionRepository
-		refreshTokenRepo repository.RefreshTokenRepository
 		loginAuditRepo   repository.LoginAuditRepository
 		staffRepo        repository.StaffRepository
 	)
@@ -85,7 +85,6 @@ func New(cfg Config) (*App, error) {
 		userRepo = postgres.NewUserRepository(pool)
 		roleRepo = postgres.NewRoleRepository(pool)
 		permissionRepo = postgres.NewPermissionRepository(pool)
-		refreshTokenRepo = postgres.NewRefreshTokenRepository(pool)
 		loginAuditRepo = postgres.NewLoginAuditRepository(pool)
 		staffRepo = postgres.NewStaffRepository(pool)
 
@@ -95,7 +94,6 @@ func New(cfg Config) (*App, error) {
 		userRepo = memory.NewUserRepository()
 		roleRepo = memory.NewRoleRepository()
 		permissionRepo = memory.NewPermissionRepository()
-		refreshTokenRepo = memory.NewRefreshTokenRepository()
 		loginAuditRepo = memory.NewLoginAuditRepository()
 		staffRepo = memory.NewStaffRepository()
 	}
@@ -110,13 +108,15 @@ func New(cfg Config) (*App, error) {
 		userCache = iainmemory.NewUserCache(30*time.Second, 5*time.Minute)
 	}
 
+	sessionStore := sessionmem.NewSessionStore()
+
 	authUsecase := usecase.NewAuthUsecase(
 		userRepo,
 		roleRepo,
 		permissionRepo,
-		refreshTokenRepo,
 		loginAuditRepo,
 		staffRepo,
+		sessionStore,
 		eventPublisher,
 		passwordHasher,
 		tokenSigner,

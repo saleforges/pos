@@ -18,6 +18,7 @@ const (
 )
 
 type UserRoleAssignment struct {
+	ID           int64
 	Role         Role
 	MerchantID   int64
 	MerchantName string
@@ -28,16 +29,16 @@ type UserRoleAssignment struct {
 }
 
 type User struct {
-	ID        int64                  `json:"id"`
-	Username  string                 `json:"username"`
-	Email     string                 `json:"email"`
-	Password  string                 `json:"-"`
-	SystemRole *Role                 `json:"-"`
-	Roles     []UserRoleAssignment   `json:"roles"`
-	Type      UserType               `json:"type"`
-	Status    UserStatus             `json:"status"`
-	CreatedAt time.Time              `json:"created_at"`
-	UpdatedAt time.Time              `json:"updated_at"`
+	ID         int64                  `json:"id"`
+	Username   string                 `json:"username"`
+	Email      string                 `json:"email"`
+	Password   string                 `json:"-"`
+	SystemRole *Role                  `json:"-"`
+	Roles      []UserRoleAssignment   `json:"roles"`
+	Type       UserType               `json:"type"`
+	Status     UserStatus             `json:"status"`
+	CreatedAt  time.Time              `json:"created_at"`
+	UpdatedAt  time.Time              `json:"updated_at"`
 }
 
 type RefreshToken struct {
@@ -50,15 +51,17 @@ type RefreshToken struct {
 }
 
 type Session struct {
-	ID             int64      `json:"id"`
-	UserID         int64      `json:"user_id"`
-	RefreshTokenID int64      `json:"refresh_token_id"`
-	IPAddress      string     `json:"ip_address"`
-	UserAgent      string     `json:"user_agent"`
-	CreatedAt      time.Time  `json:"created_at"`
-	LastActivity   time.Time  `json:"last_activity"`
-	ExpiresAt      time.Time  `json:"expires_at"`
-	RevokedAt      *time.Time `json:"revoked_at,omitempty"`
+	ID               string     `json:"id"`
+	UserID           int64      `json:"user_id"`
+	RefreshTokenHash string     `json:"-"`
+	ActiveUserRoleID int64      `json:"active_user_role_id"`
+	UserAgent        string     `json:"user_agent"`
+	IPAddress        string     `json:"ip_address"`
+	LastUsedAt       time.Time  `json:"last_used_at"`
+	ExpiresAt        time.Time  `json:"expires_at"`
+	RevokedAt        *time.Time `json:"revoked_at,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	UpdatedAt        time.Time  `json:"updated_at"`
 }
 
 type APIKey struct {

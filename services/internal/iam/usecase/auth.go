@@ -2,10 +2,13 @@ package usecase
 
 import (
 	"context"
+	"crypto/sha256"
+	"fmt"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/port/repository"
@@ -16,42 +19,47 @@ import (
 )
 
 type AuthUsecase struct {
-	userRepo         repository.UserRepository
-	roleRepo         repository.RoleRepository
-	permissionRepo   repository.PermissionRepository
-	refreshTokenRepo repository.RefreshTokenRepository
-	loginAuditRepo   repository.LoginAuditRepository
-	staffRepo        repository.StaffRepository
-	eventPublisher   port.EventPublisher
-	passwordHasher   port.PasswordHasher
-	tokenSigner      port.TokenSigner
-	userCache        port.UserCache
+	userRepo       repository.UserRepository
+	roleRepo       repository.RoleRepository
+	permissionRepo repository.PermissionRepository
+	loginAuditRepo repository.LoginAuditRepository
+	staffRepo      repository.StaffRepository
+	sessionStore   port.SessionStore
+	eventPublisher port.EventPublisher
+	passwordHasher port.PasswordHasher
+	tokenSigner    port.TokenSigner
+	userCache      port.UserCache
 }
 
 func NewAuthUsecase(
 	userRepo repository.UserRepository,
 	roleRepo repository.RoleRepository,
 	permissionRepo repository.PermissionRepository,
-	refreshTokenRepo repository.RefreshTokenRepository,
 	loginAuditRepo repository.LoginAuditRepository,
 	staffRepo repository.StaffRepository,
+	sessionStore port.SessionStore,
 	eventPublisher port.EventPublisher,
 	passwordHasher port.PasswordHasher,
 	tokenSigner port.TokenSigner,
 	userCache port.UserCache,
 ) *AuthUsecase {
 	return &AuthUsecase{
-		userRepo:         userRepo,
-		roleRepo:         roleRepo,
-		permissionRepo:   permissionRepo,
-		refreshTokenRepo: refreshTokenRepo,
-		loginAuditRepo:   loginAuditRepo,
-		staffRepo:        staffRepo,
-		eventPublisher:   eventPublisher,
-		passwordHasher:   passwordHasher,
-		tokenSigner:      tokenSigner,
-		userCache:        userCache,
+		userRepo:       userRepo,
+		roleRepo:       roleRepo,
+		permissionRepo: permissionRepo,
+		loginAuditRepo: loginAuditRepo,
+		staffRepo:      staffRepo,
+		sessionStore:   sessionStore,
+		eventPublisher: eventPublisher,
+		passwordHasher: passwordHasher,
+		tokenSigner:    tokenSigner,
+		userCache:      userCache,
 	}
+}
+
+func hashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return fmt.Sprintf("%x", h)
 }
 
 type AuthService interface {
@@ -88,11 +96,13 @@ type AuthService interface {
 }
 
 type RegisterInput struct {
-	Username string
-	Email    string
-	Password string
-	Roles    []string
-	UserType domain.UserType
+	Username  string
+	Email     string
+	Password  string
+	Roles     []string
+	UserType  domain.UserType
+	IPAddress string
+	UserAgent string
 }
 
 type AuthResult struct {
@@ -117,8 +127,7 @@ type RefreshTokenInput struct {
 }
 
 type LogoutInput struct {
-	RefreshToken string
-	UserID       int64
+	SessionID string
 }
 
 type IntrospectResult struct {
@@ -245,7 +254,30 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 
 	permissions, _ := uc.collectPermissions(ctx, systemRoleName)
 
+	sessionID := uuid.New().String()
+	refreshTokenStr, err := uc.tokenSigner.SignRefreshToken(user.ID, sessionID)
+	if err != nil {
+		logger.Error("register: sign refresh token failed", "error", err.Error())
+		return nil, domain.ErrInternal
+	}
+
+	session := &domain.Session{
+		ID:               sessionID,
+		UserID:           user.ID,
+		RefreshTokenHash: hashToken(refreshTokenStr),
+		UserAgent:        input.UserAgent,
+		IPAddress:        input.IPAddress,
+		LastUsedAt:       now,
+		ExpiresAt:        now.Add(30 * 24 * time.Hour),
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}
+	if err := uc.sessionStore.Create(ctx, session); err != nil {
+		return nil, domain.ErrInternal
+	}
+
 	accessToken, err := uc.tokenSigner.SignAccessToken(port.TokenClaims{
+		SessionID:   sessionID,
 		UserID:      user.ID,
 		UserType:    user.Type,
 		RoleName:    systemRoleName,
@@ -253,22 +285,6 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 	})
 	if err != nil {
 		logger.Error("register: sign access token failed", "error", err.Error())
-		return nil, domain.ErrInternal
-	}
-
-	refreshTokenStr, err := uc.tokenSigner.SignRefreshToken(user.ID)
-	if err != nil {
-		logger.Error("register: sign refresh token failed", "error", err.Error())
-		return nil, domain.ErrInternal
-	}
-
-	rt := &domain.RefreshToken{
-		UserID:    user.ID,
-		Token:     refreshTokenStr,
-		ExpiresAt: now.Add(30 * 24 * time.Hour),
-		CreatedAt: now,
-	}
-	if err := uc.refreshTokenRepo.Create(ctx, rt); err != nil {
 		return nil, domain.ErrInternal
 	}
 
@@ -317,7 +333,30 @@ func (uc *AuthUsecase) Login(ctx context.Context, input LoginInput) (*LoginResul
 		return nil, domain.ErrInternal
 	}
 
+	now := time.Now().UTC()
+	sessionID := uuid.New().String()
+	refreshTokenStr, err := uc.tokenSigner.SignRefreshToken(user.ID, sessionID)
+	if err != nil {
+		return nil, domain.ErrInternal
+	}
+
+	session := &domain.Session{
+		ID:               sessionID,
+		UserID:           user.ID,
+		RefreshTokenHash: hashToken(refreshTokenStr),
+		UserAgent:        input.UserAgent,
+		IPAddress:        input.IPAddress,
+		LastUsedAt:       now,
+		ExpiresAt:        now.Add(30 * 24 * time.Hour),
+		CreatedAt:        now,
+		UpdatedAt:        now,
+	}
+	if err := uc.sessionStore.Create(ctx, session); err != nil {
+		return nil, domain.ErrInternal
+	}
+
 	claims := port.TokenClaims{
+		SessionID:   sessionID,
 		UserID:      user.ID,
 		UserType:    user.Type,
 		RoleName:    systemRoleName,
@@ -326,22 +365,6 @@ func (uc *AuthUsecase) Login(ctx context.Context, input LoginInput) (*LoginResul
 
 	accessToken, err := uc.tokenSigner.SignAccessToken(claims)
 	if err != nil {
-		return nil, domain.ErrInternal
-	}
-
-	refreshTokenStr, err := uc.tokenSigner.SignRefreshToken(user.ID)
-	if err != nil {
-		return nil, domain.ErrInternal
-	}
-
-	now := time.Now().UTC()
-	rt := &domain.RefreshToken{
-		UserID:    user.ID,
-		Token:     refreshTokenStr,
-		ExpiresAt: now.Add(30 * 24 * time.Hour),
-		CreatedAt: now,
-	}
-	if err := uc.refreshTokenRepo.Create(ctx, rt); err != nil {
 		return nil, domain.ErrInternal
 	}
 
@@ -359,25 +382,29 @@ func (uc *AuthUsecase) Login(ctx context.Context, input LoginInput) (*LoginResul
 }
 
 func (uc *AuthUsecase) RefreshToken(ctx context.Context, input RefreshTokenInput) (*LoginResult, error) {
-	userID, err := uc.tokenSigner.VerifyRefreshToken(input.RefreshToken)
+	userID, sessionID, err := uc.tokenSigner.VerifyRefreshToken(input.RefreshToken)
 	if err != nil {
 		return nil, domain.ErrInvalidRefreshToken
 	}
 
-	stored, err := uc.refreshTokenRepo.GetByToken(ctx, input.RefreshToken)
+	session, err := uc.sessionStore.Get(ctx, sessionID)
 	if err != nil {
 		return nil, domain.ErrInvalidRefreshToken
 	}
 
-	if stored.UserID != userID {
+	if session.RefreshTokenHash != hashToken(input.RefreshToken) {
 		return nil, domain.ErrInvalidRefreshToken
 	}
 
-	if stored.RevokedAt != nil {
+	if session.RevokedAt != nil {
 		return nil, domain.ErrInvalidRefreshToken
 	}
 
-	if time.Now().UTC().After(stored.ExpiresAt) {
+	if time.Now().UTC().After(session.ExpiresAt) {
+		return nil, domain.ErrInvalidRefreshToken
+	}
+
+	if session.UserID != userID {
 		return nil, domain.ErrInvalidRefreshToken
 	}
 
@@ -390,10 +417,6 @@ func (uc *AuthUsecase) RefreshToken(ctx context.Context, input RefreshTokenInput
 		return nil, domain.ErrUserDisabled
 	}
 
-	now := time.Now().UTC()
-	stored.RevokedAt = &now
-	uc.refreshTokenRepo.Revoke(ctx, stored.ID)
-
 	systemRoleName := ""
 	if user.SystemRole != nil {
 		systemRoleName = user.SystemRole.Name
@@ -404,34 +427,29 @@ func (uc *AuthUsecase) RefreshToken(ctx context.Context, input RefreshTokenInput
 		return nil, domain.ErrInternal
 	}
 
-	claims := port.TokenClaims{
+	now := time.Now().UTC()
+	newRefreshTokenStr, err := uc.tokenSigner.SignRefreshToken(user.ID, sessionID)
+	if err != nil {
+		return nil, domain.ErrInternal
+	}
+
+	session.RefreshTokenHash = hashToken(newRefreshTokenStr)
+	session.LastUsedAt = now
+	session.UpdatedAt = now
+	if err := uc.sessionStore.Update(ctx, session); err != nil {
+		return nil, domain.ErrInternal
+	}
+
+	accessToken, err := uc.tokenSigner.SignAccessToken(port.TokenClaims{
+		SessionID:   sessionID,
 		UserID:      user.ID,
 		UserType:    user.Type,
 		RoleName:    systemRoleName,
 		Permissions: permissions,
-	}
-
-	accessToken, err := uc.tokenSigner.SignAccessToken(claims)
+	})
 	if err != nil {
 		return nil, domain.ErrInternal
 	}
-
-	newRefreshTokenStr, err := uc.tokenSigner.SignRefreshToken(user.ID)
-	if err != nil {
-		return nil, domain.ErrInternal
-	}
-
-	rt := &domain.RefreshToken{
-		UserID:    user.ID,
-		Token:     newRefreshTokenStr,
-		ExpiresAt: now.Add(30 * 24 * time.Hour),
-		CreatedAt: now,
-	}
-	if err := uc.refreshTokenRepo.Create(ctx, rt); err != nil {
-		return nil, domain.ErrInternal
-	}
-
-	uc.publishEvent(ctx, "PasswordChanged", nil)
 
 	return &LoginResult{
 		TokenPair: port.TokenPair{
@@ -443,17 +461,7 @@ func (uc *AuthUsecase) RefreshToken(ctx context.Context, input RefreshTokenInput
 }
 
 func (uc *AuthUsecase) Logout(ctx context.Context, input LogoutInput) error {
-	if input.RefreshToken != "" {
-		stored, err := uc.refreshTokenRepo.GetByToken(ctx, input.RefreshToken)
-		if err == nil && stored.UserID == input.UserID {
-			now := time.Now().UTC()
-			stored.RevokedAt = &now
-			uc.refreshTokenRepo.Revoke(ctx, stored.ID)
-		}
-	}
-
-	uc.refreshTokenRepo.RevokeByUser(ctx, input.UserID)
-	return nil
+	return uc.sessionStore.Delete(ctx, input.SessionID)
 }
 
 func (uc *AuthUsecase) Introspect(ctx context.Context, tokenString string) (*IntrospectResult, error) {
@@ -497,9 +505,17 @@ func (uc *AuthUsecase) ValidateToken(ctx context.Context, tokenString string) (*
 		return nil, domain.ErrUserDisabled
 	}
 
-	has, err := uc.refreshTokenRepo.HasActiveTokens(ctx, claims.UserID)
-	if err != nil || !has {
-		return nil, domain.ErrInvalidToken
+	if claims.SessionID != "" {
+		session, err := uc.sessionStore.Get(ctx, claims.SessionID)
+		if err != nil {
+			return nil, domain.ErrInvalidToken
+		}
+		if session.RevokedAt != nil {
+			return nil, domain.ErrInvalidToken
+		}
+		if time.Now().UTC().After(session.ExpiresAt) {
+			return nil, domain.ErrInvalidToken
+		}
 	}
 
 	return claims, nil

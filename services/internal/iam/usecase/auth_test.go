@@ -225,35 +225,42 @@ func (m *mockRefreshTokenRepo) HasActiveTokens(_ context.Context, _ int64) (bool
 	return true, nil
 }
 
-type mockSessionRepo struct {
-	err error
+type mockSessionStore struct {
+	sessions map[string]*domain.Session
 }
 
-func (m *mockSessionRepo) Create(_ context.Context, session *domain.Session) error {
+func (m *mockSessionStore) Create(_ context.Context, session *domain.Session) error {
+	if m.sessions == nil {
+		m.sessions = make(map[string]*domain.Session)
+	}
+	m.sessions[session.ID] = session
 	return nil
 }
 
-func (m *mockSessionRepo) GetByID(_ context.Context, id string) (*domain.Session, error) {
-	return nil, nil
+func (m *mockSessionStore) Get(_ context.Context, id string) (*domain.Session, error) {
+	if m.sessions == nil {
+		return nil, domain.ErrSessionNotFound
+	}
+	s, ok := m.sessions[id]
+	if !ok {
+		return nil, domain.ErrSessionNotFound
+	}
+	return s, nil
 }
 
-func (m *mockSessionRepo) ListByUser(_ context.Context, userID string) ([]domain.Session, error) {
-	return nil, nil
-}
-
-func (m *mockSessionRepo) ListAll(_ context.Context) ([]domain.Session, error) {
-	return nil, nil
-}
-
-func (m *mockSessionRepo) Revoke(_ context.Context, id string) error {
+func (m *mockSessionStore) Update(_ context.Context, session *domain.Session) error {
+	if m.sessions == nil {
+		return domain.ErrSessionNotFound
+	}
+	m.sessions[session.ID] = session
 	return nil
 }
 
-func (m *mockSessionRepo) RevokeAll(_ context.Context) error {
-	return nil
-}
-
-func (m *mockSessionRepo) RevokeByUser(_ context.Context, userID string) error {
+func (m *mockSessionStore) Delete(_ context.Context, id string) error {
+	if m.sessions == nil {
+		return domain.ErrSessionNotFound
+	}
+	delete(m.sessions, id)
 	return nil
 }
 
@@ -344,7 +351,7 @@ func (m *mockTokenSigner) SignAccessToken(_ port.TokenClaims) (string, error) {
 	return m.signedToken, nil
 }
 
-func (m *mockTokenSigner) SignRefreshToken(_ int64) (string, error) {
+func (m *mockTokenSigner) SignRefreshToken(_ int64, _ string) (string, error) {
 	if m.refreshSignErr != nil {
 		return "", m.refreshSignErr
 	}
@@ -358,11 +365,11 @@ func (m *mockTokenSigner) VerifyAccessToken(_ string) (*port.TokenClaims, error)
 	return m.claims, nil
 }
 
-func (m *mockTokenSigner) VerifyRefreshToken(_ string) (int64, error) {
+func (m *mockTokenSigner) VerifyRefreshToken(_ string) (int64, string, error) {
 	if m.refreshVerifyErr != nil {
-		return 0, m.refreshVerifyErr
+		return 0, "", m.refreshVerifyErr
 	}
-	return m.refreshUserID, nil
+	return m.refreshUserID, "test-session-id", nil
 }
 
 func newTestUsecase(
@@ -370,14 +377,18 @@ func newTestUsecase(
 	roleRepo repository.RoleRepository,
 	passwordHasher port.PasswordHasher,
 	tokenSigner port.TokenSigner,
+	sessionStore port.SessionStore,
 ) *AuthUsecase {
+	if sessionStore == nil {
+		sessionStore = &mockSessionStore{}
+	}
 	return NewAuthUsecase(
 		userRepo,
 		roleRepo,
 		&mockPermissionRepo{},
-		&mockRefreshTokenRepo{},
 		&mockLoginAuditRepo{},
 		memory.NewStaffRepository(),
+		sessionStore,
 		&mockEventPublisher{},
 		passwordHasher,
 		tokenSigner,
@@ -472,7 +483,7 @@ func TestAuthUsecase_Register(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			uc := newTestUsecase(tt.userRepo, tt.roleRepo, tt.passwordHasher, tt.tokenSigner)
+			uc := newTestUsecase(tt.userRepo, tt.roleRepo, tt.passwordHasher, tt.tokenSigner, &mockSessionStore{})
 			result, err := uc.Register(context.Background(), tt.input)
 
 			if tt.wantErr != nil {
@@ -550,7 +561,7 @@ func TestAuthUsecase_Login(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			uc := newTestUsecase(tt.userRepo, tt.roleRepo, tt.passwordHasher, tt.tokenSigner)
+			uc := newTestUsecase(tt.userRepo, tt.roleRepo, tt.passwordHasher, tt.tokenSigner, &mockSessionStore{})
 			_, err := uc.Login(context.Background(), tt.input)
 
 			if tt.wantErr != nil {
@@ -620,7 +631,8 @@ func TestAuthUsecase_ValidateToken(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			uc := newTestUsecase(tt.userRepo, &mockRoleRepo{}, tt.passwordHasher, tt.tokenSigner)
+			sessionStore := &mockSessionStore{}
+			uc := newTestUsecase(tt.userRepo, &mockRoleRepo{}, tt.passwordHasher, tt.tokenSigner, sessionStore)
 			claims, err := uc.ValidateToken(context.Background(), tt.tokenString)
 
 			if tt.wantErr != nil {
@@ -688,7 +700,7 @@ func TestAuthUsecase_HasPermission(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{})
+			uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
 			result := uc.HasPermission(tt.claims, tt.required)
 
 			if result != tt.wantResult {

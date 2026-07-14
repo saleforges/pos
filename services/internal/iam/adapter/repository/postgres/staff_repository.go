@@ -20,7 +20,7 @@ func NewStaffRepository(pool *otel.TracedPool) *StaffRepository {
 
 func (r *StaffRepository) ListByUserID(ctx context.Context, userID int64) ([]domain.UserRoleAssignment, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT s.merchant_id, m.name, s.branch_id, COALESCE(b.name, ''), r.id, r.name, r.description, r.is_system, s.is_default
+		`SELECT s.id, s.merchant_id, m.name, s.branch_id, COALESCE(b.name, ''), r.id, r.name, r.description, r.is_system, s.is_default
 		 FROM staff s
 		 JOIN roles r ON r.name = s.role
 		 JOIN merchants m ON m.id = s.merchant_id
@@ -35,7 +35,7 @@ func (r *StaffRepository) ListByUserID(ctx context.Context, userID int64) ([]dom
 	var result []domain.UserRoleAssignment
 	for rows.Next() {
 		var a domain.UserRoleAssignment
-		if err := rows.Scan(&a.MerchantID, &a.MerchantName, &a.BranchID, &a.BranchName,
+		if err := rows.Scan(&a.ID, &a.MerchantID, &a.MerchantName, &a.BranchID, &a.BranchName,
 			&a.Role.ID, &a.Role.Name, &a.Role.Description, &a.Role.IsSystem, &a.IsDefault); err != nil {
 			return nil, err
 		}

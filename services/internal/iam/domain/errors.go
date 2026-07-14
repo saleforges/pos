@@ -13,4 +13,7 @@ var (
 	ErrInvalidRefreshToken = errors.New("AUTH004: invalid refresh token")
 	ErrInternal            = errors.New("internal server error")
 	ErrPasswordPolicy      = errors.New("password does not meet policy requirements")
+	ErrSessionNotFound     = errors.New("AUTH007: session not found")
+	ErrSessionExpired      = errors.New("AUTH008: session expired")
+	ErrSessionRevoked      = errors.New("AUTH009: session revoked")
 )

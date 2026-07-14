@@ -22,9 +22,11 @@ func (h *AuthHandler) Register(c echo.Context) error {
 	}
 
 	result, err := h.authUsecase.Register(c.Request().Context(), usecase.RegisterInput{
-		Username: req.Username,
-		Email:    req.Email,
-		Password: req.Password,
+		Username:  req.Username,
+		Email:     req.Email,
+		Password:  req.Password,
+		IPAddress: c.RealIP(),
+		UserAgent: c.Request().UserAgent(),
 	})
 	if err != nil {
 		if err == domain.ErrPasswordPolicy {
@@ -107,16 +109,10 @@ func (h *AuthHandler) Refresh(c echo.Context) error {
 }
 
 func (h *AuthHandler) Logout(c echo.Context) error {
-	var req logoutRequest
-	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
-		return writeError(c, http.StatusBadRequest, errInvalidBody)
-	}
-
 	claims := c.Get(claimsKey).(*port.TokenClaims)
 
 	err := h.authUsecase.Logout(c.Request().Context(), usecase.LogoutInput{
-		RefreshToken: req.RefreshToken,
-		UserID:       claims.UserID,
+		SessionID: claims.SessionID,
 	})
 	if err != nil {
 		return writeError(c, http.StatusInternalServerError, err)
