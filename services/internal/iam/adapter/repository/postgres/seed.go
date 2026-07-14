@@ -178,11 +178,6 @@ func SeedData(ctx context.Context, pool *otel.TracedPool) error {
 	_, _ = pool.Exec(ctx,
 		`INSERT INTO branches (merchant_id, name, code) VALUES (1, 'Cabang A', 'A001') ON CONFLICT DO NOTHING`)
 
-	_, _ = pool.Exec(ctx,
-		`INSERT INTO staff (merchant_id, branch_id, user_id, role, is_default)
-		 VALUES (1, 1, (SELECT id FROM users WHERE username = 'cashier1'), 'cashier', false)
-		 ON CONFLICT DO NOTHING`)
-
 	return nil
 }
 

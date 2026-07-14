@@ -20,12 +20,12 @@ func NewStaffRepository(pool *otel.TracedPool) *StaffRepository {
 
 func (r *StaffRepository) ListByUserID(ctx context.Context, userID int64) ([]domain.UserRoleAssignment, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT s.id, s.merchant_id, m.name, s.branch_id, COALESCE(b.name, ''), r.id, r.name, r.description, r.is_system, s.is_default
-		 FROM staff s
-		 JOIN roles r ON r.name = s.role
-		 JOIN merchants m ON m.id = s.merchant_id
-		 LEFT JOIN branches b ON b.id = s.branch_id
-		 WHERE s.user_id = $1 AND s.status = 'active'
+		`SELECT ur.id, ur.merchant_id, COALESCE(m.name, ''), ur.branch_id, COALESCE(b.name, ''), r.id, r.name, r.description, r.is_system, ur.is_default
+		 FROM user_roles ur
+		 JOIN roles r ON r.id = ur.role_id
+		 LEFT JOIN merchants m ON m.id = ur.merchant_id
+		 LEFT JOIN branches b ON b.id = ur.branch_id
+		 WHERE ur.user_id = $1 AND ur.status = 'active'
 		 ORDER BY m.name, b.name`, userID)
 	if err != nil {
 		return nil, err
@@ -52,8 +52,9 @@ func (r *StaffRepository) Create(ctx context.Context, userID int64, merchantID i
 	defer tx.Rollback(ctx)
 
 	_, err = tx.Exec(ctx,
-		`INSERT INTO staff (merchant_id, user_id, role, status)
-		 VALUES ($1, $2, $3, 'active')`, merchantID, userID, role)
+		`INSERT INTO user_roles (merchant_id, user_id, role_id, status)
+		 SELECT $1, $2, id, 'active' FROM roles WHERE name = $3`,
+		merchantID, userID, role)
 	if err != nil {
 		return err
 	}

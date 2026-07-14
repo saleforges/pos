@@ -36,7 +36,9 @@ CREATE TABLE IF NOT EXISTS user_roles (
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     role_id BIGINT NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
     merchant_id BIGINT,
-    branch_id BIGINT
+    branch_id BIGINT,
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+    status VARCHAR(20) NOT NULL DEFAULT 'active'
 );
 CREATE UNIQUE INDEX idx_user_roles_unique ON user_roles(user_id, role_id, COALESCE(merchant_id, 0), COALESCE(branch_id, 0));
 
