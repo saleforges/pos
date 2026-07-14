@@ -47,9 +47,10 @@ func toMeResponse(u domain.User) meResponse {
 
 	for _, ra := range u.Roles {
 		role := roleResponse{
-			ID:          ra.ID,
+			ID:          ra.Role.ID,
 			Name:        ra.Role.Name,
 			BranchScope: string(ra.BranchScope),
+			IsDefault:   ra.IsDefault,
 		}
 		if ra.MerchantID != 0 {
 			role.Merchant = &merchantDTO{ID: ra.MerchantID, Name: ra.MerchantName}

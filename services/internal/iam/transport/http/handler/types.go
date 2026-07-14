@@ -52,6 +52,7 @@ type roleResponse struct {
 	Merchant    *merchantDTO `json:"merchant"`
 	Branch      *branchDTO   `json:"branch"`
 	BranchScope string       `json:"branchScope"`
+	IsDefault   bool         `json:"isDefault"`
 }
 
 type meResponse struct {
