@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/models/order.dart';
 import '../../../../core/config/app_config.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../data/print_service.dart';
+import '../../data/bluetooth_printer_service.dart';
 import 'main_shell.dart';
 
 class PosScreen extends StatelessWidget {
@@ -36,11 +38,17 @@ class _PosAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       title: Text(AppConfig.appName),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.bluetooth),
-          onPressed: () {},
-          tooltip: 'Printer',
-        ),
+        Consumer(builder: (context, ref, _) {
+          final bt = BluetoothPrinterService();
+          return IconButton(
+            icon: Icon(
+              Icons.bluetooth,
+              color: bt.isConnected ? Colors.green : null,
+            ),
+            onPressed: () => _showPrinterDialog(context),
+            tooltip: bt.isConnected ? 'Printer connected' : 'Printer',
+          );
+        }),
         IconButton(
           icon: const Icon(Icons.qr_code_scanner),
           onPressed: () {},
@@ -730,6 +738,159 @@ class _PosBodyState extends State<PosScreenBody> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+void _showPrinterDialog(BuildContext context) {
+  if (!BluetoothPrinterService.supported) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Bluetooth printer hanya untuk Android. Receipt bisa dilihat di checkout.')),
+    );
+    return;
+  }
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (_) => const _PrinterSetupSheet(),
+  );
+}
+
+class _PrinterSetupSheet extends StatefulWidget {
+  const _PrinterSetupSheet();
+
+  @override
+  State<_PrinterSetupSheet> createState() => _PrinterSetupSheetState();
+}
+
+class _PrinterSetupSheetState extends State<_PrinterSetupSheet> {
+  final _bt = BluetoothPrinterService();
+  List<BtPrinter> _devices = [];
+  StreamSubscription? _sub;
+  bool _scanning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _devices = _bt.devices;
+    _sub = _bt.onDevicesChanged.listen((d) {
+      if (mounted) setState(() => _devices = d);
+    });
+  }
+
+  @override
+  void dispose() {
+    _sub?.cancel();
+    if (_scanning) _bt.stopScan();
+    super.dispose();
+  }
+
+  void _toggleScan() {
+    if (_scanning) {
+      _bt.stopScan();
+      setState(() => _scanning = false);
+    } else {
+      setState(() => _scanning = true);
+      _bt.startScan();
+    }
+  }
+
+  Future<void> _connect(BtPrinter d) async {
+    try {
+      await _bt.connect(d);
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Connected to ${d.name}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Printer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_bt.isConnected)
+                      TextButton.icon(
+                        onPressed: () {
+                          _bt.disconnect();
+                          setState(() {});
+                        },
+                        icon: const Icon(Icons.link_off, size: 18),
+                        label: const Text('Disconnect'),
+                        style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      ),
+                    TextButton(
+                      onPressed: _toggleScan,
+                      child: Text(_scanning ? 'Stop' : 'Scan'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          if (_bt.isConnected)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle, size: 16, color: Colors.green),
+                  const SizedBox(width: 6),
+                  Text('Connected', style: TextStyle(color: Colors.green.shade700)),
+                ],
+              ),
+            ),
+          if (_scanning)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          if (_devices.isEmpty && !_scanning)
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: Text('No devices found')),
+            ),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _devices.length,
+              itemBuilder: (context, i) {
+                final d = _devices[i];
+                return ListTile(
+                  leading: const Icon(Icons.print),
+                  title: Text(d.name),
+                  subtitle: Text(d.address),
+                  onTap: () => _connect(d),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }
