@@ -1,8 +1,7 @@
-// router/index.tsx
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import LoginPage from '@/pages/LoginPage';
-// import DashboardPage from '@/pages/DashboardPage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <Navigate to="/login" replace /> },
@@ -10,13 +9,24 @@ export const router = createBrowserRouter([
   {
     element: <ProtectedRoute />,
     children: [
-      { path: '/dashboard', element: <h1>Dashboard</h1> },
+      {
+        element: <DashboardLayout />,
+        children: [
+          { path: '/dashboard', element: <h1>Dashboard</h1> },
+        ],
+      },
     ],
   },
   {
     element: <ProtectedRoute allowedRoles={['admin']} />,
     children: [
-      { path: '/settings', element: <div>Admin Settings</div> },
+      {
+        element: <DashboardLayout />,
+        children: [
+          { path: '/settings', element: <div>Admin Settings</div> },
+        ],
+      },
     ],
   },
+  { path: '*', element: <div>404 - Page Not Found</div> },
 ]);

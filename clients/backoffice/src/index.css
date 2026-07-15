@@ -1,1 +1,49 @@
 @import "tailwindcss";
+
+@theme {
+  /* Brand colors */
+  --color-primary: #0F172A;      /* ink navy — sidebar, headings, primary actions */
+  --color-primary-hover: #1E293B;
+  --color-secondary: #0D9488;    /* teal-600 — success, active, primary accent */
+  --color-secondary-hover: #0F766E;
+  --color-tertiary: #F59E0B;     /* amber — warnings, highlights */
+  --color-tertiary-hover: #D97706;
+
+  /* Neutral scale (matches Tailwind slate, kept explicit for clarity) */
+  --color-neutral-50: #F8FAFC;
+  --color-neutral-100: #F1F5F9;
+  --color-neutral-200: #E2E8F0;
+  --color-neutral-300: #CBD5E1;
+  --color-neutral-400: #94A3B8;
+  --color-neutral-500: #64748B;
+  --color-neutral-600: #475569;
+  --color-neutral-700: #334155;
+  --color-neutral-800: #1E293B;
+  --color-neutral-900: #0F172A;
+
+  /* Semantic aliases */
+  --color-danger: #EF4444;
+  --color-danger-hover: #DC2626;
+  
+  --color-info: #3B82F6;
+  --color-info-hover: #2563EB;
+
+  /* Typography */
+  --font-display: 'Manrope', 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+
+  /* Radius scale */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--color-neutral-50);
+  color: var(--color-neutral-900);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+}
