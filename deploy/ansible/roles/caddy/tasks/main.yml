@@ -32,3 +32,5 @@
       - caddy-data:/data
     networks:
       - name: pos
+    etc_hosts:
+      host.docker.internal: host-gateway
