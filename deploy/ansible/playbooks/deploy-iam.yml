@@ -21,7 +21,7 @@
     - name: Pull and run IAM container
       community.docker.docker_container:
         name: iam-service
-        image: ghcr.io/saleforge/pos/iam-service:{{ image_tag }}
+        image: ghcr.io/saleforges/pos/iam-service:{{ image_tag }}
         state: started
         restart_policy: always
         pull: true

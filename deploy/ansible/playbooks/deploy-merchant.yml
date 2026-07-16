@@ -20,7 +20,7 @@
     - name: Pull and run Merchant container
       community.docker.docker_container:
         name: merchant-service
-        image: ghcr.io/saleforge/pos/merchant-service:{{ image_tag }}
+        image: ghcr.io/saleforges/pos/merchant-service:{{ image_tag }}
         state: started
         restart_policy: always
         pull: true

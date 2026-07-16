@@ -19,7 +19,7 @@
     - name: Pull and run Backoffice container
       community.docker.docker_container:
         name: backoffice
-        image: ghcr.io/saleforge/pos/backoffice:{{ image_tag }}
+        image: ghcr.io/saleforges/pos/backoffice:{{ image_tag }}
         state: started
         restart_policy: always
         pull: true

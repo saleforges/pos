@@ -19,7 +19,7 @@
     - name: Pull and run Catalog container
       community.docker.docker_container:
         name: catalog-service
-        image: ghcr.io/saleforge/pos/catalog-service:{{ image_tag }}
+        image: ghcr.io/saleforges/pos/catalog-service:{{ image_tag }}
         state: started
         restart_policy: always
         pull: true
