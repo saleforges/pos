@@ -39,5 +39,5 @@
 }
 
 {{ caddy_hermes_domain }} {
-    reverse_proxy 127.0.0.1:9090
+    reverse_proxy host.docker.internal:9090
 }
