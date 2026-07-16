@@ -37,3 +37,7 @@
 {{ caddy_pos_domain }} {
     reverse_proxy pos:3000
 }
+
+{{ caddy_hermes_domain }} {
+    reverse_proxy 127.0.0.1:9090
+}
