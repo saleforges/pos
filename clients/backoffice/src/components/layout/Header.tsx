@@ -1,14 +1,26 @@
 import { LogOut, User } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/features/auth/hooks/useAuth';
+
+const PAGE_TITLES: Record<string, string> = {
+  dashboard: 'Dashboard',
+  orders: 'Orders',
+  products: 'Products',
+  staff: 'Staff',
+  settings: 'Settings',
+};
 
 export function Header() {
   const { user, logout } = useAuth();
+  const location = useLocation();
+  const currentPath = location.pathname.split('/')[1];
+  const title = PAGE_TITLES[currentPath] ?? 'Dashboard';
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-neutral-200 bg-white px-6">
       <div>
         <h1 className="font-display text-lg font-semibold text-neutral-900">
-          Dashboard
+          {title}
         </h1>
       </div>
 

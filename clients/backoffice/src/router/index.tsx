@@ -2,6 +2,11 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import LoginPage from '@/pages/LoginPage';
+import DashboardPage from '@/pages/DashboardPage';
+import OrdersPage from '@/pages/OrdersPage';
+import ProductsPage from '@/pages/ProductsPage';
+import StaffPage from '@/pages/StaffPage';
+import SettingsPage from '@/pages/SettingsPage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <Navigate to="/login" replace /> },
@@ -12,7 +17,13 @@ export const router = createBrowserRouter([
       {
         element: <DashboardLayout />,
         children: [
-          { path: '/dashboard', element: <h1>Dashboard</h1> },
+          { path: '/dashboard', element: <DashboardPage /> },
+          { path: '/orders', element: <OrdersPage /> },
+          { path: '/products', element: <ProductsPage /> },
+          { path: '/staff', element: <StaffPage /> },
+          { path: '/products', element: <ProductsPage /> },
+          { path: '/staff', element: <StaffPage /> },
+          { path: '/settings', element: <SettingsPage /> },
         ],
       },
     ],
@@ -23,7 +34,7 @@ export const router = createBrowserRouter([
       {
         element: <DashboardLayout />,
         children: [
-          { path: '/settings', element: <div>Admin Settings</div> },
+          { path: '/settings', element: <SettingsPage /> },
         ],
       },
     ],
