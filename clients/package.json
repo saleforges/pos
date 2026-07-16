@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": [
     "backoffice",
+    "pos",
     "packages/*"
   ],
   "scripts": {

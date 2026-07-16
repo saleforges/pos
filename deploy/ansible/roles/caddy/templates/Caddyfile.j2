@@ -33,3 +33,7 @@
 {{ caddy_backoffice_domain }} {
     reverse_proxy backoffice:80
 }
+
+{{ caddy_pos_domain }} {
+    reverse_proxy pos:3000
+}

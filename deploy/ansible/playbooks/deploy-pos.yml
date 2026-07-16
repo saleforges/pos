@@ -1,0 +1,29 @@
+- name: Deploy POS
+  hosts: all
+  become: true
+  vars_files:
+    - ../vars/vault.yml
+  vars:
+    ghcr_username: "{{ vault_ghcr_username | default('') }}"
+    ghcr_token: "{{ vault_ghcr_token | default('') }}"
+    api_proxy_target: "{{ vault_api_proxy_target | default('https://api-dev.saleforges.com') }}"
+  tasks:
+    - name: Login to GHCR
+      community.docker.docker_login:
+        registry_url: https://ghcr.io
+        username: "{{ ghcr_username }}"
+        password: "{{ ghcr_token }}"
+      when: ghcr_username != '' and ghcr_token != ''
+      no_log: true
+
+    - name: Pull and run POS container
+      community.docker.docker_container:
+        name: pos
+        image: ghcr.io/saleforges/pos/pos:{{ image_tag }}
+        state: started
+        restart_policy: always
+        pull: true
+        networks:
+          - name: pos
+        env:
+          API_PROXY_TARGET: "{{ api_proxy_target }}"
