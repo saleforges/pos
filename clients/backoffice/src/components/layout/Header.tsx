@@ -7,6 +7,8 @@ const PAGE_TITLES: Record<string, string> = {
   orders: 'Orders',
   products: 'Products',
   staff: 'Staff',
+  roles: 'Roles',
+  merchants: 'Merchants',
   settings: 'Settings',
 };
 

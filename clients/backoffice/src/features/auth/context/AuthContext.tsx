@@ -1,6 +1,6 @@
 import { createContext, useState, useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
-import { authApi, type User } from '../api/authApi'
+import { authApi, resolveUserPermissions, type User } from '../api/authApi'
 
 type AuthContextType = {
   user: User | null
@@ -19,8 +19,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     authApi
       .me()
-      .then((u) => {
-        if (!resolvedManually.current) setUser(u)
+      .then(async (u) => {
+        if (!resolvedManually.current) {
+          u.permissions = await resolveUserPermissions(u)
+          setUser(u)
+        }
       })
       .catch(() => {
         if (!resolvedManually.current) setUser(null)
@@ -32,7 +35,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (username: string, password: string) => {
     const res = await authApi.login(username, password)
-    resolvedManually.current = true // stops the stale mount-check from overwriting this
+    resolvedManually.current = true
+    res.user.permissions = await resolveUserPermissions(res.user)
     setUser(res.user)
     setIsLoading(false)
   }
