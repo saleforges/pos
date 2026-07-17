@@ -10,6 +10,7 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/adapter/repository/memory"
 	"github.com/saleforge/pos/services/internal/iam/adapter/repository/postgres"
 	sessionmem "github.com/saleforge/pos/services/internal/iam/adapter/session/memory"
+	sessionredis "github.com/saleforge/pos/services/internal/iam/adapter/session/redis"
 	"github.com/saleforge/pos/services/internal/iam/adapter/security"
 	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/port/repository"
@@ -35,7 +36,8 @@ type App struct {
 
 type noopEventPublisher struct{}
 
-func (n *noopEventPublisher) Publish(_ context.Context, _ string, _ interface{}) error {
+func (n *noopEventPublisher) Publish(_ context.Context, eventName string, _ interface{}) error {
+	logger.Debug("[event] WIP — no real adapter wired, event silently dropped", "event", eventName)
 	return nil
 }
 
@@ -108,7 +110,15 @@ func New(cfg Config) (*App, error) {
 		userCache = iainmemory.NewUserCache(30*time.Second, 5*time.Minute)
 	}
 
-	sessionStore := sessionmem.NewSessionStore()
+	var sessionStore port.SessionStore
+
+	if cfg.RedisAddr != "" {
+		logger.Info("IAM session store using Redis", "addr", cfg.RedisAddr)
+		sessionStore = sessionredis.NewSessionStore(cfg.RedisAddr)
+	} else {
+		logger.Info("IAM session store using in-memory")
+		sessionStore = sessionmem.NewSessionStore()
+	}
 
 	authUsecase := usecase.NewAuthUsecase(
 		userRepo,

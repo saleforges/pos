@@ -624,6 +624,15 @@ func (uc *AuthUsecase) HasPermission(claims *port.TokenClaims, required domain.P
 }
 
 func (uc *AuthUsecase) ListUsers(ctx context.Context, offset, limit int) ([]domain.User, error) {
+	if offset < 0 {
+		offset = 0
+	}
+	if limit <= 0 {
+		limit = 50
+	}
+	if limit > 200 {
+		limit = 200
+	}
 	return uc.userRepo.List(ctx, offset, limit)
 }
 
@@ -836,7 +845,9 @@ func (uc *AuthUsecase) auditLogin(ctx context.Context, userID int64, email strin
 }
 
 func (uc *AuthUsecase) publishEvent(ctx context.Context, eventName string, payload interface{}) {
-	uc.eventPublisher.Publish(ctx, eventName, payload)
+	if err := uc.eventPublisher.Publish(ctx, eventName, payload); err != nil {
+		logger.Error("failed to publish event", "event", eventName, "error", err.Error())
+	}
 }
 
 func (uc *AuthUsecase) cacheGet(ctx context.Context, id int64) (*domain.User, error) {
