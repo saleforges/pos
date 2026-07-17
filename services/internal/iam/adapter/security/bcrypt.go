@@ -21,7 +21,7 @@ type Argon2Hasher struct {
 
 func NewArgon2Hasher() *Argon2Hasher {
 	return &Argon2Hasher{
-		time:    1,
+		time:    3,
 		memory:  64 * 1024,
 		threads: 4,
 		keyLen:  32,

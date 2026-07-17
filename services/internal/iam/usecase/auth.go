@@ -240,7 +240,9 @@ func (uc *AuthUsecase) Register(ctx context.Context, input RegisterInput) (*Auth
 	}
 
 	for _, r := range input.Roles {
-		uc.userRepo.AddRole(ctx, user.ID, r)
+		if err := uc.userRepo.AddRole(ctx, user.ID, r); err != nil {
+			logger.Error("register: add role failed", "role", r, "error", err.Error())
+		}
 	}
 
 	user, err = uc.userRepo.GetByID(ctx, user.ID)

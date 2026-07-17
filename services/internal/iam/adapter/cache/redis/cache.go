@@ -52,10 +52,9 @@ func (c *UserCache) Get(ctx context.Context, id int64) (*domain.User, bool) {
 
 	var u domain.User
 	if err := json.Unmarshal(data, &u); err != nil {
-		c.fallback.Set(ctx, &u, 0)
-		return &u, true
+		return c.fallback.Get(ctx, id)
 	}
-	return nil, false
+	return &u, true
 }
 
 func (c *UserCache) Set(ctx context.Context, u *domain.User, ttl time.Duration) {

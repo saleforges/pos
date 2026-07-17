@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
+	"log"
 	"math/big"
 	"strings"
 	"time"
@@ -37,6 +38,7 @@ func NewJWTSigner(privateKeyPEM []byte, keyID string) (*JWTSigner, error) {
 	}
 
 	if len(strings.TrimSpace(string(privateKeyPEM))) == 0 {
+		log.Println("[WARN] No JWT_PRIVATE_KEY_PEM configured — generating ephemeral RSA key. All existing tokens will be invalidated on restart!")
 		privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 		if err != nil {
 			return nil, err

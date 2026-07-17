@@ -92,8 +92,7 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 		return err
 	}
 
-	_ = tx.Commit(ctx)
-	return nil
+	return tx.Commit(ctx)
 }
 
 func (r *UserRepository) GetByID(ctx context.Context, id int64) (*domain.User, error) {

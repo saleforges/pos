@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	echomw "github.com/labstack/echo/v4/middleware"
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/transport/http/handler"
@@ -26,6 +27,7 @@ func NewRouter(
 
 	e.Use(otelecho.Middleware("iam-service"))
 	e.Use(otel.LoggingMiddleware())
+	e.Use(echomw.BodyLimit("2MB"))
 
 	e.GET("/metrics", func(c echo.Context) error {
 		otel.MetricsHandler().ServeHTTP(c.Response(), c.Request())
