@@ -20,7 +20,7 @@ RUN cd pos && bunx next build
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+RUN groupadd --system --gid 1001 nodejs && useradd --system --uid 1001 -g nodejs nextjs
 
 COPY --from=installer /app/pos/public ./pos/public
 COPY --from=installer --chown=nextjs:nodejs /app/pos/.next/standalone ./
