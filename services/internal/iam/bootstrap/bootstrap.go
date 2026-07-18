@@ -14,8 +14,11 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/adapter/security"
 	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/port/repository"
+	httpauth "github.com/saleforge/pos/services/internal/iam/transport/http/auth"
+	httpperm "github.com/saleforge/pos/services/internal/iam/transport/http/permission"
+	httprole "github.com/saleforge/pos/services/internal/iam/transport/http/role"
 	httptransport "github.com/saleforge/pos/services/internal/iam/transport/http"
-	"github.com/saleforge/pos/services/internal/iam/transport/http/handler"
+	httpuser "github.com/saleforge/pos/services/internal/iam/transport/http/user"
 	"github.com/saleforge/pos/services/internal/iam/usecase"
 	"github.com/saleforge/pos/services/pkg/logger"
 	"github.com/saleforge/pos/services/pkg/otel"
@@ -130,10 +133,14 @@ func New(cfg Config) (*App, error) {
 		eventPublisher,
 		passwordHasher,
 		tokenSigner,
+		security.NewSHA256TokenHasher(),
 		userCache,
 	)
-	authHandler := handler.NewAuthHandler(authUsecase)
-	router := httptransport.NewRouter(authHandler, authUsecase, tokenSigner)
+	authHandler := httpauth.NewHandler(authUsecase, authUsecase.(usecase.UserUsecase))
+	userHandler := httpuser.NewHandler(authUsecase.(usecase.UserUsecase))
+	roleHandler := httprole.NewHandler(authUsecase.(usecase.RoleUsecase))
+	permHandler := httpperm.NewHandler(authUsecase.(usecase.PermissionUsecase))
+	router := httptransport.NewRouter(authHandler, userHandler, roleHandler, permHandler, authUsecase, authUsecase.HasPermission, tokenSigner)
 
 	return &App{router: router, otelShutdown: otelShutdown}, nil
 }
