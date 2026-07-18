@@ -3,6 +3,7 @@ package postgres
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/base64"
 	"time"
 
@@ -11,8 +12,11 @@ import (
 )
 
 func devPasswordHash(password string) string {
-	salt := []byte("pos-dev-salt-123") // 16 bytes, fixed for reproducibility
-	hash := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
+	salt := make([]byte, 16)
+	if _, err := rand.Read(salt); err != nil {
+		panic("seed: failed to generate random salt: " + err.Error())
+	}
+	hash := argon2.IDKey([]byte(password), salt, 3, 64*1024, 4, 32)
 	var buf bytes.Buffer
 	buf.Write(salt)
 	buf.Write(hash)
