@@ -1,0 +1,129 @@
+name: POS CI/CD
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag (default: commit SHA)"
+        required: false
+        type: string
+  push:
+    branches:
+      - main
+      - development
+    paths:
+      - "clients/pos/**"
+      - "clients/packages/**"
+      - "clients/package.json"
+      - "clients/bun.lock"
+      - "clients/turbo.json"
+      - ".github/workflows/pos.yml"
+  pull_request:
+    branches:
+      - main
+      - development
+    paths:
+      - "clients/pos/**"
+      - "clients/packages/**"
+      - "clients/package.json"
+      - "clients/bun.lock"
+      - "clients/turbo.json"
+      - ".github/workflows/pos.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3
+      - run: bun install --frozen-lockfile
+      - run: bunx turbo run lint --filter=pos
+      - run: bunx turbo run build --filter=pos
+
+  build-and-push:
+    name: Build & Push Docker Image
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development')
+    needs: quality
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE=ghcr.io/${{ github.repository }}/pos
+          docker build -f clients/pos/Dockerfile -t $IMAGE:${{ github.sha }} clients
+          docker push $IMAGE:${{ github.sha }}
+
+  deploy-dev:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/development'
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+
+      - name: Install Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+          ansible-galaxy collection install -r deploy/ansible/requirements.yml
+
+      - name: Create inventory
+        run: |
+          mkdir -p deploy/ansible/inventory/development
+          cat > deploy/ansible/inventory/development/hosts.yml <<EOF
+          all:
+            hosts:
+              dev-server:
+                ansible_host: ${{ secrets.DEV_SERVER_IP }}
+                ansible_user: ${{ secrets.DEV_SERVER_USER }}
+                ansible_become: yes
+                ansible_become_password: ${{ secrets.DEV_SUDO_PASSWORD }}
+          EOF
+
+      - name: Write vault vars
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat > /tmp/vault-extra.yml << EOV
+          vault_ghcr_username: "${{ github.actor }}"
+          vault_ghcr_token: "$GHCR_TOKEN"
+          EOV
+
+      - name: Deploy POS
+        run: |
+          ansible-playbook -i deploy/ansible/inventory/development/hosts.yml \
+          deploy/ansible/playbooks/deploy-pos.yml \
+          --extra-vars "@/tmp/vault-extra.yml" \
+          -e image_tag=${{ inputs.image_tag || github.sha }} \
+          -e image_repository=ghcr.io/${{ github.repository }}/pos
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+          ANSIBLE_INVENTORY_ENABLED: "yaml"
+          ANSIBLE_ROLES_PATH: "deploy/ansible/roles"

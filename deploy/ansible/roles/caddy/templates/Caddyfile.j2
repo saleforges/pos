@@ -37,3 +37,7 @@
 {{ caddy_hermes_domain }} {
     reverse_proxy host.docker.internal:9119
 }
+
+{{ caddy_pos_domain }} {
+    reverse_proxy pos:3000
+}

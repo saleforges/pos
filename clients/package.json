@@ -1,8 +1,9 @@
 {
-  "name": "pos-clients",
+  "name": "pos",
   "private": true,
   "workspaces": [
     "backoffice",
+    "pos",
     "packages/*"
   ],
   "scripts": {
