@@ -5,7 +5,7 @@ FROM base AS pruner
 WORKDIR /app
 RUN bun add -g turbo
 COPY . .
-RUN turbo prune pos --docker
+RUN bunx turbo prune pos --docker
 
 # 2. Install deps + build
 FROM base AS installer
@@ -13,7 +13,8 @@ WORKDIR /app
 COPY --from=pruner /app/out/json/ .
 RUN bun install --frozen-lockfile
 COPY --from=pruner /app/out/full/ .
-RUN bunx turbo run build --filter=pos
+ARG TURBO_TELEMETRY_DISABLED=1
+RUN cd pos && bunx next build
 
 # 3. Minimal runtime image
 FROM base AS runner
