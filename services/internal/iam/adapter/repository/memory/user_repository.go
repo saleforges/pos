@@ -388,7 +388,7 @@ func NewLoginAuditRepository() *LoginAuditRepository {
 	return &LoginAuditRepository{}
 }
 
-var nowFunc = func() time.Time {
+func nowFunc() time.Time {
 	return time.Now().UTC()
 }
 

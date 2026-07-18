@@ -17,7 +17,11 @@ const claimsKey = "claims"
 func CORSMiddleware() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+			origin := c.Request().Header.Get("Origin")
+			if origin == "" {
+				origin = "*"
+			}
+			c.Response().Header().Set("Access-Control-Allow-Origin", origin)
 			c.Response().Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			c.Response().Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 			c.Response().Header().Set("Access-Control-Allow-Credentials", "true")

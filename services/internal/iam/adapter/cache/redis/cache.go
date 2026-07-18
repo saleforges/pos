@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port"
 	memcache "github.com/saleforge/pos/services/internal/iam/adapter/cache/memory"
+	"github.com/saleforge/pos/services/pkg/logger"
 )
 
 type UserCache struct {
@@ -28,11 +28,11 @@ func NewUserCache(addr string, ttl time.Duration) port.UserCache {
 	defer cancel()
 
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		log.Printf("[cache/redis] connection failed (%v), falling back to in-memory", err)
+		logger.Warn("[cache/redis] connection failed, falling back to in-memory", "error", err.Error())
 		return memcache.NewUserCache(ttl, 5*time.Minute)
 	}
 
-	log.Printf("[cache/redis] connected to %s", addr)
+	logger.Info("[cache/redis] connected to redis", "addr", addr)
 	return &UserCache{
 		rdb:      rdb,
 		fallback: memcache.NewUserCache(ttl, 5*time.Minute),
