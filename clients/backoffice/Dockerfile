@@ -4,7 +4,7 @@ WORKDIR /app
 # Copy workspace root files first (better layer caching)
 COPY package.json bun.lock turbo.json ./
 COPY backoffice/package.json ./backoffice/
-COPY pos/package.json ./pos/
+# COPY packages ./packages (will used later after adding it)
 
 RUN bun install --frozen-lockfile
 
