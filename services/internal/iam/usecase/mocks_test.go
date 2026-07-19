@@ -342,7 +342,7 @@ func newTestUsecase(
 		tokenSigner,
 		&mockTokenHasher{},
 		nil,
-	).(testUsecase)
+	)
 }
 
 type mockTokenHasher struct{}

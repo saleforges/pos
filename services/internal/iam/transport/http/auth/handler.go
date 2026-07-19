@@ -1,4 +1,5 @@
 package auth
+
 import (
 	"net/http"
 
@@ -206,7 +207,11 @@ func (h *Handler) Me(c echo.Context) error {
 
 	user, err := h.userService.GetUser(c.Request().Context(), claims.UserID)
 	if err != nil {
-		return common.WriteError(c, http.StatusUnauthorized, common.ErrUnauthorized)
+		if err == domain.ErrUserNotFound {
+			return common.WriteError(c, http.StatusNotFound, err)
+		}
+		logger.Error("me: get user failed", "error", err.Error())
+		return common.WriteError(c, http.StatusInternalServerError, domain.ErrInternal)
 	}
 
 	return common.WriteJSON(c, http.StatusOK, toMeResponse(*user))

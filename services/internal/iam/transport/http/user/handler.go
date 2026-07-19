@@ -20,7 +20,14 @@ func NewHandler(userService usecase.UserUsecase) *Handler {
 }
 
 func (h *Handler) ListUsers(c echo.Context) error {
-	users, err := h.userService.ListUsers(c.Request().Context(), 0, 100)
+	offset, limit := 0, 100
+	if o, err := strconv.Atoi(c.QueryParam("offset")); err == nil && o >= 0 {
+		offset = o
+	}
+	if l, err := strconv.Atoi(c.QueryParam("limit")); err == nil && l > 0 && l <= 1000 {
+		limit = l
+	}
+	users, err := h.userService.ListUsers(c.Request().Context(), offset, limit)
 	if err != nil {
 		return common.WriteError(c, http.StatusInternalServerError, err)
 	}
@@ -113,7 +120,10 @@ func (h *Handler) DeleteUser(c echo.Context) error {
 		return common.WriteError(c, http.StatusBadRequest, domain.ErrInvalidRole)
 	}
 	if err := h.userService.DeleteUser(c.Request().Context(), id); err != nil {
-		return common.WriteError(c, http.StatusNotFound, domain.ErrUserNotFound)
+		if err == domain.ErrUserNotFound {
+			return common.WriteError(c, http.StatusNotFound, domain.ErrUserNotFound)
+		}
+		return common.WriteError(c, http.StatusInternalServerError, err)
 	}
 
 	return common.WriteJSON(c, http.StatusOK, nil)

@@ -3,6 +3,8 @@ package security
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
 	"testing"
 	"time"
 
@@ -181,16 +183,29 @@ func TestNewJWTSigner_WithEmptyKeyGeneratesEphemeral(t *testing.T) {
 func TestNewJWTSigner_WithPEMKey(t *testing.T) {
 	t.Parallel()
 
-	// Minimal RSA private key in PEM format (2048-bit, PKCS1)
-	pemKey := []byte(`-----BEGIN RSA PRIVATE KEY-----
-MIIEowIBAAKCAQEA4f5wg5l2hKsTeErsMkLFwfS+LUqiy3k8m6X2qLk2R+E0Q6GX
-G6i3nHkL3KsJb3Z4Yj6sI6S4zPv8kY8Qh7L8s9kX8f3g5s7k9jL8s9kX8f3g5s7k
-9jL8s9kX8f3g5s7k9jL8s9kX8f3g5s7k9jL8s9kX8f3g5s7k9jL8s9kX8f3g5s7k
------END RSA PRIVATE KEY-----`)
-	_, err := NewJWTSigner(pemKey, "test-key")
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		t.Logf("expected parse error for truncated PEM (test only): %v", err)
-		// A real PEM key would parse successfully. This is just to exercise the path.
+		t.Fatalf("failed to generate key: %v", err)
+	}
+	pemBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	})
+
+	s, err := NewJWTSigner(pemBytes, "test-key")
+	if err != nil {
+		t.Fatalf("NewJWTSigner with valid PEM failed: %v", err)
+	}
+	if s.keyID != "test-key" {
+		t.Errorf("expected keyID 'test-key', got %s", s.keyID)
+	}
+
+	token, err := s.SignAccessToken(port.TokenClaims{UserID: 1})
+	if err != nil {
+		t.Fatalf("sign with PEM key failed: %v", err)
+	}
+	if _, err := s.VerifyAccessToken(token); err != nil {
+		t.Errorf("verify with PEM key failed: %v", err)
 	}
 }
 
@@ -214,12 +229,11 @@ func TestParseRSAPrivateKey_NonRSAPEM(t *testing.T) {
 	}
 }
 
-func TestSHA256TokenHasher(t *testing.T) {
+func TestHMAC256TokenHasher(t *testing.T) {
 	t.Parallel()
 
-	h := NewSHA256TokenHasher()
-
 	t.Run("produces non-empty hash", func(t *testing.T) {
+		h := NewHMAC256TokenHasher([]byte("test-secret"))
 		result := h.HashToken("test-token")
 		if result == "" {
 			t.Error("expected non-empty hash")
@@ -227,6 +241,7 @@ func TestSHA256TokenHasher(t *testing.T) {
 	})
 
 	t.Run("same input produces same hash", func(t *testing.T) {
+		h := NewHMAC256TokenHasher([]byte("test-secret"))
 		h1 := h.HashToken("consistent")
 		h2 := h.HashToken("consistent")
 		if h1 != h2 {
@@ -234,7 +249,16 @@ func TestSHA256TokenHasher(t *testing.T) {
 		}
 	})
 
+	t.Run("different secrets produce different hashes", func(t *testing.T) {
+		h1 := NewHMAC256TokenHasher([]byte("secret-a"))
+		h2 := NewHMAC256TokenHasher([]byte("secret-b"))
+		if h1.HashToken("token") == h2.HashToken("token") {
+			t.Error("expected different hashes for different secrets")
+		}
+	})
+
 	t.Run("different inputs produce different hashes", func(t *testing.T) {
+		h := NewHMAC256TokenHasher([]byte("test-secret"))
 		h1 := h.HashToken("token-a")
 		h2 := h.HashToken("token-b")
 		if h1 == h2 {
@@ -243,9 +267,18 @@ func TestSHA256TokenHasher(t *testing.T) {
 	})
 
 	t.Run("empty string produces hash", func(t *testing.T) {
+		h := NewHMAC256TokenHasher([]byte("test-secret"))
 		result := h.HashToken("")
 		if result == "" {
 			t.Error("expected hash for empty string, got empty")
+		}
+	})
+
+	t.Run("empty secret uses default", func(t *testing.T) {
+		h := NewHMAC256TokenHasher(nil)
+		result := h.HashToken("test")
+		if result == "" {
+			t.Error("expected non-empty hash with default secret")
 		}
 	})
 }

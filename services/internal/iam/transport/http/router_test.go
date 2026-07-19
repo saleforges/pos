@@ -161,10 +161,10 @@ func TestHandler_Routes_Respond(t *testing.T) {
 		nil,
 	)
 
-	authHandler := auth.NewHandler(uc, uc.(usecase.UserUsecase))
-	userHandler := user.NewHandler(uc.(usecase.UserUsecase))
-	roleHandler := role.NewHandler(uc.(usecase.RoleUsecase))
-	permHandler := permission.NewHandler(uc.(usecase.PermissionUsecase))
+	authHandler := auth.NewHandler(uc, uc)
+	userHandler := user.NewHandler(uc)
+	roleHandler := role.NewHandler(uc)
+	permHandler := permission.NewHandler(uc)
 
 	e := echo.New()
 

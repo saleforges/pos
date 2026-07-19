@@ -43,20 +43,22 @@ func loadScopedRoles(ctx context.Context, pool *otel.TracedPool, userID int64) [
 		 LEFT JOIN branches b ON b.id = ur.branch_id
 		 WHERE ur.user_id = $1 AND ur.status = 'active' AND ur.merchant_id IS NOT NULL
 		 ORDER BY m.name, b.name`, userID)
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var a domain.UserRoleAssignment
-			if err := rows.Scan(&a.ID, &a.MerchantID, &a.MerchantName, &a.BranchID, &a.BranchName,
-				&a.Role.ID, &a.Role.Name, &a.Role.Description, &a.Role.IsSystem, &a.IsDefault); err == nil {
-				if a.BranchID != nil {
-					a.BranchScope = domain.BranchScopeAssigned
-				} else if a.MerchantID != 0 {
-					a.BranchScope = domain.BranchScopeAll
-				}
-				result = append(result, a)
-			}
+	if err != nil {
+		return []domain.UserRoleAssignment{}
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var a domain.UserRoleAssignment
+		if err := rows.Scan(&a.ID, &a.MerchantID, &a.MerchantName, &a.BranchID, &a.BranchName,
+			&a.Role.ID, &a.Role.Name, &a.Role.Description, &a.Role.IsSystem, &a.IsDefault); err != nil {
+			continue
 		}
+		if a.BranchID != nil {
+			a.BranchScope = domain.BranchScopeAssigned
+		} else if a.MerchantID != 0 {
+			a.BranchScope = domain.BranchScopeAll
+		}
+		result = append(result, a)
 	}
 	if result == nil {
 		result = []domain.UserRoleAssignment{}

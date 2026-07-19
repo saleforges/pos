@@ -115,8 +115,11 @@ func (r *UserRepository) Update(ctx context.Context, user *domain.User) error {
 }
 
 func (r *UserRepository) Delete(ctx context.Context, id int64) error {
-	_, err := r.pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
+	res, err := r.pool.Exec(ctx, `DELETE FROM users WHERE id = $1`, id)
 	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
 		return domain.ErrUserNotFound
 	}
 	return nil

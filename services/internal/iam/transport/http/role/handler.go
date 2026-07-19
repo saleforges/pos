@@ -106,7 +106,10 @@ func (h *Handler) DeleteRole(c echo.Context) error {
 		return common.WriteError(c, http.StatusBadRequest, domain.ErrInvalidRole)
 	}
 	if err := h.roleService.DeleteRole(c.Request().Context(), id); err != nil {
-		return common.WriteError(c, http.StatusConflict, domain.ErrInvalidRole)
+		if err == domain.ErrInvalidRole {
+			return common.WriteError(c, http.StatusNotFound, domain.ErrInvalidRole)
+		}
+		return common.WriteError(c, http.StatusInternalServerError, err)
 	}
 
 	return common.WriteJSON(c, http.StatusOK, nil)

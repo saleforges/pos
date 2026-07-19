@@ -25,11 +25,12 @@ import (
 )
 
 type Config struct {
-	JWTPrivateKeyPEM string
-	JWTKeyID         string
-	DatabaseURL      string
-	OtelEndpoint     string
-	RedisAddr        string
+	JWTPrivateKeyPEM  string
+	JWTKeyID          string
+	DatabaseURL       string
+	OtelEndpoint      string
+	RedisAddr         string
+	TokenHasherSecret string
 }
 
 type App struct {
@@ -133,13 +134,13 @@ func New(cfg Config) (*App, error) {
 		eventPublisher,
 		passwordHasher,
 		tokenSigner,
-		security.NewSHA256TokenHasher(),
+		security.NewHMAC256TokenHasher([]byte(cfg.TokenHasherSecret)),
 		userCache,
 	)
-	authHandler := httpauth.NewHandler(authUsecase, authUsecase.(usecase.UserUsecase))
-	userHandler := httpuser.NewHandler(authUsecase.(usecase.UserUsecase))
-	roleHandler := httprole.NewHandler(authUsecase.(usecase.RoleUsecase))
-	permHandler := httpperm.NewHandler(authUsecase.(usecase.PermissionUsecase))
+	authHandler := httpauth.NewHandler(authUsecase, authUsecase)
+	userHandler := httpuser.NewHandler(authUsecase)
+	roleHandler := httprole.NewHandler(authUsecase)
+	permHandler := httpperm.NewHandler(authUsecase)
 	router := httptransport.NewRouter(authHandler, userHandler, roleHandler, permHandler, authUsecase, authUsecase.HasPermission, tokenSigner)
 
 	return &App{router: router, otelShutdown: otelShutdown}, nil

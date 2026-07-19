@@ -392,7 +392,7 @@ func TestMe(t *testing.T) {
 		if rec.Code != http.StatusUnauthorized { t.Errorf("expected 401, got %d", rec.Code) }
 	})
 
-	t.Run("user not found returns 401", func(t *testing.T) {
+	t.Run("user not found returns 404", func(t *testing.T) {
 		us := &mockUserService{getUserFn: func(_ context.Context, _ int64) (*domain.User, error) {
 			return nil, domain.ErrUserNotFound
 		}}
@@ -402,6 +402,6 @@ func TestMe(t *testing.T) {
 		withClaims(c)
 
 		h.Me(c)
-		if rec.Code != http.StatusUnauthorized { t.Errorf("expected 401, got %d", rec.Code) }
+		if rec.Code != http.StatusNotFound { t.Errorf("expected 404, got %d", rec.Code) }
 	})
 }

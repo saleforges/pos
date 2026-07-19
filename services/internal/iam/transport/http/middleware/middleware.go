@@ -14,14 +14,35 @@ import (
 
 const claimsKey = "claims"
 
-func CORSMiddleware() echo.MiddlewareFunc {
+func CORSMiddleware(allowedOrigins []string) echo.MiddlewareFunc {
+	originSet := make(map[string]struct{}, len(allowedOrigins))
+	for _, o := range allowedOrigins {
+		originSet[o] = struct{}{}
+	}
+
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			origin := c.Request().Header.Get("Origin")
+
+			// If no origin header, it's a same-origin request — allow but don't reflect
 			if origin == "" {
-				origin = "*"
+				c.Response().Header().Set("Access-Control-Allow-Origin", "")
+				return next(c)
 			}
-			c.Response().Header().Set("Access-Control-Allow-Origin", origin)
+
+			// Validate against allow-list
+			if _, allowed := originSet[origin]; !allowed {
+				// If allow-list is empty, assume open (dev mode) — warns but allows
+				if len(allowedOrigins) == 0 {
+					c.Response().Header().Set("Access-Control-Allow-Origin", origin)
+				} else {
+					c.Response().Header().Set("Access-Control-Allow-Origin", "")
+					return c.NoContent(http.StatusForbidden)
+				}
+			} else {
+				c.Response().Header().Set("Access-Control-Allow-Origin", origin)
+			}
+
 			c.Response().Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			c.Response().Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 			c.Response().Header().Set("Access-Control-Allow-Credentials", "true")
@@ -58,6 +79,9 @@ func extractToken(c echo.Context) string {
 	if authHeader != "" {
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) == 2 && strings.EqualFold(parts[0], "Bearer") {
+			if parts[1] == "" {
+				return ""
+			}
 			return parts[1]
 		}
 	}

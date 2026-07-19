@@ -130,7 +130,7 @@ func TestCORSMiddleware(t *testing.T) {
 	e := echo.New()
 	e.GET("/test", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
-	}, CORSMiddleware())
+	}, CORSMiddleware([]string{"http://localhost:3000"}))
 
 	t.Run("allows configured origin", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/test", nil)

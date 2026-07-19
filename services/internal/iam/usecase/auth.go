@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -84,7 +83,7 @@ func NewAuthUsecase(
 	tokenSigner port.TokenSigner,
 	tokenHasher port.TokenHasher,
 	userCache port.UserCache,
-) AuthUsecase {
+) *authUsecase {
 	return &authUsecase{
 		userRepo:       userRepo,
 		roleRepo:       roleRepo,
@@ -158,7 +157,10 @@ func (uc *authUsecase) Register(ctx context.Context, input RegisterParams) (*Aut
 	}
 
 	for _, r := range input.Roles {
-		uc.userRepo.AddRole(ctx, user.ID, r)
+		if err := uc.userRepo.AddRole(ctx, user.ID, r); err != nil {
+			logger.Error("register: add role failed", "error", err.Error())
+			return nil, domain.ErrInternal
+		}
 	}
 
 	user, err = uc.userRepo.GetByID(ctx, user.ID)
@@ -415,9 +417,10 @@ func (uc *authUsecase) SwitchContext(ctx context.Context, sessionID string, user
 	}
 
 	var found *domain.UserRoleAssignment
-	for _, r := range user.Roles {
+	for i := range user.Roles {
+		r := &user.Roles[i]
 		if r.Role.ID == userRoleID {
-			found = &r
+			found = r
 			break
 		}
 	}
@@ -474,9 +477,6 @@ func (uc *authUsecase) SetDefaultRole(ctx context.Context, userID, roleID int64)
 func (uc *authUsecase) Introspect(ctx context.Context, tokenString string) (*IntrospectResult, error) {
 	claims, err := uc.tokenSigner.VerifyAccessToken(tokenString)
 	if err != nil {
-		if strings.Contains(err.Error(), "AUTH003") {
-			return &IntrospectResult{Active: false}, nil
-		}
 		return &IntrospectResult{Active: false}, nil
 	}
 

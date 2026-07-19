@@ -30,7 +30,12 @@ func NewRouter(
 	e := echo.New()
 	e.HideBanner = true
 
-	e.Pre(middleware.CORSMiddleware())
+	e.Pre(middleware.CORSMiddleware([]string{
+		"http://localhost:3000",
+		"http://localhost:5173",
+		"http://127.0.0.1:3000",
+		"http://127.0.0.1:5173",
+	}))
 
 	e.Use(otelecho.Middleware("iam-service"))
 	e.Use(otel.LoggingMiddleware())
