@@ -145,6 +145,28 @@ func TestCORSMiddleware(t *testing.T) {
 			t.Error("expected CORS headers")
 		}
 	})
+
+	t.Run("rejects disallowed origin", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		req.Header.Set("Origin", "https://evil.com")
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("expected 403, got %d", rec.Code)
+		}
+	})
+
+	t.Run("sets Vary: Origin header", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/test", nil)
+		req.Header.Set("Origin", "http://localhost:3000")
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+
+		if rec.Header().Get("Vary") != "Origin" {
+			t.Errorf("expected Vary: Origin, got %q", rec.Header().Get("Vary"))
+		}
+	})
 }
 
 func TestRateLimitMiddleware(t *testing.T) {

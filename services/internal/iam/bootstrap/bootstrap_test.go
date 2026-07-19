@@ -143,6 +143,13 @@ func TestApp_LoginAndAuthFailures(t *testing.T) {
 	}
 }
 
+func TestNew_FailsWithEmptyTokenHasherSecret(t *testing.T) {
+	_, err := New(Config{})
+	if err == nil {
+		t.Fatal("expected error for empty TokenHasherSecret, got nil")
+	}
+}
+
 func jwkToRSAPublicKey(key port.JSONWebKey) (*rsa.PublicKey, error) {
 	nBytes, err := base64.RawURLEncoding.DecodeString(key.N)
 	if err != nil {

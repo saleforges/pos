@@ -43,10 +43,11 @@ func (r *UserRepository) GetByID(ctx context.Context, id int64) (*domain.User, e
 		return nil, err
 	}
 	user.SystemRole = loadUserSystemRole(ctx, r.pool, user.ID)
-	user.Roles = loadScopedRoles(ctx, r.pool, user.ID)
-	if user.Roles == nil {
-		user.Roles = []domain.UserRoleAssignment{}
+	roles, err := loadScopedRoles(ctx, r.pool, user.ID)
+	if err != nil {
+		return nil, err
 	}
+	user.Roles = roles
 	return user, nil
 }
 
@@ -58,10 +59,11 @@ func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*d
 		return nil, err
 	}
 	user.SystemRole = loadUserSystemRole(ctx, r.pool, user.ID)
-	user.Roles = loadScopedRoles(ctx, r.pool, user.ID)
-	if user.Roles == nil {
-		user.Roles = []domain.UserRoleAssignment{}
+	roles, err := loadScopedRoles(ctx, r.pool, user.ID)
+	if err != nil {
+		return nil, err
 	}
+	user.Roles = roles
 	return user, nil
 }
 
@@ -73,10 +75,11 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 		return nil, err
 	}
 	user.SystemRole = loadUserSystemRole(ctx, r.pool, user.ID)
-	user.Roles = loadScopedRoles(ctx, r.pool, user.ID)
-	if user.Roles == nil {
-		user.Roles = []domain.UserRoleAssignment{}
+	roles, err := loadScopedRoles(ctx, r.pool, user.ID)
+	if err != nil {
+		return nil, err
 	}
+	user.Roles = roles
 	return user, nil
 }
 
@@ -97,10 +100,11 @@ func (r *UserRepository) List(ctx context.Context, offset, limit int) ([]domain.
 			return nil, err
 		}
 		u.SystemRole = loadUserSystemRole(ctx, r.pool, u.ID)
-		u.Roles = loadScopedRoles(ctx, r.pool, u.ID)
-		if u.Roles == nil {
-			u.Roles = []domain.UserRoleAssignment{}
+		roles, err := loadScopedRoles(ctx, r.pool, u.ID)
+		if err != nil {
+			return nil, err
 		}
+		u.Roles = roles
 		users = append(users, u)
 	}
 	return users, rows.Err()

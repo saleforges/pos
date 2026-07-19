@@ -5,7 +5,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/saleforge/pos/services/internal/iam/domain"
-	"github.com/saleforge/pos/services/pkg/logger"
 	"github.com/saleforge/pos/services/pkg/otel"
 )
 
@@ -33,7 +32,7 @@ func loadUserSystemRole(ctx context.Context, pool *otel.TracedPool, userID int64
 	return &r
 }
 
-func loadScopedRoles(ctx context.Context, pool *otel.TracedPool, userID int64) []domain.UserRoleAssignment {
+func loadScopedRoles(ctx context.Context, pool *otel.TracedPool, userID int64) ([]domain.UserRoleAssignment, error) {
 	var result []domain.UserRoleAssignment
 
 	rows, err := pool.Query(ctx,
@@ -45,15 +44,14 @@ func loadScopedRoles(ctx context.Context, pool *otel.TracedPool, userID int64) [
 		 WHERE ur.user_id = $1 AND ur.status = 'active' AND ur.merchant_id IS NOT NULL
 		 ORDER BY m.name, b.name`, userID)
 	if err != nil {
-		return []domain.UserRoleAssignment{}
+		return nil, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var a domain.UserRoleAssignment
 		if err := rows.Scan(&a.ID, &a.MerchantID, &a.MerchantName, &a.BranchID, &a.BranchName,
 			&a.Role.ID, &a.Role.Name, &a.Role.Description, &a.Role.IsSystem, &a.IsDefault); err != nil {
-			logger.Error("loadScopedRoles: scan failed", "user_id", userID, "error", err.Error())
-			continue
+			return nil, err
 		}
 		if a.BranchID != nil {
 			a.BranchScope = domain.BranchScopeAssigned
@@ -66,7 +64,7 @@ func loadScopedRoles(ctx context.Context, pool *otel.TracedPool, userID int64) [
 		result = []domain.UserRoleAssignment{}
 	}
 
-	return result
+	return result, rows.Err()
 }
 
 func scanRole(row pgx.Row) (*domain.Role, error) {
