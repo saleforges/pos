@@ -14,19 +14,23 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/adapter/security"
 	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/port/repository"
+	httpauth "github.com/saleforge/pos/services/internal/iam/transport/http/auth"
+	httpperm "github.com/saleforge/pos/services/internal/iam/transport/http/permission"
+	httprole "github.com/saleforge/pos/services/internal/iam/transport/http/role"
 	httptransport "github.com/saleforge/pos/services/internal/iam/transport/http"
-	"github.com/saleforge/pos/services/internal/iam/transport/http/handler"
+	httpuser "github.com/saleforge/pos/services/internal/iam/transport/http/user"
 	"github.com/saleforge/pos/services/internal/iam/usecase"
 	"github.com/saleforge/pos/services/pkg/logger"
 	"github.com/saleforge/pos/services/pkg/otel"
 )
 
 type Config struct {
-	JWTPrivateKeyPEM string
-	JWTKeyID         string
-	DatabaseURL      string
-	OtelEndpoint     string
-	RedisAddr        string
+	JWTPrivateKeyPEM  string
+	JWTKeyID          string
+	DatabaseURL       string
+	OtelEndpoint      string
+	RedisAddr         string
+	TokenHasherSecret string
 }
 
 type App struct {
@@ -120,6 +124,10 @@ func New(cfg Config) (*App, error) {
 		sessionStore = sessionmem.NewSessionStore()
 	}
 
+	tokenHasher, err := security.NewHMAC256TokenHasher([]byte(cfg.TokenHasherSecret))
+	if err != nil {
+		return nil, err
+	}
 	authUsecase := usecase.NewAuthUsecase(
 		userRepo,
 		roleRepo,
@@ -130,10 +138,14 @@ func New(cfg Config) (*App, error) {
 		eventPublisher,
 		passwordHasher,
 		tokenSigner,
+		tokenHasher,
 		userCache,
 	)
-	authHandler := handler.NewAuthHandler(authUsecase)
-	router := httptransport.NewRouter(authHandler, authUsecase, tokenSigner)
+	authHandler := httpauth.NewHandler(authUsecase, authUsecase)
+	userHandler := httpuser.NewHandler(authUsecase)
+	roleHandler := httprole.NewHandler(authUsecase)
+	permHandler := httpperm.NewHandler(authUsecase)
+	router := httptransport.NewRouter(authHandler, userHandler, roleHandler, permHandler, authUsecase, authUsecase.HasPermission, tokenSigner)
 
 	return &App{router: router, otelShutdown: otelShutdown}, nil
 }

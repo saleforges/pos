@@ -28,7 +28,7 @@ type authResponse struct {
 func TestApp_HTTPFlow(t *testing.T) {
 	t.Parallel()
 
-	app, err := New(Config{})
+	app, err := New(Config{TokenHasherSecret: "test-hasher-secret"})
 	if err != nil {
 		t.Fatalf("bootstrap failed: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestApp_HTTPFlow(t *testing.T) {
 func TestApp_LoginAndAuthFailures(t *testing.T) {
 	t.Parallel()
 
-	app, err := New(Config{})
+	app, err := New(Config{TokenHasherSecret: "test-hasher-secret"})
 	if err != nil {
 		t.Fatalf("bootstrap failed: %v", err)
 	}
@@ -140,6 +140,13 @@ func TestApp_LoginAndAuthFailures(t *testing.T) {
 
 	if badRec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected status %d, got %d", http.StatusUnauthorized, badRec.Code)
+	}
+}
+
+func TestNew_FailsWithEmptyTokenHasherSecret(t *testing.T) {
+	_, err := New(Config{})
+	if err == nil {
+		t.Fatal("expected error for empty TokenHasherSecret, got nil")
 	}
 }
 

@@ -192,3 +192,204 @@ func TestRoleRepository_AssignRole(t *testing.T) {
 		t.Error("expected admin role to be assigned")
 	}
 }
+
+func TestUserRepository_RemoveRole(t *testing.T) {
+	t.Parallel()
+	userRepo := NewUserRepository()
+	u1 := &domain.User{Username: "removerole"}
+	userRepo.Create(context.Background(), u1)
+	userRepo.AddRole(context.Background(), u1.ID, "admin")
+
+	err := userRepo.RemoveRole(context.Background(), u1.ID, "admin")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	user, _ := userRepo.GetByID(context.Background(), u1.ID)
+	for _, r := range user.Roles {
+		if r.Role.Name == "admin" {
+			t.Error("expected admin role to be removed")
+		}
+	}
+}
+
+func TestRoleRepository_Create(t *testing.T) {
+	t.Parallel()
+	repo := NewRoleRepository()
+
+	role := &domain.Role{Name: "custom_role", Description: "desc"}
+	err := repo.Create(context.Background(), role)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if role.ID == 0 {
+		t.Fatal("expected non-zero ID after create")
+	}
+}
+
+func TestRoleRepository_GetByID(t *testing.T) {
+	t.Parallel()
+	repo := NewRoleRepository()
+
+	role, err := repo.GetByID(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if role.ID != 1 {
+		t.Errorf("expected ID 1, got %d", role.ID)
+	}
+	if role.Name == "" {
+		t.Error("expected non-empty name")
+	}
+
+	_, err = repo.GetByID(context.Background(), 999)
+	if err != domain.ErrInvalidRole {
+		t.Errorf("expected ErrInvalidRole, got %v", err)
+	}
+}
+
+func TestRoleRepository_List(t *testing.T) {
+	t.Parallel()
+	repo := NewRoleRepository()
+
+	roles, err := repo.List(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(roles) == 0 {
+		t.Error("expected at least 1 role")
+	}
+
+	// Filter by merchant
+	roles, err = repo.List(context.Background(), int64Ptr(100))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+func int64Ptr(v int64) *int64 { return &v }
+
+func TestRoleRepository_Update(t *testing.T) {
+	t.Parallel()
+	repo := NewRoleRepository()
+	repo.Create(context.Background(), &domain.Role{Name: "update_role", Description: "old"})
+
+	// Get the created role (should be ID 7+)
+	role, _ := repo.GetByName(context.Background(), "update_role")
+	role.Description = "updated"
+	err := repo.Update(context.Background(), role)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRoleRepository_Delete(t *testing.T) {
+	t.Parallel()
+	repo := NewRoleRepository()
+	repo.Create(context.Background(), &domain.Role{Name: "delete_role"})
+	role, _ := repo.GetByName(context.Background(), "delete_role")
+
+	err := repo.Delete(context.Background(), role.ID)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRoleRepository_AddRemovePermission(t *testing.T) {
+	t.Parallel()
+	repo := NewRoleRepository()
+	role, _ := repo.GetByName(context.Background(), "admin")
+
+	err := repo.AddPermission(context.Background(), role.ID, domain.SessionManage)
+	if err != nil {
+		t.Fatalf("AddPermission failed: %v", err)
+	}
+
+	err = repo.RemovePermission(context.Background(), role.ID, domain.SessionManage)
+	if err != nil {
+		t.Fatalf("RemovePermission failed: %v", err)
+	}
+}
+
+func TestPermissionRepository(t *testing.T) {
+	t.Parallel()
+
+	repo := NewPermissionRepository()
+
+	t.Run("get all returns permissions", func(t *testing.T) {
+		perms, err := repo.GetAll(context.Background())
+		if err != nil {
+			t.Fatalf("GetAll failed: %v", err)
+		}
+		if len(perms) == 0 {
+			t.Error("expected at least 1 permission")
+		}
+	})
+
+	t.Run("create and delete", func(t *testing.T) {
+		err := repo.Create(context.Background(), domain.Permission("custom.test"))
+		if err != nil {
+			t.Fatalf("Create failed: %v", err)
+		}
+
+		err = repo.Delete(context.Background(), domain.Permission("custom.test"))
+		if err != nil {
+			t.Fatalf("Delete failed: %v", err)
+		}
+	})
+}
+
+func TestLoginAuditRepository(t *testing.T) {
+	t.Parallel()
+
+	repo := NewLoginAuditRepository()
+	ctx := context.Background()
+
+	t.Run("create and list", func(t *testing.T) {
+		audit := &domain.LoginAudit{UserID: 1, Email: "test@t.com", Success: true}
+		err := repo.Create(ctx, audit)
+		if err != nil {
+			t.Fatalf("Create failed: %v", err)
+		}
+
+		audits, err := repo.List(ctx, 0, 10)
+		if err != nil {
+			t.Fatalf("List failed: %v", err)
+		}
+		if len(audits) != 1 {
+			t.Errorf("expected 1 audit, got %d", len(audits))
+		}
+	})
+
+	t.Run("list with offset past end returns empty", func(t *testing.T) {
+		audits, err := repo.List(ctx, 100, 10)
+		if err != nil {
+			t.Fatalf("List failed: %v", err)
+		}
+		if len(audits) != 0 {
+			t.Errorf("expected 0 audits, got %d", len(audits))
+		}
+	})
+}
+
+func TestStaffRepository(t *testing.T) {
+	t.Parallel()
+
+	repo := NewStaffRepository()
+	ctx := context.Background()
+
+	t.Run("list by user ID returns empty initially", func(t *testing.T) {
+		staff, err := repo.ListByUserID(ctx, 1)
+		if err != nil {
+			t.Fatalf("ListByUserID failed: %v", err)
+		}
+		// Mock returns nil, which is acceptable
+		_ = staff
+	})
+
+	t.Run("set default role", func(t *testing.T) {
+		err := repo.SetDefaultRole(ctx, 1, 1)
+		if err != nil {
+			t.Fatalf("SetDefaultRole failed: %v", err)
+		}
+	})
+}

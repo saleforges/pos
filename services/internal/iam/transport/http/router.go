@@ -8,22 +8,34 @@ import (
 	echomw "github.com/labstack/echo/v4/middleware"
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port"
-	"github.com/saleforge/pos/services/internal/iam/transport/http/handler"
+	httpauth "github.com/saleforge/pos/services/internal/iam/transport/http/auth"
 	"github.com/saleforge/pos/services/internal/iam/transport/http/middleware"
+	httpperm "github.com/saleforge/pos/services/internal/iam/transport/http/permission"
+	httprole "github.com/saleforge/pos/services/internal/iam/transport/http/role"
+	httpuser "github.com/saleforge/pos/services/internal/iam/transport/http/user"
 	"github.com/saleforge/pos/services/internal/iam/usecase"
 	"github.com/saleforge/pos/services/pkg/otel"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 )
 
 func NewRouter(
-	authHandler *handler.AuthHandler,
-	authUsecase usecase.AuthService,
+	authHandler *httpauth.Handler,
+	userHandler *httpuser.Handler,
+	roleHandler *httprole.Handler,
+	permHandler *httpperm.Handler,
+	authService usecase.AuthUsecase,
+	hasPermissionFunc func(*port.TokenClaims, domain.Permission) bool,
 	jwksProvider port.JWKSProvider,
 ) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
 
-	e.Pre(middleware.CORSMiddleware())
+	e.Pre(middleware.CORSMiddleware([]string{
+		"http://localhost:3000",
+		"http://localhost:5173",
+		"http://127.0.0.1:3000",
+		"http://127.0.0.1:5173",
+	}))
 
 	e.Use(otelecho.Middleware("iam-service"))
 	e.Use(otel.LoggingMiddleware())
@@ -48,51 +60,51 @@ func NewRouter(
 	api.POST("/auth/refresh", authHandler.Refresh, refreshRateLimit)
 	api.POST("/auth/introspect", authHandler.Introspect)
 
-	protected := middleware.AuthMiddleware(authUsecase.ValidateToken)
+	protected := middleware.AuthMiddleware(authService.ValidateToken)
 
 	api.POST("/auth/logout", authHandler.Logout, protected)
 	api.POST("/auth/switch-context", authHandler.SwitchContext, protected)
 	api.PUT("/auth/me/default-role", authHandler.SetDefaultRole, protected)
 	api.GET("/auth/me", authHandler.Me, protected)
 
-	userManage := middleware.RBACMiddleware(domain.UserList, authUsecase.HasPermission)
-	api.GET("/users", authHandler.ListUsers, protected, userManage)
-	api.POST("/users", authHandler.CreateUser, protected,
-		middleware.RBACMiddleware(domain.UserCreate, authUsecase.HasPermission))
+	userManage := middleware.RBACMiddleware(domain.UserList, hasPermissionFunc)
+	api.GET("/users", userHandler.ListUsers, protected, userManage)
+	api.POST("/users", userHandler.CreateUser, protected,
+		middleware.RBACMiddleware(domain.UserCreate, hasPermissionFunc))
 
-	api.GET("/users/:id", authHandler.GetUser, protected,
-		middleware.RBACMiddleware(domain.UserRead, authUsecase.HasPermission))
-	api.PATCH("/users/:id", authHandler.UpdateUser, protected,
-		middleware.RBACMiddleware(domain.UserUpdate, authUsecase.HasPermission))
-	api.DELETE("/users/:id", authHandler.DeleteUser, protected,
-		middleware.RBACMiddleware(domain.UserDelete, authUsecase.HasPermission))
+	api.GET("/users/:id", userHandler.GetUser, protected,
+		middleware.RBACMiddleware(domain.UserRead, hasPermissionFunc))
+	api.PATCH("/users/:id", userHandler.UpdateUser, protected,
+		middleware.RBACMiddleware(domain.UserUpdate, hasPermissionFunc))
+	api.DELETE("/users/:id", userHandler.DeleteUser, protected,
+		middleware.RBACMiddleware(domain.UserDelete, hasPermissionFunc))
 
-	api.POST("/users/:id/roles", authHandler.AssignRole, protected,
-		middleware.RBACMiddleware(domain.RoleAssign, authUsecase.HasPermission))
-	api.DELETE("/users/:id/roles/:roleId", authHandler.RemoveRole, protected,
-		middleware.RBACMiddleware(domain.RoleAssign, authUsecase.HasPermission))
+	api.POST("/users/:id/roles", roleHandler.AssignRole, protected,
+		middleware.RBACMiddleware(domain.RoleAssign, hasPermissionFunc))
+	api.DELETE("/users/:id/roles/:roleId", roleHandler.RemoveRole, protected,
+		middleware.RBACMiddleware(domain.RoleAssign, hasPermissionFunc))
 
-	roleManage := middleware.RBACMiddleware(domain.RoleRead, authUsecase.HasPermission)
-	api.GET("/roles", authHandler.ListRoles, protected, roleManage)
-	api.POST("/roles", authHandler.CreateRole, protected,
-		middleware.RBACMiddleware(domain.RoleCreate, authUsecase.HasPermission))
-	api.GET("/roles/:id", authHandler.GetRole, protected, roleManage)
-	api.PATCH("/roles/:id", authHandler.UpdateRole, protected,
-		middleware.RBACMiddleware(domain.RoleUpdate, authUsecase.HasPermission))
-	api.DELETE("/roles/:id", authHandler.DeleteRole, protected,
-		middleware.RBACMiddleware(domain.RoleDelete, authUsecase.HasPermission))
+	roleManage := middleware.RBACMiddleware(domain.RoleRead, hasPermissionFunc)
+	api.GET("/roles", roleHandler.ListRoles, protected, roleManage)
+	api.POST("/roles", roleHandler.CreateRole, protected,
+		middleware.RBACMiddleware(domain.RoleCreate, hasPermissionFunc))
+	api.GET("/roles/:id", roleHandler.GetRole, protected, roleManage)
+	api.PATCH("/roles/:id", roleHandler.UpdateRole, protected,
+		middleware.RBACMiddleware(domain.RoleUpdate, hasPermissionFunc))
+	api.DELETE("/roles/:id", roleHandler.DeleteRole, protected,
+		middleware.RBACMiddleware(domain.RoleDelete, hasPermissionFunc))
 
-	api.POST("/roles/:id/permissions", authHandler.AssignPermission, protected,
-		middleware.RBACMiddleware(domain.PermissionAssign, authUsecase.HasPermission))
-	api.DELETE("/roles/:id/permissions/:permissionId", authHandler.RemovePermission, protected,
-		middleware.RBACMiddleware(domain.PermissionAssign, authUsecase.HasPermission))
+	api.POST("/roles/:id/permissions", roleHandler.AssignPermission, protected,
+		middleware.RBACMiddleware(domain.PermissionAssign, hasPermissionFunc))
+	api.DELETE("/roles/:id/permissions/:permissionId", roleHandler.RemovePermission, protected,
+		middleware.RBACMiddleware(domain.PermissionAssign, hasPermissionFunc))
 
-	permManage := middleware.RBACMiddleware(domain.PermissionRead, authUsecase.HasPermission)
-	api.GET("/permissions", authHandler.ListPermissions, protected, permManage)
-	api.POST("/permissions", authHandler.CreatePermission, protected,
-		middleware.RBACMiddleware(domain.PermissionCreate, authUsecase.HasPermission))
-	api.DELETE("/permissions/:name", authHandler.DeletePermission, protected,
-		middleware.RBACMiddleware(domain.PermissionDelete, authUsecase.HasPermission))
+	permManage := middleware.RBACMiddleware(domain.PermissionRead, hasPermissionFunc)
+	api.GET("/permissions", permHandler.ListPermissions, protected, permManage)
+	api.POST("/permissions", permHandler.CreatePermission, protected,
+		middleware.RBACMiddleware(domain.PermissionCreate, hasPermissionFunc))
+	api.DELETE("/permissions/:name", permHandler.DeletePermission, protected,
+		middleware.RBACMiddleware(domain.PermissionDelete, hasPermissionFunc))
 
 	return e
 }
