@@ -32,17 +32,11 @@ func CORSMiddleware(allowedOrigins []string) echo.MiddlewareFunc {
 
 			// Validate against allow-list
 			if _, allowed := originSet[origin]; !allowed {
-				// If allow-list is empty, assume open (dev mode) — warns but allows
-				if len(allowedOrigins) == 0 {
-					c.Response().Header().Set("Access-Control-Allow-Origin", origin)
-				} else {
-					c.Response().Header().Set("Access-Control-Allow-Origin", "")
-					return c.NoContent(http.StatusForbidden)
-				}
-			} else {
-				c.Response().Header().Set("Access-Control-Allow-Origin", origin)
+				return c.NoContent(http.StatusForbidden)
 			}
 
+			c.Response().Header().Set("Access-Control-Allow-Origin", origin)
+			c.Response().Header().Add("Vary", "Origin")
 			c.Response().Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			c.Response().Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 			c.Response().Header().Set("Access-Control-Allow-Credentials", "true")

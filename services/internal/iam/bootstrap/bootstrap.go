@@ -124,6 +124,10 @@ func New(cfg Config) (*App, error) {
 		sessionStore = sessionmem.NewSessionStore()
 	}
 
+	tokenHasher, err := security.NewHMAC256TokenHasher([]byte(cfg.TokenHasherSecret))
+	if err != nil {
+		return nil, err
+	}
 	authUsecase := usecase.NewAuthUsecase(
 		userRepo,
 		roleRepo,
@@ -134,7 +138,7 @@ func New(cfg Config) (*App, error) {
 		eventPublisher,
 		passwordHasher,
 		tokenSigner,
-		security.NewHMAC256TokenHasher([]byte(cfg.TokenHasherSecret)),
+		tokenHasher,
 		userCache,
 	)
 	authHandler := httpauth.NewHandler(authUsecase, authUsecase)

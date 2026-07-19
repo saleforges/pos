@@ -233,7 +233,7 @@ func TestHMAC256TokenHasher(t *testing.T) {
 	t.Parallel()
 
 	t.Run("produces non-empty hash", func(t *testing.T) {
-		h := NewHMAC256TokenHasher([]byte("test-secret"))
+		h, _ := NewHMAC256TokenHasher([]byte("test-secret"))
 		result := h.HashToken("test-token")
 		if result == "" {
 			t.Error("expected non-empty hash")
@@ -241,7 +241,7 @@ func TestHMAC256TokenHasher(t *testing.T) {
 	})
 
 	t.Run("same input produces same hash", func(t *testing.T) {
-		h := NewHMAC256TokenHasher([]byte("test-secret"))
+		h, _ := NewHMAC256TokenHasher([]byte("test-secret"))
 		h1 := h.HashToken("consistent")
 		h2 := h.HashToken("consistent")
 		if h1 != h2 {
@@ -250,15 +250,15 @@ func TestHMAC256TokenHasher(t *testing.T) {
 	})
 
 	t.Run("different secrets produce different hashes", func(t *testing.T) {
-		h1 := NewHMAC256TokenHasher([]byte("secret-a"))
-		h2 := NewHMAC256TokenHasher([]byte("secret-b"))
+		h1, _ := NewHMAC256TokenHasher([]byte("secret-a"))
+		h2, _ := NewHMAC256TokenHasher([]byte("secret-b"))
 		if h1.HashToken("token") == h2.HashToken("token") {
 			t.Error("expected different hashes for different secrets")
 		}
 	})
 
 	t.Run("different inputs produce different hashes", func(t *testing.T) {
-		h := NewHMAC256TokenHasher([]byte("test-secret"))
+		h, _ := NewHMAC256TokenHasher([]byte("test-secret"))
 		h1 := h.HashToken("token-a")
 		h2 := h.HashToken("token-b")
 		if h1 == h2 {
@@ -267,18 +267,21 @@ func TestHMAC256TokenHasher(t *testing.T) {
 	})
 
 	t.Run("empty string produces hash", func(t *testing.T) {
-		h := NewHMAC256TokenHasher([]byte("test-secret"))
+		h, _ := NewHMAC256TokenHasher([]byte("test-secret"))
 		result := h.HashToken("")
 		if result == "" {
 			t.Error("expected hash for empty string, got empty")
 		}
 	})
 
-	t.Run("empty secret uses default", func(t *testing.T) {
-		h := NewHMAC256TokenHasher(nil)
-		result := h.HashToken("test")
-		if result == "" {
-			t.Error("expected non-empty hash with default secret")
+	t.Run("empty secret returns error", func(t *testing.T) {
+		_, err := NewHMAC256TokenHasher(nil)
+		if err == nil {
+			t.Error("expected error for empty secret, got nil")
+		}
+		_, err = NewHMAC256TokenHasher([]byte{})
+		if err == nil {
+			t.Error("expected error for empty secret, got nil")
 		}
 	})
 }

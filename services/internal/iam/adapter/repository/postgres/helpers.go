@@ -5,6 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/saleforge/pos/services/internal/iam/domain"
+	"github.com/saleforge/pos/services/pkg/logger"
 	"github.com/saleforge/pos/services/pkg/otel"
 )
 
@@ -51,6 +52,7 @@ func loadScopedRoles(ctx context.Context, pool *otel.TracedPool, userID int64) [
 		var a domain.UserRoleAssignment
 		if err := rows.Scan(&a.ID, &a.MerchantID, &a.MerchantName, &a.BranchID, &a.BranchName,
 			&a.Role.ID, &a.Role.Name, &a.Role.Description, &a.Role.IsSystem, &a.IsDefault); err != nil {
+			logger.Error("loadScopedRoles: scan failed", "user_id", userID, "error", err.Error())
 			continue
 		}
 		if a.BranchID != nil {

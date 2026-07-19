@@ -28,7 +28,7 @@ type authResponse struct {
 func TestApp_HTTPFlow(t *testing.T) {
 	t.Parallel()
 
-	app, err := New(Config{})
+	app, err := New(Config{TokenHasherSecret: "test-hasher-secret"})
 	if err != nil {
 		t.Fatalf("bootstrap failed: %v", err)
 	}
@@ -113,7 +113,7 @@ func TestApp_HTTPFlow(t *testing.T) {
 func TestApp_LoginAndAuthFailures(t *testing.T) {
 	t.Parallel()
 
-	app, err := New(Config{})
+	app, err := New(Config{TokenHasherSecret: "test-hasher-secret"})
 	if err != nil {
 		t.Fatalf("bootstrap failed: %v", err)
 	}
