@@ -44,7 +44,10 @@ func (r *UserRepository) GetByID(ctx context.Context, id int64) (*domain.User, e
 	if err != nil {
 		return nil, err
 	}
-	user.SystemRole = loadUserSystemRole(ctx, r.pool, user.ID)
+	user.SystemRole, err = loadUserSystemRole(ctx, r.pool, user.ID)
+	if err != nil {
+		return nil, err
+	}
 	roles, err := loadScopedRoles(ctx, r.pool, user.ID)
 	if err != nil {
 		return nil, err
@@ -60,7 +63,10 @@ func (r *UserRepository) GetByUsername(ctx context.Context, username string) (*d
 	if err != nil {
 		return nil, err
 	}
-	user.SystemRole = loadUserSystemRole(ctx, r.pool, user.ID)
+	user.SystemRole, err = loadUserSystemRole(ctx, r.pool, user.ID)
+	if err != nil {
+		return nil, err
+	}
 	roles, err := loadScopedRoles(ctx, r.pool, user.ID)
 	if err != nil {
 		return nil, err
@@ -76,7 +82,10 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 	if err != nil {
 		return nil, err
 	}
-	user.SystemRole = loadUserSystemRole(ctx, r.pool, user.ID)
+	user.SystemRole, err = loadUserSystemRole(ctx, r.pool, user.ID)
+	if err != nil {
+		return nil, err
+	}
 	roles, err := loadScopedRoles(ctx, r.pool, user.ID)
 	if err != nil {
 		return nil, err
@@ -101,7 +110,10 @@ func (r *UserRepository) List(ctx context.Context, offset, limit int) ([]domain.
 		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Password, &u.Type, &u.Status, &u.CreatedAt, &u.UpdatedAt); err != nil {
 			return nil, err
 		}
-		u.SystemRole = loadUserSystemRole(ctx, r.pool, u.ID)
+		u.SystemRole, err = loadUserSystemRole(ctx, r.pool, u.ID)
+		if err != nil {
+			return nil, err
+		}
 		roles, err := loadScopedRoles(ctx, r.pool, u.ID)
 		if err != nil {
 			return nil, err

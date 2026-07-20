@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/saleforge/pos/services/internal/iam/domain"
@@ -17,7 +18,7 @@ func scanUser(row pgx.Row) (*domain.User, error) {
 	return &u, nil
 }
 
-func loadUserSystemRole(ctx context.Context, pool *otel.TracedPool, userID int64) *domain.Role {
+func loadUserSystemRole(ctx context.Context, pool *otel.TracedPool, userID int64) (*domain.Role, error) {
 	var r domain.Role
 	err := pool.QueryRow(ctx,
 		`SELECT r.id, r.name, r.description, r.is_system
@@ -26,10 +27,17 @@ func loadUserSystemRole(ctx context.Context, pool *otel.TracedPool, userID int64
 		 LIMIT 1`, userID,
 	).Scan(&r.ID, &r.Name, &r.Description, &r.IsSystem)
 	if err != nil {
-		return nil
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
 	}
-	r.Permissions, _ = loadRolePermissions(ctx, pool, r.ID)
-	return &r
+	perms, err := loadRolePermissions(ctx, pool, r.ID)
+	if err != nil {
+		return nil, err
+	}
+	r.Permissions = perms
+	return &r, nil
 }
 
 func loadScopedRoles(ctx context.Context, pool *otel.TracedPool, userID int64) ([]domain.UserRoleAssignment, error) {
