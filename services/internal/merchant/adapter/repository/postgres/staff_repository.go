@@ -156,9 +156,12 @@ func (r *StaffRepository) Update(ctx context.Context, staff *domain.StaffMember)
 }
 
 func (r *StaffRepository) Delete(ctx context.Context, id int64) error {
-	_, err := r.pool.Exec(ctx, `DELETE FROM staff WHERE id = $1`, id)
+	res, err := r.pool.Exec(ctx, `DELETE FROM staff WHERE id = $1`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete staff: %w", err)
+	}
+	if res.RowsAffected() == 0 {
+		return domain.ErrStaffNotFound
 	}
 	return nil
 }

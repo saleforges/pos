@@ -48,6 +48,12 @@ func (h *MerchantHandler) Create(c echo.Context) error {
 		Settings:  req.Settings,
 	})
 	if err != nil {
+		switch err {
+		case domain.ErrMerchantExists:
+			return httputil.WriteError(c, http.StatusConflict, err)
+		case domain.ErrInvalidMerchant:
+			return httputil.WriteError(c, http.StatusBadRequest, err)
+		}
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}
 
@@ -113,8 +119,13 @@ func (h *MerchantHandler) Update(c echo.Context) error {
 		Settings:  req.Settings,
 	})
 	if err != nil {
-		if err == domain.ErrMerchantNotFound {
+		switch err {
+		case domain.ErrMerchantNotFound:
 			return httputil.WriteError(c, http.StatusNotFound, err)
+		case domain.ErrMerchantExists:
+			return httputil.WriteError(c, http.StatusConflict, err)
+		case domain.ErrInvalidMerchant:
+			return httputil.WriteError(c, http.StatusBadRequest, err)
 		}
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}
@@ -127,9 +138,15 @@ func (h *MerchantHandler) Delete(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
 	if err := h.uc.DeleteMerchant(c.Request().Context(), id); err != nil {
+		switch err {
+		case domain.ErrMerchantNotFound:
+			return httputil.WriteError(c, http.StatusNotFound, err)
+		case domain.ErrMerchantHasBranches:
+			return httputil.WriteError(c, http.StatusConflict, err)
+		}
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}
-	return httputil.WriteJSON(c, http.StatusOK, nil)
+	return httputil.WriteJSON(c, http.StatusOK, map[string]string{"message": "merchant deleted"})
 }
 
 func parseInt(s string, defaultVal int) int {

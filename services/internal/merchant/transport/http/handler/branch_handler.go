@@ -48,8 +48,13 @@ func (h *BranchHandler) CreateBranch(c echo.Context) error {
 		OperatingHours: req.OperatingHours,
 	})
 	if err != nil {
-		if err == domain.ErrMerchantNotFound {
+		switch err {
+		case domain.ErrMerchantNotFound:
 			return httputil.WriteError(c, http.StatusNotFound, err)
+		case domain.ErrBranchExists:
+			return httputil.WriteError(c, http.StatusConflict, err)
+		case domain.ErrInvalidBranch:
+			return httputil.WriteError(c, http.StatusBadRequest, err)
 		}
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}
@@ -109,8 +114,13 @@ func (h *BranchHandler) UpdateBranch(c echo.Context) error {
 		OperatingHours: req.OperatingHours,
 	})
 	if err != nil {
-		if err == domain.ErrBranchNotFound {
+		switch err {
+		case domain.ErrBranchNotFound:
 			return httputil.WriteError(c, http.StatusNotFound, err)
+		case domain.ErrBranchExists:
+			return httputil.WriteError(c, http.StatusConflict, err)
+		case domain.ErrInvalidBranch:
+			return httputil.WriteError(c, http.StatusBadRequest, err)
 		}
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}
@@ -123,7 +133,13 @@ func (h *BranchHandler) DeleteBranch(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
 	if err := h.uc.DeleteBranch(c.Request().Context(), id); err != nil {
+		switch err {
+		case domain.ErrBranchNotFound:
+			return httputil.WriteError(c, http.StatusNotFound, err)
+		case domain.ErrBranchHasStaff:
+			return httputil.WriteError(c, http.StatusConflict, err)
+		}
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}
-	return httputil.WriteJSON(c, http.StatusOK, nil)
+	return httputil.WriteJSON(c, http.StatusOK, map[string]string{"message": "branch deleted"})
 }
