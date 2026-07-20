@@ -19,3 +19,8 @@ api.saleforges.test {
         reverse_proxy localhost:{env.CATALOG_PORT}
     }
 }
+
+router.saleforges.test {
+    tls internal
+    reverse_proxy localhost:20128
+}

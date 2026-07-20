@@ -29,3 +29,7 @@ localhost {
         reverse_proxy localhost:5173
     }
 }
+
+router.saleforges.test {
+    reverse_proxy localhost:20128
+}
