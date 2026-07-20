@@ -48,6 +48,12 @@ func (h *MerchantHandler) Create(c echo.Context) error {
 		Settings:  req.Settings,
 	})
 	if err != nil {
+		switch err {
+		case domain.ErrMerchantExists:
+			return httputil.WriteError(c, http.StatusConflict, err)
+		case domain.ErrInvalidMerchant:
+			return httputil.WriteError(c, http.StatusBadRequest, err)
+		}
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}
 
@@ -127,6 +133,9 @@ func (h *MerchantHandler) Delete(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
 	if err := h.uc.DeleteMerchant(c.Request().Context(), id); err != nil {
+		if err == domain.ErrMerchantNotFound {
+			return httputil.WriteError(c, http.StatusNotFound, err)
+		}
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}
 	return httputil.WriteJSON(c, http.StatusOK, nil)

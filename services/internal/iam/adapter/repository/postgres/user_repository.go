@@ -31,7 +31,9 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 		return err
 	}
 
-	_ = tx.Commit(ctx)
+	if err = tx.Commit(ctx); err != nil {
+		return err
+	}
 	return nil
 }
 

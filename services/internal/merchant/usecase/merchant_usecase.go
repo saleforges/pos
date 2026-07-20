@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/saleforge/pos/services/internal/merchant/domain"
@@ -81,6 +82,9 @@ func (uc *merchantUsecase) CreateMerchant(ctx context.Context, input CreateMerch
 	}
 
 	if err := uc.merchantRepo.Create(ctx, merchant); err != nil {
+		if errors.Is(err, domain.ErrMerchantExists) {
+			return nil, err
+		}
 		return nil, domain.ErrInternal
 	}
 	return merchant, nil
@@ -133,6 +137,9 @@ func (uc *merchantUsecase) UpdateMerchant(ctx context.Context, input UpdateMerch
 	merchant.UpdatedAt = time.Now().UTC()
 
 	if err := uc.merchantRepo.Update(ctx, merchant); err != nil {
+		if errors.Is(err, domain.ErrMerchantNotFound) {
+			return nil, err
+		}
 		return nil, domain.ErrInternal
 	}
 	return merchant, nil

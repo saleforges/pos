@@ -2,8 +2,10 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/saleforge/pos/services/internal/merchant/domain"
 	"github.com/saleforge/pos/services/pkg/otel"
 )
@@ -33,6 +35,10 @@ func (r *MerchantRepository) Create(ctx context.Context, merchant *domain.Mercha
 		merchant.Settings.LowStockThreshold, merchant.CreatedAt, merchant.UpdatedAt,
 	).Scan(&merchant.ID)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return domain.ErrMerchantExists
+		}
 		return fmt.Errorf("failed to create merchant: %w", err)
 	}
 	return nil
@@ -96,7 +102,7 @@ func (r *MerchantRepository) List(ctx context.Context, offset, limit int) ([]dom
 }
 
 func (r *MerchantRepository) Update(ctx context.Context, merchant *domain.Merchant) error {
-	_, err := r.pool.Exec(ctx, `
+	res, err := r.pool.Exec(ctx, `
 		UPDATE merchants SET name=$1, legal_name=$2, address=$3, phone=$4, email=$5,
 		                     logo_url=$6, tax_id=$7, status=$8, tax_rate=$9, currency=$10,
 		                     timezone=$11, receipt_footer=$12, receipt_logo=$13,
@@ -112,13 +118,19 @@ func (r *MerchantRepository) Update(ctx context.Context, merchant *domain.Mercha
 	if err != nil {
 		return fmt.Errorf("failed to update merchant: %w", err)
 	}
+	if res.RowsAffected() == 0 {
+		return domain.ErrMerchantNotFound
+	}
 	return nil
 }
 
 func (r *MerchantRepository) Delete(ctx context.Context, id int64) error {
-	_, err := r.pool.Exec(ctx, `DELETE FROM merchants WHERE id = $1`, id)
+	res, err := r.pool.Exec(ctx, `DELETE FROM merchants WHERE id = $1`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete merchant: %w", err)
+	}
+	if res.RowsAffected() == 0 {
+		return domain.ErrMerchantNotFound
 	}
 	return nil
 }

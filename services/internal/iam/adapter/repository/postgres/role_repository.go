@@ -2,6 +2,8 @@ package postgres
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/saleforge/pos/services/internal/iam/domain"
@@ -32,9 +34,19 @@ func (r *RoleRepository) Create(ctx context.Context, role *domain.Role) error {
 	}
 
 	for _, p := range role.Permissions {
+		var permissionID int64
+		err = tx.QueryRow(ctx,
+			`SELECT id FROM permissions WHERE name = $1`, string(p),
+		).Scan(&permissionID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return fmt.Errorf("permission %q does not exist", string(p))
+			}
+			return err
+		}
 		_, err = tx.Exec(ctx,
-			`INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, (SELECT id FROM permissions WHERE name = $2)) ON CONFLICT DO NOTHING`,
-			role.ID, string(p),
+			`INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+			role.ID, permissionID,
 		)
 		if err != nil {
 			return err

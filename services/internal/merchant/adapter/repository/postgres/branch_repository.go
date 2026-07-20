@@ -2,8 +2,10 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/saleforge/pos/services/internal/merchant/domain"
 	"github.com/saleforge/pos/services/pkg/otel"
 )
@@ -32,6 +34,10 @@ func (r *BranchRepository) Create(ctx context.Context, branch *domain.Branch) er
 		branch.CreatedAt, branch.UpdatedAt,
 	).Scan(&branch.ID)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return domain.ErrBranchExists
+		}
 		return fmt.Errorf("failed to create branch: %w", err)
 	}
 	return nil
@@ -95,7 +101,7 @@ func (r *BranchRepository) ListByMerchant(ctx context.Context, merchantID int64)
 }
 
 func (r *BranchRepository) Update(ctx context.Context, branch *domain.Branch) error {
-	_, err := r.pool.Exec(ctx, `
+	res, err := r.pool.Exec(ctx, `
 		UPDATE branches SET name=$1, address=$2, phone=$3, status=$4,
 		                    operating_days=$5, open_time=$6, close_time=$7,
 		                    updated_at=$8
@@ -107,13 +113,19 @@ func (r *BranchRepository) Update(ctx context.Context, branch *domain.Branch) er
 	if err != nil {
 		return fmt.Errorf("failed to update branch: %w", err)
 	}
+	if res.RowsAffected() == 0 {
+		return domain.ErrBranchNotFound
+	}
 	return nil
 }
 
 func (r *BranchRepository) Delete(ctx context.Context, id int64) error {
-	_, err := r.pool.Exec(ctx, `DELETE FROM branches WHERE id = $1`, id)
+	res, err := r.pool.Exec(ctx, `DELETE FROM branches WHERE id = $1`, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete branch: %w", err)
+	}
+	if res.RowsAffected() == 0 {
+		return domain.ErrBranchNotFound
 	}
 	return nil
 }

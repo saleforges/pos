@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/saleforge/pos/services/internal/merchant/domain"
@@ -60,6 +61,9 @@ func (uc *merchantUsecase) CreateBranch(ctx context.Context, input CreateBranchI
 	}
 
 	if err := uc.branchRepo.Create(ctx, branch); err != nil {
+		if errors.Is(err, domain.ErrBranchExists) {
+			return nil, err
+		}
 		return nil, domain.ErrInternal
 	}
 	return branch, nil
@@ -100,6 +104,9 @@ func (uc *merchantUsecase) UpdateBranch(ctx context.Context, input UpdateBranchI
 	branch.UpdatedAt = time.Now().UTC()
 
 	if err := uc.branchRepo.Update(ctx, branch); err != nil {
+		if errors.Is(err, domain.ErrBranchNotFound) {
+			return nil, err
+		}
 		return nil, domain.ErrInternal
 	}
 	return branch, nil

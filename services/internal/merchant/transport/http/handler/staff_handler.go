@@ -128,6 +128,9 @@ func (h *StaffHandler) RemoveStaff(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
 	if err := h.uc.RemoveStaff(c.Request().Context(), id); err != nil {
+		if err == domain.ErrStaffNotFound {
+			return httputil.WriteError(c, http.StatusNotFound, err)
+		}
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}
 	return httputil.WriteJSON(c, http.StatusOK, nil)

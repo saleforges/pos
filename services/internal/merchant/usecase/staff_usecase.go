@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/saleforge/pos/services/internal/merchant/domain"
@@ -65,7 +66,9 @@ func (uc *merchantUsecase) AssignStaff(ctx context.Context, input AssignStaffInp
 	}
 
 	if input.IsDefault {
-		_ = uc.staffRepo.SetDefaultBranch(ctx, input.UserID, input.BranchID)
+		if err := uc.staffRepo.SetDefaultBranch(ctx, input.UserID, input.BranchID); err != nil {
+			return nil, fmt.Errorf("failed to set default branch: %w", err)
+		}
 	}
 
 	if err := uc.staffRepo.Create(ctx, staff); err != nil {
