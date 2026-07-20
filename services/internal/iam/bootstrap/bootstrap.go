@@ -31,6 +31,7 @@ type Config struct {
 	OtelEndpoint      string
 	RedisAddr         string
 	TokenHasherSecret string
+	SecureCookies     bool
 }
 
 type App struct {
@@ -141,7 +142,7 @@ func New(cfg Config) (*App, error) {
 		tokenHasher,
 		userCache,
 	)
-	authHandler := httpauth.NewHandler(authUsecase, authUsecase)
+	authHandler := httpauth.NewHandler(authUsecase, authUsecase, cfg.SecureCookies)
 	userHandler := httpuser.NewHandler(authUsecase)
 	roleHandler := httprole.NewHandler(authUsecase)
 	permHandler := httpperm.NewHandler(authUsecase)

@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"log"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -49,16 +48,15 @@ func BranchContext(provider StaffAssignmentProvider) echo.MiddlewareFunc {
 			if merchantID != 0 {
 				staffList, err := provider.ListByUserAndMerchant(c.Request().Context(), userID, merchantID)
 				if err != nil {
-					log.Printf("[WARN] BranchContext: failed to list staff assignments for user %d, merchant %d: %v", userID, merchantID, err)
-				} else {
-					for _, s := range staffList {
-						assignments = append(assignments, BranchAssignment{
-							StaffID:   s.ID,
-							BranchID:  s.BranchID,
-							Role:      s.Role,
-							IsDefault: s.IsDefault,
-						})
-					}
+					return c.JSON(http.StatusInternalServerError, map[string]string{"error": "failed to load staff assignments"})
+				}
+				for _, s := range staffList {
+					assignments = append(assignments, BranchAssignment{
+						StaffID:   s.ID,
+						BranchID:  s.BranchID,
+						Role:      s.Role,
+						IsDefault: s.IsDefault,
+					})
 				}
 			}
 

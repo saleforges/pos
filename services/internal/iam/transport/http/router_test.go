@@ -161,7 +161,7 @@ func TestHandler_Routes_Respond(t *testing.T) {
 		nil,
 	)
 
-	authHandler := auth.NewHandler(uc, uc)
+	authHandler := auth.NewHandler(uc, uc, true)
 	userHandler := user.NewHandler(uc)
 	roleHandler := role.NewHandler(uc)
 	permHandler := permission.NewHandler(uc)

@@ -12,12 +12,13 @@ import (
 )
 
 type Handler struct {
-	authService usecase.AuthUsecase
-	userService usecase.UserUsecase
+	authService   usecase.AuthUsecase
+	userService   usecase.UserUsecase
+	secureCookies bool
 }
 
-func NewHandler(authService usecase.AuthUsecase, userService usecase.UserUsecase) *Handler {
-	return &Handler{authService: authService, userService: userService}
+func NewHandler(authService usecase.AuthUsecase, userService usecase.UserUsecase, secureCookies bool) *Handler {
+	return &Handler{authService: authService, userService: userService, secureCookies: secureCookies}
 }
 
 func (h *Handler) Register(c echo.Context) error {
@@ -48,7 +49,7 @@ func (h *Handler) Register(c echo.Context) error {
 		return common.WriteError(c, http.StatusInternalServerError, err)
 	}
 
-	setTokenCookies(c, result.AccessToken, result.RefreshToken, result.ExpiresIn)
+	setTokenCookies(c, result.AccessToken, result.RefreshToken, result.ExpiresIn, h.secureCookies)
 
 	return common.WriteJSON(c, http.StatusCreated, authResponse{
 		AccessToken:  result.AccessToken,
@@ -80,7 +81,7 @@ func (h *Handler) Login(c echo.Context) error {
 		return common.WriteError(c, http.StatusInternalServerError, err)
 	}
 
-	setTokenCookies(c, result.AccessToken, result.RefreshToken, result.ExpiresIn)
+	setTokenCookies(c, result.AccessToken, result.RefreshToken, result.ExpiresIn, h.secureCookies)
 
 	return common.WriteJSON(c, http.StatusOK, authResponse{
 		AccessToken:  result.AccessToken,
@@ -114,7 +115,7 @@ func (h *Handler) Refresh(c echo.Context) error {
 	})
 	if err != nil {
 		if err == domain.ErrInvalidRefreshToken {
-			clearTokenCookies(c)
+			clearTokenCookies(c, h.secureCookies)
 			return common.WriteError(c, http.StatusUnauthorized, err)
 		}
 		if err == domain.ErrUserDisabled {
@@ -123,7 +124,7 @@ func (h *Handler) Refresh(c echo.Context) error {
 		return common.WriteError(c, http.StatusInternalServerError, err)
 	}
 
-	setTokenCookies(c, result.AccessToken, result.RefreshToken, result.ExpiresIn)
+	setTokenCookies(c, result.AccessToken, result.RefreshToken, result.ExpiresIn, h.secureCookies)
 
 	return common.WriteJSON(c, http.StatusOK, authResponse{
 		AccessToken:  result.AccessToken,
@@ -142,7 +143,7 @@ func (h *Handler) Logout(c echo.Context) error {
 		return common.WriteError(c, http.StatusInternalServerError, err)
 	}
 
-	clearTokenCookies(c)
+	clearTokenCookies(c, h.secureCookies)
 	return common.WriteJSON(c, http.StatusOK, nil)
 }
 
@@ -162,7 +163,7 @@ func (h *Handler) SwitchContext(c echo.Context) error {
 		return common.WriteError(c, http.StatusInternalServerError, err)
 	}
 
-	setTokenCookies(c, result.AccessToken, "", result.ExpiresIn)
+	setTokenCookies(c, result.AccessToken, "", result.ExpiresIn, h.secureCookies)
 
 	return common.WriteJSON(c, http.StatusOK, authResponse{
 		AccessToken: result.AccessToken,
