@@ -23,6 +23,7 @@ type Claims struct {
 	BranchID   int64  `json:"bid"`
 	UserID     int64  `json:"user_id"`
 	UserType   string `json:"user_type"`
+	Type       string `json:"type"`
 	jwt.RegisteredClaims
 }
 
@@ -56,20 +57,14 @@ func New(jwksURL string) *Verifier {
 }
 
 func (v *Verifier) Verify(tokenString string) (*Claims, error) {
-	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, &Claims{})
-	if err != nil {
-		return nil, fmt.Errorf("jwt: parse unverified: %w", err)
-	}
-	kid, _ := token.Header["kid"].(string)
-
-	key, err := v.fetchKey(kid)
-	if err != nil {
-		return nil, err
-	}
-
 	parsed, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		kid, _ := t.Header["kid"].(string)
+		key, err := v.fetchKey(kid)
+		if err != nil {
+			return nil, err
 		}
 		return key, nil
 	})
@@ -81,6 +76,12 @@ func (v *Verifier) Verify(tokenString string) (*Claims, error) {
 	if !ok || !parsed.Valid {
 		return nil, fmt.Errorf("jwt: invalid claims")
 	}
+
+	// Enforce strict token type — only "access" tokens are allowed on merchant endpoints
+	if claims.Type != "access" {
+		return nil, fmt.Errorf("jwt: invalid token type %q", claims.Type)
+	}
+
 	return claims, nil
 }
 
@@ -108,13 +109,25 @@ func (v *Verifier) fetchKey(kid string) (*rsa.PublicKey, error) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
+	oldKeys := v.keys
+	v.keys = make(map[string]*rsa.PublicKey)
+
+	decodedCount := 0
 	for _, k := range jwks.Keys {
 		pub, err := decodePublicKey(k.N, k.E)
 		if err != nil {
 			continue
 		}
 		v.keys[k.Kid] = pub
+		decodedCount++
 	}
+
+	if decodedCount == 0 {
+		// Restore old cache and keep lastFetch so next call retries immediately
+		v.keys = oldKeys
+		return nil, fmt.Errorf("jwks: no valid keys in response")
+	}
+
 	v.lastFetch = time.Now()
 
 	key, ok = v.keys[kid]

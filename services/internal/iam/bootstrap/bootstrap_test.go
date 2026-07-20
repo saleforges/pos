@@ -2,9 +2,12 @@ package bootstrap
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +16,25 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/saleforge/pos/services/internal/iam/port"
 )
+
+func generateTestRSAPrivateKey() string {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		panic(err)
+	}
+	block := &pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(key),
+	}
+	return string(pem.EncodeToMemory(block))
+}
+
+func testConfig() Config {
+	return Config{
+		JWTPrivateKeyPEM:  generateTestRSAPrivateKey(),
+		TokenHasherSecret: "test-hasher-secret",
+	}
+}
 
 type apiResponse struct {
 	Message string          `json:"message"`
@@ -28,7 +50,7 @@ type authResponse struct {
 func TestApp_HTTPFlow(t *testing.T) {
 	t.Parallel()
 
-	app, err := New(Config{TokenHasherSecret: "test-hasher-secret"})
+	app, err := New(testConfig())
 	if err != nil {
 		t.Fatalf("bootstrap failed: %v", err)
 	}
@@ -113,7 +135,7 @@ func TestApp_HTTPFlow(t *testing.T) {
 func TestApp_LoginAndAuthFailures(t *testing.T) {
 	t.Parallel()
 
-	app, err := New(Config{TokenHasherSecret: "test-hasher-secret"})
+	app, err := New(testConfig())
 	if err != nil {
 		t.Fatalf("bootstrap failed: %v", err)
 	}
@@ -144,7 +166,7 @@ func TestApp_LoginAndAuthFailures(t *testing.T) {
 }
 
 func TestNew_FailsWithEmptyTokenHasherSecret(t *testing.T) {
-	_, err := New(Config{})
+	_, err := New(Config{JWTPrivateKeyPEM: generateTestRSAPrivateKey()})
 	if err == nil {
 		t.Fatal("expected error for empty TokenHasherSecret, got nil")
 	}

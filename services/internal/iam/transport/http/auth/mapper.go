@@ -14,8 +14,7 @@ const (
 	refreshCookieName = "refresh_token"
 )
 
-func setTokenCookies(c echo.Context, accessToken, refreshToken string, expiresIn int) {
-	secure := c.Request().TLS != nil
+func setTokenCookies(c echo.Context, accessToken, refreshToken string, expiresIn int, secure bool) {
 	accessMaxAge := expiresIn
 	refreshMaxAge := 30 * 24 * 3600 // 30 days
 
@@ -39,12 +38,13 @@ func setTokenCookies(c echo.Context, accessToken, refreshToken string, expiresIn
 	})
 }
 
-func clearTokenCookies(c echo.Context) {
+func clearTokenCookies(c echo.Context, secure bool) {
 	c.SetCookie(&http.Cookie{
 		Name:     accessCookieName,
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   secure,
 		MaxAge:   -1,
 		Expires:  time.Unix(0, 0),
 	})
@@ -53,6 +53,7 @@ func clearTokenCookies(c echo.Context) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   secure,
 		MaxAge:   -1,
 		Expires:  time.Unix(0, 0),
 	})

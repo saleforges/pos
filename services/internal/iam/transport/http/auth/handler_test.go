@@ -91,7 +91,7 @@ func setupTest(t *testing.T, as *mockAuthService, us *mockUserService) (*Handler
 	t.Helper()
 	if as == nil { as = &mockAuthService{} }
 	if us == nil { us = &mockUserService{} }
-	return NewHandler(as, us), echo.New().NewContext(nil, nil), httptest.NewRecorder()
+	return NewHandler(as, us, true), echo.New().NewContext(nil, nil), httptest.NewRecorder()
 }
 
 func request(method, path, body string) *http.Request {

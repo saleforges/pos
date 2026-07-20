@@ -28,6 +28,7 @@ func main() {
 		DatabaseURL:       os.Getenv("DATABASE_URL"),
 		OtelEndpoint:      os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 		TokenHasherSecret: getEnv("TOKEN_HASHER_SECRET", ""),
+		SecureCookies:     os.Getenv("SECURE_COOKIES") != "false",
 	})
 	if err != nil {
 		logger.Error("bootstrap failed", "error", err.Error())

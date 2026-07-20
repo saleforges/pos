@@ -20,24 +20,14 @@ func MerchantMiddleware() echo.MiddlewareFunc {
 				return next(c)
 			}
 
-			// fallback: X-Merchant-Id header
+			// X-Merchant-Id header (required for all non-system operations)
 			merchantIDStr := c.Request().Header.Get("X-Merchant-Id")
-			userType, _ := c.Get(ContextKeyUserType).(string)
-
-			if userType == "platform" {
-				if merchantIDStr != "" {
-					if id, err := strconv.ParseInt(merchantIDStr, 10, 64); err == nil {
-						c.Set(ContextKeyMerchantID, id)
-					}
-				}
-				return next(c)
-			}
-
 			if merchantIDStr == "" {
 				return c.JSON(http.StatusBadRequest, map[string]string{
 					"error": "X-Merchant-Id header is required",
 				})
 			}
+
 			id, err := strconv.ParseInt(merchantIDStr, 10, 64)
 			if err != nil {
 				return c.JSON(http.StatusBadRequest, map[string]string{

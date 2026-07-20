@@ -1,13 +1,11 @@
 package security
 
 import (
-	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
-	"log"
 	"math/big"
 	"strings"
 	"time"
@@ -38,16 +36,7 @@ func NewJWTSigner(privateKeyPEM []byte, keyID string) (*JWTSigner, error) {
 	}
 
 	if len(strings.TrimSpace(string(privateKeyPEM))) == 0 {
-		log.Println("[WARN] No JWT_PRIVATE_KEY_PEM configured — generating ephemeral RSA key. All existing tokens will be invalidated on restart!")
-		privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-		if err != nil {
-			return nil, err
-		}
-		return &JWTSigner{
-			privateKey: privateKey,
-			publicKey:  &privateKey.PublicKey,
-			keyID:      keyID,
-		}, nil
+		return nil, errors.New("JWT_PRIVATE_KEY_PEM is required — no ephemeral fallback allowed")
 	}
 
 	privateKey, err := parseRSAPrivateKey(privateKeyPEM)
