@@ -332,6 +332,16 @@ func TestMerchantHandler_Delete(t *testing.T) {
 			},
 			wantStatus: http.StatusInternalServerError,
 		},
+		{
+			name: "not found",
+			id:   "999",
+			mock: &mockMerchantSvc{
+				deleteMerchantFn: func(_ context.Context, _ int64) error {
+					return domain.ErrMerchantNotFound
+				},
+			},
+			wantStatus: http.StatusNotFound,
+		},
 	}
 
 	for _, tt := range tests {

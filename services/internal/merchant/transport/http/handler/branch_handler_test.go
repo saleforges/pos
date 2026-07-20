@@ -199,6 +199,12 @@ func TestBranchHandler_DeleteBranch(t *testing.T) {
 			mock: &mockBranchSvc{deleteBranch: func(_ context.Context, _ int64) error { return domain.ErrInternal }},
 			wantStatus: http.StatusInternalServerError,
 		},
+		{
+			name: "not found",
+			id:   "999",
+			mock: &mockBranchSvc{deleteBranch: func(_ context.Context, _ int64) error { return domain.ErrBranchNotFound }},
+			wantStatus: http.StatusNotFound,
+		},
 	}
 
 	for _, tt := range tests {

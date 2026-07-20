@@ -131,17 +131,39 @@ func (r *RoleRepository) Delete(ctx context.Context, id int64) error {
 }
 
 func (r *RoleRepository) AddPermission(ctx context.Context, roleID int64, permission domain.Permission) error {
-	_, err := r.pool.Exec(ctx,
-		`INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, (SELECT id FROM permissions WHERE name = $2)) ON CONFLICT DO NOTHING`,
-		roleID, string(permission),
+	var permissionID int64
+	err := r.pool.QueryRow(ctx,
+		`SELECT id FROM permissions WHERE name = $1`, string(permission),
+	).Scan(&permissionID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("permission %q does not exist", string(permission))
+		}
+		return err
+	}
+
+	_, err = r.pool.Exec(ctx,
+		`INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+		roleID, permissionID,
 	)
 	return err
 }
 
 func (r *RoleRepository) RemovePermission(ctx context.Context, roleID int64, permission domain.Permission) error {
-	_, err := r.pool.Exec(ctx,
-		`DELETE FROM role_permissions WHERE role_id = $1 AND permission_id = (SELECT id FROM permissions WHERE name = $2)`,
-		roleID, string(permission),
+	var permissionID int64
+	err := r.pool.QueryRow(ctx,
+		`SELECT id FROM permissions WHERE name = $1`, string(permission),
+	).Scan(&permissionID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("permission %q does not exist", string(permission))
+		}
+		return err
+	}
+
+	_, err = r.pool.Exec(ctx,
+		`DELETE FROM role_permissions WHERE role_id = $1 AND permission_id = $2`,
+		roleID, permissionID,
 	)
 	return err
 }

@@ -266,27 +266,55 @@ func TestStaffHandler_UpdateStaff(t *testing.T) {
 func TestStaffHandler_RemoveStaff(t *testing.T) {
 	t.Parallel()
 
-	mock := &mockStaffSvc{
-		removeStaff: func(_ context.Context, id int64) error {
-			return nil
+	tests := []struct {
+		name       string
+		id         string
+		mock       *mockStaffSvc
+		wantStatus int
+	}{
+		{
+			name: "success",
+			id:   "1",
+			mock: &mockStaffSvc{
+				removeStaff: func(_ context.Context, id int64) error {
+					return nil
+				},
+			},
+			wantStatus: http.StatusOK,
+		},
+		{
+			name: "not found",
+			id:   "999",
+			mock: &mockStaffSvc{
+				removeStaff: func(_ context.Context, _ int64) error {
+					return domain.ErrStaffNotFound
+				},
+			},
+			wantStatus: http.StatusNotFound,
 		},
 	}
 
-	e := echo.New()
-	req := httptest.NewRequest(http.MethodDelete, "/api/v1/staff/1", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-	c.SetParamNames("id")
-	c.SetParamValues("1")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	h := NewStaffHandler(mock)
-	err := h.RemoveStaff(c)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+			e := echo.New()
+			req := httptest.NewRequest(http.MethodDelete, "/api/v1/staff/"+tt.id, nil)
+			rec := httptest.NewRecorder()
+			c := e.NewContext(req, rec)
+			c.SetParamNames("id")
+			c.SetParamValues(tt.id)
 
-	if rec.Code != http.StatusOK {
-		t.Errorf("expected status %d, got %d", http.StatusOK, rec.Code)
+			h := NewStaffHandler(tt.mock)
+			err := h.RemoveStaff(c)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if rec.Code != tt.wantStatus {
+				t.Errorf("expected status %d, got %d", tt.wantStatus, rec.Code)
+			}
+		})
 	}
 }
 
