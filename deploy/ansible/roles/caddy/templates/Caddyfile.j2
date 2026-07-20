@@ -41,3 +41,7 @@
 {{ caddy_pos_domain }} {
     reverse_proxy pos:3000
 }
+
+{{ caddy_9router_domain }} {
+    reverse_proxy host.docker.internal:20128
+}
