@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/saleforge/pos/services/internal/merchant/domain"
 	"github.com/saleforge/pos/services/pkg/otel"
@@ -61,7 +62,7 @@ func (r *MerchantRepository) GetByID(ctx context.Context, id int64) (*domain.Mer
 		&m.Settings.LowStockThreshold, &m.CreatedAt, &m.UpdatedAt,
 	)
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrMerchantNotFound
 		}
 		return nil, fmt.Errorf("failed to get merchant: %w", err)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/saleforge/pos/services/internal/merchant/domain"
 	"github.com/saleforge/pos/services/pkg/otel"
@@ -60,7 +61,7 @@ func (r *BranchRepository) GetByID(ctx context.Context, id int64) (*domain.Branc
 		&b.CreatedAt, &b.UpdatedAt,
 	)
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrBranchNotFound
 		}
 		return nil, fmt.Errorf("failed to get branch: %w", err)

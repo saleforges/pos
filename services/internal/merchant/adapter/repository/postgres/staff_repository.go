@@ -2,8 +2,11 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/saleforge/pos/services/internal/merchant/domain"
 	"github.com/saleforge/pos/services/pkg/otel"
 )
@@ -25,6 +28,10 @@ func (r *StaffRepository) Create(ctx context.Context, staff *domain.StaffMember)
 		staff.Role, staff.Status, staff.IsDefault, staff.CreatedAt, staff.UpdatedAt,
 	).Scan(&staff.ID)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return domain.ErrStaffExists
+		}
 		return fmt.Errorf("failed to create staff: %w", err)
 	}
 	return nil
@@ -39,7 +46,7 @@ func (r *StaffRepository) GetByID(ctx context.Context, id int64) (*domain.StaffM
 	err := row.Scan(&s.ID, &s.MerchantID, &s.BranchID, &s.UserID,
 		&s.Role, &s.Status, &s.IsDefault, &s.CreatedAt, &s.UpdatedAt)
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrStaffNotFound
 		}
 		return nil, fmt.Errorf("failed to get staff: %w", err)
@@ -104,7 +111,7 @@ func (r *StaffRepository) GetByUserAndBranch(ctx context.Context, userID, branch
 	err := row.Scan(&s.ID, &s.MerchantID, &s.BranchID, &s.UserID,
 		&s.Role, &s.Status, &s.IsDefault, &s.CreatedAt, &s.UpdatedAt)
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, domain.ErrStaffNotFound
 		}
 		return nil, fmt.Errorf("failed to get staff by user and branch: %w", err)
