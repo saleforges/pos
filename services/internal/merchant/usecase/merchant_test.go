@@ -122,11 +122,15 @@ func (m *mockBranchRepo) Delete(_ context.Context, id int64) error {
 }
 
 type mockStaffRepo struct {
-	staff map[int64]*domain.StaffMember
-	err   error
+	staff    map[int64]*domain.StaffMember
+	err      error
+	createErr error
 }
 
 func (m *mockStaffRepo) Create(_ context.Context, s *domain.StaffMember) error {
+	if m.createErr != nil {
+		return m.createErr
+	}
 	if m.err != nil {
 		return m.err
 	}
@@ -493,8 +497,8 @@ func TestMerchantUsecase_AssignStaff(t *testing.T) {
 			merchantRepo: &mockMerchantRepo{merchants: map[int64]*domain.Merchant{1: {ID: 1}}},
 			branchRepo:   &mockBranchRepo{branches: map[int64]*domain.Branch{1: {ID: 1, MerchantID: 1}}},
 			staffRepo: &mockStaffRepo{
-				staff: map[int64]*domain.StaffMember{}, // empty so GetByUserAndBranch returns nil
-				err:   domain.ErrStaffExists,           // but Create returns ErrStaffExists (unique violation)
+				staff:     map[int64]*domain.StaffMember{},
+				createErr: domain.ErrStaffExists,
 			},
 			wantErr: domain.ErrStaffExists,
 		},
