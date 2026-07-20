@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -48,7 +49,10 @@ func (uc *merchantUsecase) AssignStaff(ctx context.Context, input AssignStaffInp
 		return nil, domain.ErrBranchNotFound
 	}
 
-	existing, _ := uc.staffRepo.GetByUserAndBranch(ctx, input.UserID, input.BranchID)
+	existing, err := uc.staffRepo.GetByUserAndBranch(ctx, input.UserID, input.BranchID)
+	if err != nil && !errors.Is(err, domain.ErrStaffNotFound) {
+		return nil, domain.ErrInternal
+	}
 	if existing != nil {
 		return nil, domain.ErrStaffExists
 	}

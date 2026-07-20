@@ -59,6 +59,9 @@ func (uc *merchantUsecase) CreateBranch(ctx context.Context, input CreateBranchI
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	}
+	if branch.OperatingHours == nil {
+		branch.OperatingHours = &domain.OperatingHours{}
+	}
 
 	if err := uc.branchRepo.Create(ctx, branch); err != nil {
 		if errors.Is(err, domain.ErrBranchExists) {
@@ -78,6 +81,10 @@ func (uc *merchantUsecase) ListBranches(ctx context.Context, merchantID int64) (
 }
 
 func (uc *merchantUsecase) UpdateBranch(ctx context.Context, input UpdateBranchInput) (*domain.Branch, error) {
+	if input.Name != nil && *input.Name == "" {
+		return nil, domain.ErrInvalidBranch
+	}
+
 	branch, err := uc.branchRepo.GetByID(ctx, input.ID)
 	if err != nil {
 		return nil, err
@@ -100,6 +107,9 @@ func (uc *merchantUsecase) UpdateBranch(ctx context.Context, input UpdateBranchI
 	}
 	if input.OperatingHours != nil {
 		branch.OperatingHours = input.OperatingHours
+	}
+	if branch.OperatingHours == nil {
+		branch.OperatingHours = &domain.OperatingHours{}
 	}
 	branch.UpdatedAt = time.Now().UTC()
 

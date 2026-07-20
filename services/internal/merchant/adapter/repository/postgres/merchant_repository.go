@@ -116,6 +116,10 @@ func (r *MerchantRepository) Update(ctx context.Context, merchant *domain.Mercha
 		merchant.Settings.LowStockThreshold, merchant.UpdatedAt, merchant.ID,
 	)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return domain.ErrMerchantExists
+		}
 		return fmt.Errorf("failed to update merchant: %w", err)
 	}
 	if res.RowsAffected() == 0 {
@@ -127,6 +131,10 @@ func (r *MerchantRepository) Update(ctx context.Context, merchant *domain.Mercha
 func (r *MerchantRepository) Delete(ctx context.Context, id int64) error {
 	res, err := r.pool.Exec(ctx, `DELETE FROM merchants WHERE id = $1`, id)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			return domain.ErrMerchantHasBranches
+		}
 		return fmt.Errorf("failed to delete merchant: %w", err)
 	}
 	if res.RowsAffected() == 0 {

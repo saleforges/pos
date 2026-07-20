@@ -105,6 +105,13 @@ func (uc *merchantUsecase) ListMerchants(ctx context.Context, offset, limit int)
 }
 
 func (uc *merchantUsecase) UpdateMerchant(ctx context.Context, input UpdateMerchantInput) (*domain.Merchant, error) {
+	if input.Name != nil && *input.Name == "" {
+		return nil, domain.ErrInvalidMerchant
+	}
+	if input.Email != nil && *input.Email == "" {
+		return nil, domain.ErrInvalidMerchant
+	}
+
 	merchant, err := uc.merchantRepo.GetByID(ctx, input.ID)
 	if err != nil {
 		return nil, err

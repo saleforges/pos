@@ -111,6 +111,10 @@ func (r *BranchRepository) Update(ctx context.Context, branch *domain.Branch) er
 		branch.UpdatedAt, branch.ID,
 	)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return domain.ErrBranchExists
+		}
 		return fmt.Errorf("failed to update branch: %w", err)
 	}
 	if res.RowsAffected() == 0 {
@@ -122,6 +126,10 @@ func (r *BranchRepository) Update(ctx context.Context, branch *domain.Branch) er
 func (r *BranchRepository) Delete(ctx context.Context, id int64) error {
 	res, err := r.pool.Exec(ctx, `DELETE FROM branches WHERE id = $1`, id)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+			return domain.ErrBranchHasStaff
+		}
 		return fmt.Errorf("failed to delete branch: %w", err)
 	}
 	if res.RowsAffected() == 0 {
