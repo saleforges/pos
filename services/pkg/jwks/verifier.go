@@ -77,8 +77,8 @@ func (v *Verifier) Verify(tokenString string) (*Claims, error) {
 		return nil, fmt.Errorf("jwt: invalid claims")
 	}
 
-	// Verify token type is "access" — reject refresh tokens on access endpoints
-	if claims.Type != "" && claims.Type != "access" {
+	// Enforce strict token type — only "access" tokens are allowed on merchant endpoints
+	if claims.Type != "access" {
 		return nil, fmt.Errorf("jwt: invalid token type %q", claims.Type)
 	}
 

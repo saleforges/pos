@@ -47,6 +47,7 @@ func clearTokenCookies(c echo.Context) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   true,
 		MaxAge:   -1,
 		Expires:  time.Unix(0, 0),
 	})
@@ -55,6 +56,7 @@ func clearTokenCookies(c echo.Context) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   true,
 		MaxAge:   -1,
 		Expires:  time.Unix(0, 0),
 	})
