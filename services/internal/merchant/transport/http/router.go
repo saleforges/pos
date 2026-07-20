@@ -1,6 +1,8 @@
 package httptransport
 
 import (
+	"context"
+
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/merchant/port/repository"
 	"github.com/saleforge/pos/services/internal/merchant/transport/http/handler"
@@ -10,6 +12,28 @@ import (
 	"github.com/saleforge/pos/services/pkg/otel"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 )
+
+// staffAssignmentAdapter wraps repository.StaffRepository to implement middleware.StaffAssignmentProvider.
+type staffAssignmentAdapter struct {
+	repo repository.StaffRepository
+}
+
+func (a *staffAssignmentAdapter) ListByUserAndMerchant(ctx context.Context, userID, merchantID int64) ([]middleware.StaffAssignment, error) {
+	staffList, err := a.repo.ListByUserAndMerchant(ctx, userID, merchantID)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]middleware.StaffAssignment, len(staffList))
+	for i, s := range staffList {
+		result[i] = middleware.StaffAssignment{
+			ID:        s.ID,
+			BranchID:  s.BranchID,
+			Role:      string(s.Role),
+			IsDefault: s.IsDefault,
+		}
+	}
+	return result, nil
+}
 
 func NewRouter(merchantHandler *handler.MerchantHandler, branchHandler *handler.BranchHandler, staffHandler *handler.StaffHandler, verifier *jwks.Verifier, staffRepo repository.StaffRepository) *echo.Echo {
 	e := echo.New()
@@ -57,7 +81,7 @@ func NewRouter(merchantHandler *handler.MerchantHandler, branchHandler *handler.
 
 	// Staff assignments — merchant context from header
 	assignGroup := auth.Group("/api/v1/me", httputil.MerchantMiddleware())
-	assignGroup.Use(middleware.BranchContext(staffRepo))
+	assignGroup.Use(middleware.BranchContext(&staffAssignmentAdapter{repo: staffRepo}))
 	assignGroup.GET("/assignments", staffHandler.MyStaffAssignments)
 	assignGroup.PUT("/default-branch", staffHandler.SetMyDefaultBranch)
 

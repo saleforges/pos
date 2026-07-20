@@ -1,12 +1,26 @@
 package middleware
 
 import (
+	"context"
+	"log"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/saleforge/pos/services/internal/merchant/port/repository"
 	"github.com/saleforge/pos/services/pkg/httputil"
 )
+
+// StaffAssignmentProvider is a minimal interface to decouple middleware from the repository layer.
+type StaffAssignmentProvider interface {
+	ListByUserAndMerchant(ctx context.Context, userID, merchantID int64) ([]StaffAssignment, error)
+}
+
+// StaffAssignment mirrors the branch/staff assignment data needed by the middleware.
+type StaffAssignment struct {
+	ID        int64
+	BranchID  int64
+	Role      string
+	IsDefault bool
+}
 
 const (
 	ContextKeyStaffBranches  = "staff_branches"
@@ -20,7 +34,7 @@ type BranchAssignment struct {
 	IsDefault bool   `json:"is_default"`
 }
 
-func BranchContext(staffRepo repository.StaffRepository) echo.MiddlewareFunc {
+func BranchContext(provider StaffAssignmentProvider) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			userID, ok := c.Get("user_id").(int64)
@@ -33,13 +47,15 @@ func BranchContext(staffRepo repository.StaffRepository) echo.MiddlewareFunc {
 			var assignments []BranchAssignment
 
 			if merchantID != 0 {
-				staffList, err := staffRepo.ListByUserAndMerchant(c.Request().Context(), userID, merchantID)
-				if err == nil {
+				staffList, err := provider.ListByUserAndMerchant(c.Request().Context(), userID, merchantID)
+				if err != nil {
+					log.Printf("[WARN] BranchContext: failed to list staff assignments for user %d, merchant %d: %v", userID, merchantID, err)
+				} else {
 					for _, s := range staffList {
 						assignments = append(assignments, BranchAssignment{
 							StaffID:   s.ID,
 							BranchID:  s.BranchID,
-							Role:      string(s.Role),
+							Role:      s.Role,
 							IsDefault: s.IsDefault,
 						})
 					}

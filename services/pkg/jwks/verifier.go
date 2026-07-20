@@ -23,6 +23,7 @@ type Claims struct {
 	BranchID   int64  `json:"bid"`
 	UserID     int64  `json:"user_id"`
 	UserType   string `json:"user_type"`
+	Type       string `json:"type"`
 	jwt.RegisteredClaims
 }
 
@@ -56,20 +57,14 @@ func New(jwksURL string) *Verifier {
 }
 
 func (v *Verifier) Verify(tokenString string) (*Claims, error) {
-	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, &Claims{})
-	if err != nil {
-		return nil, fmt.Errorf("jwt: parse unverified: %w", err)
-	}
-	kid, _ := token.Header["kid"].(string)
-
-	key, err := v.fetchKey(kid)
-	if err != nil {
-		return nil, err
-	}
-
 	parsed, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		kid, _ := t.Header["kid"].(string)
+		key, err := v.fetchKey(kid)
+		if err != nil {
+			return nil, err
 		}
 		return key, nil
 	})
@@ -81,6 +76,12 @@ func (v *Verifier) Verify(tokenString string) (*Claims, error) {
 	if !ok || !parsed.Valid {
 		return nil, fmt.Errorf("jwt: invalid claims")
 	}
+
+	// Verify token type is "access" — reject refresh tokens on access endpoints
+	if claims.Type != "" && claims.Type != "access" {
+		return nil, fmt.Errorf("jwt: invalid token type %q", claims.Type)
+	}
+
 	return claims, nil
 }
 

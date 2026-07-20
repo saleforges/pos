@@ -163,20 +163,10 @@ func TestJWTSigner_JWKS(t *testing.T) {
 	if key.E == "" { t.Error("expected non-empty exponent") }
 }
 
-func TestNewJWTSigner_WithEmptyKeyGeneratesEphemeral(t *testing.T) {
-	s, err := NewJWTSigner([]byte(""), "")
-	if err != nil {
-		t.Fatalf("NewJWTSigner with empty key failed: %v", err)
-	}
-	if s.privateKey == nil { t.Error("expected generated private key") }
-	if s.keyID != defaultJWTKeyID { t.Errorf("expected default key ID %s, got %s", defaultJWTKeyID, s.keyID) }
-
-	token, err := s.SignAccessToken(port.TokenClaims{UserID: 1})
-	if err != nil {
-		t.Fatalf("sign with ephemeral key failed: %v", err)
-	}
-	if _, err := s.VerifyAccessToken(token); err != nil {
-		t.Errorf("verify with ephemeral key failed: %v", err)
+func TestNewJWTSigner_WithEmptyKeyReturnsError(t *testing.T) {
+	_, err := NewJWTSigner([]byte(""), "")
+	if err == nil {
+		t.Fatal("expected error for empty private key, got nil")
 	}
 }
 

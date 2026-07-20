@@ -15,7 +15,9 @@ const (
 )
 
 func setTokenCookies(c echo.Context, accessToken, refreshToken string, expiresIn int) {
-	secure := c.Request().TLS != nil
+	// Always set Secure=true — in production TLS is terminated at proxy level;
+	// checking c.Request().TLS is unreliable when behind a reverse proxy.
+	secure := true
 	accessMaxAge := expiresIn
 	refreshMaxAge := 30 * 24 * 3600 // 30 days
 
