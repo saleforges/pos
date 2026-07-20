@@ -109,13 +109,25 @@ func (v *Verifier) fetchKey(kid string) (*rsa.PublicKey, error) {
 	v.mu.Lock()
 	defer v.mu.Unlock()
 
+	oldKeys := v.keys
+	v.keys = make(map[string]*rsa.PublicKey)
+
+	decodedCount := 0
 	for _, k := range jwks.Keys {
 		pub, err := decodePublicKey(k.N, k.E)
 		if err != nil {
 			continue
 		}
 		v.keys[k.Kid] = pub
+		decodedCount++
 	}
+
+	if decodedCount == 0 {
+		// Restore old cache and keep lastFetch so next call retries immediately
+		v.keys = oldKeys
+		return nil, fmt.Errorf("jwks: no valid keys in response")
+	}
+
 	v.lastFetch = time.Now()
 
 	key, ok = v.keys[kid]
