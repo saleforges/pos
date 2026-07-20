@@ -93,6 +93,36 @@ func TestStaffHandler_AssignStaff(t *testing.T) {
 			},
 			wantStatus: http.StatusConflict,
 		},
+		{
+			name: "invalid staff from usecase",
+			body: `{"branch_id":1,"user_id":1,"role":"cashier"}`,
+			mock: &mockStaffSvc{
+				assignStaff: func(_ context.Context, _ usecase.AssignStaffInput) (*domain.StaffMember, error) {
+					return nil, domain.ErrInvalidStaff
+				},
+			},
+			wantStatus: http.StatusBadRequest,
+		},
+		{
+			name: "merchant not found",
+			body: `{"branch_id":1,"user_id":1,"role":"cashier"}`,
+			mock: &mockStaffSvc{
+				assignStaff: func(_ context.Context, _ usecase.AssignStaffInput) (*domain.StaffMember, error) {
+					return nil, domain.ErrMerchantNotFound
+				},
+			},
+			wantStatus: http.StatusNotFound,
+		},
+		{
+			name: "branch not found",
+			body: `{"branch_id":1,"user_id":1,"role":"cashier"}`,
+			mock: &mockStaffSvc{
+				assignStaff: func(_ context.Context, _ usecase.AssignStaffInput) (*domain.StaffMember, error) {
+					return nil, domain.ErrBranchNotFound
+				},
+			},
+			wantStatus: http.StatusNotFound,
+		},
 	}
 
 	for _, tt := range tests {

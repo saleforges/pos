@@ -92,6 +92,16 @@ func TestMerchantHandler_Create(t *testing.T) {
 			wantStatus: http.StatusInternalServerError,
 			wantBody:   `"message":"MCH500: internal error"`,
 		},
+		{
+			name: "merchant exists",
+			body: `{"name":"Toko Maju","email":"toko@maju.com"}`,
+			mock: &mockMerchantSvc{
+				createMerchantFn: func(_ context.Context, _ usecase.CreateMerchantInput) (*domain.Merchant, error) {
+					return nil, domain.ErrMerchantExists
+				},
+			},
+			wantStatus: http.StatusConflict,
+		},
 	}
 
 	for _, tt := range tests {

@@ -368,6 +368,18 @@ func TestMerchantUsecase_CreateBranch(t *testing.T) {
 			staffRepo:    &mockStaffRepo{},
 			wantErr:      domain.ErrInvalidBranch,
 		},
+		{
+			name: "branch code already exists",
+			input: CreateBranchInput{
+				MerchantID: 1,
+				Name:       "Branch C",
+				Code:       "BR-C",
+			},
+			merchantRepo: &mockMerchantRepo{merchants: map[int64]*domain.Merchant{1: {ID: 1}}},
+			branchRepo:   &mockBranchRepo{err: domain.ErrBranchExists},
+			staffRepo:    &mockStaffRepo{},
+			wantErr:      domain.ErrBranchExists,
+		},
 	}
 
 	for _, tt := range tests {
@@ -469,6 +481,22 @@ func TestMerchantUsecase_AssignStaff(t *testing.T) {
 			branchRepo:   &mockBranchRepo{branches: map[int64]*domain.Branch{1: {ID: 1}}},
 			staffRepo:    &mockStaffRepo{},
 			wantErr:      domain.ErrInvalidStaff,
+		},
+		{
+			name: "concurrent duplicate assignment",
+			input: AssignStaffInput{
+				MerchantID: 1,
+				BranchID:   1,
+				UserID:     1,
+				Role:       domain.StaffRoleCashier,
+			},
+			merchantRepo: &mockMerchantRepo{merchants: map[int64]*domain.Merchant{1: {ID: 1}}},
+			branchRepo:   &mockBranchRepo{branches: map[int64]*domain.Branch{1: {ID: 1, MerchantID: 1}}},
+			staffRepo: &mockStaffRepo{
+				staff: map[int64]*domain.StaffMember{}, // empty so GetByUserAndBranch returns nil
+				err:   domain.ErrStaffExists,           // but Create returns ErrStaffExists (unique violation)
+			},
+			wantErr: domain.ErrStaffExists,
 		},
 	}
 

@@ -74,6 +74,26 @@ func TestBranchHandler_CreateBranch(t *testing.T) {
 			wantStatus: http.StatusBadRequest,
 			wantBody:   `"message":"missing required fields"`,
 		},
+		{
+			name: "branch exists",
+			body: `{"name":"Downtown","code":"DTC-01","address":"123 Main St"}`,
+			mock: &mockBranchSvc{
+				createBranch: func(_ context.Context, _ usecase.CreateBranchInput) (*domain.Branch, error) {
+					return nil, domain.ErrBranchExists
+				},
+			},
+			wantStatus: http.StatusConflict,
+		},
+		{
+			name: "invalid branch from usecase",
+			body: `{"name":"Downtown","code":"DTC-01","address":"123 Main St"}`,
+			mock: &mockBranchSvc{
+				createBranch: func(_ context.Context, _ usecase.CreateBranchInput) (*domain.Branch, error) {
+					return nil, domain.ErrInvalidBranch
+				},
+			},
+			wantStatus: http.StatusBadRequest,
+		},
 	}
 
 	for _, tt := range tests {
@@ -96,7 +116,7 @@ func TestBranchHandler_CreateBranch(t *testing.T) {
 			if rec.Code != tt.wantStatus {
 				t.Errorf("expected status %d, got %d", tt.wantStatus, rec.Code)
 			}
-			if !strings.Contains(rec.Body.String(), tt.wantBody) {
+			if tt.wantBody != "" && !strings.Contains(rec.Body.String(), tt.wantBody) {
 				t.Errorf("expected body to contain %q, got %s", tt.wantBody, rec.Body.String())
 			}
 		})

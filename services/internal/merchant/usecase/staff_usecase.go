@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -72,6 +73,9 @@ func (uc *merchantUsecase) AssignStaff(ctx context.Context, input AssignStaffInp
 	}
 
 	if err := uc.staffRepo.Create(ctx, staff); err != nil {
+		if errors.Is(err, domain.ErrStaffExists) {
+			return nil, err
+		}
 		return nil, domain.ErrInternal
 	}
 	return staff, nil
