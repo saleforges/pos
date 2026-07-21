@@ -18,13 +18,18 @@
       when: ghcr_username != '' and ghcr_token != ''
       no_log: true
 
-    - name: Pull and run IAM container
+    - name: Pull IAM image via CLI
+      command: docker pull ghcr.io/saleforges/pos/iam-service:{{ image_tag }}
+      when: ghcr_username != '' and ghcr_token != ''
+      changed_when: false
+
+    - name: Run IAM container
       community.docker.docker_container:
         name: iam-service
         image: ghcr.io/saleforges/pos/iam-service:{{ image_tag }}
         state: started
         restart_policy: always
-        pull: true
+        pull: false
         env:
           HTTP_ADDR: ":8080"
           JWT_PRIVATE_KEY_PEM: "{{ jwt_private_key }}"
