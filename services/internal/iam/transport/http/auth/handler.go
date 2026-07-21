@@ -195,7 +195,8 @@ func (h *Handler) Introspect(c echo.Context) error {
 
 	result, err := h.authService.Introspect(c.Request().Context(), req.Token)
 	if err != nil {
-		return common.WriteJSON(c, http.StatusOK, map[string]bool{"active": false})
+		logger.Error("introspect failed", "error", err.Error())
+		return common.WriteError(c, http.StatusInternalServerError, domain.ErrInternal)
 	}
 
 	return common.WriteJSON(c, http.StatusOK, result)

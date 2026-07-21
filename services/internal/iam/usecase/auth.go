@@ -55,8 +55,8 @@ type IntrospectParams struct {
 
 type IntrospectResult struct {
 	Active      bool                        `json:"active"`
-	UserID      int64                       `json:"user_id"`
-	UserType    domain.UserType             `json:"user_type"`
+	UserID      int64                       `json:"user_id,omitempty"`
+	UserType    domain.UserType             `json:"user_type,omitempty"`
 	RoleName    string                      `json:"role_name,omitempty"`
 	Staff       []domain.UserRoleAssignment `json:"staff,omitempty"`
 	Permissions []domain.Permission         `json:"permissions,omitempty"`
@@ -541,7 +541,11 @@ func (uc *authUsecase) Introspect(ctx context.Context, tokenString string) (*Int
 
 	user, err := uc.cacheGet(ctx, claims.UserID)
 	if err != nil {
-		return &IntrospectResult{Active: false}, nil
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return &IntrospectResult{Active: false}, nil
+		}
+		logger.Error("introspect: get user failed", "error", err.Error())
+		return nil, domain.ErrInternal
 	}
 
 	if user.Status == domain.UserStatusDisabled {
@@ -550,7 +554,8 @@ func (uc *authUsecase) Introspect(ctx context.Context, tokenString string) (*Int
 
 	staff, err := uc.staffRepo.ListByUserID(ctx, claims.UserID)
 	if err != nil {
-		return &IntrospectResult{Active: false}, nil
+		logger.Error("introspect: list staff failed", "error", err.Error())
+		return nil, domain.ErrInternal
 	}
 
 	return &IntrospectResult{

@@ -11,6 +11,9 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// cacheGet retrieves a user by ID, trying cache first then DB.
+// Cache errors (Redis down, corrupt entry) are treated as cache misses;
+// the DB is the authoritative source of user data.
 func (uc *authUsecase) cacheGet(ctx context.Context, id int64) (*domain.User, error) {
 	span := trace.SpanFromContext(ctx)
 	if uc.userCache != nil {
@@ -55,7 +58,9 @@ func eventPublish(publisher port.EventPublisher, ctx context.Context, eventName 
 	}
 }
 
-// auditLogin persists a login audit event and returns the error.
+// auditLogin persists a login audit event. Errors are logged internally;
+// callers intentionally discard the error — audit failures never block login.
+// Returns error for testing purposes only.
 func (uc *authUsecase) auditLogin(ctx context.Context, userID int64, email string, success bool, ip, userAgent, reason string) error {
 	audit := &domain.LoginAudit{
 		UserID:    userID,

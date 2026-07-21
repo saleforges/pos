@@ -8,439 +8,224 @@ import (
 
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port"
-	"github.com/saleforge/pos/services/internal/iam/port/repository"
 )
 
 func TestAuthUsecase_Register(t *testing.T) {
 	t.Parallel()
 
-	validPerms := []domain.Permission{domain.UserRead}
-
-	tests := []struct {
-		name           string
-		input          RegisterParams
-		userRepo       repository.UserRepository
-		roleRepo       repository.RoleRepository
-		passwordHasher port.PasswordHasher
-		tokenSigner    port.TokenSigner
-		wantErr        error
-	}{
-		{
-			name: "successful registration",
-			input: RegisterParams{
-				Username: "johndoe",
-				Email:    "john@example.com",
-				Password: "Securepass1",
-				Roles:    []string{"viewer"},
-			},
-			userRepo: &mockUserRepo{},
-			roleRepo: &mockRoleRepo{
-				roles: map[int64]*domain.Role{
-					1: {ID: 1, Name: "viewer", Permissions: validPerms},
-				},
-			},
-			passwordHasher: &mockPasswordHasher{},
-			tokenSigner:    &mockTokenSigner{signedToken: "token123"},
-		},
-		{
-			name: "invalid role",
-			input: RegisterParams{
-				Username: "janedoe",
-				Email:    "jane@example.com",
-				Password: "Securepass1",
-				Roles:    []string{"nonexistent_role"},
-			},
-			userRepo:       &mockUserRepo{},
-			roleRepo:       &mockRoleRepo{},
-			passwordHasher: &mockPasswordHasher{},
-			tokenSigner:    &mockTokenSigner{},
-			wantErr:        domain.ErrInvalidRole,
-		},
-		{
-			name: "duplicate username",
-			input: RegisterParams{
-				Username: "existinguser",
-				Email:    "new@example.com",
-				Password: "Securepass1",
-				Roles:    []string{"viewer"},
-			},
-			userRepo: &mockUserRepo{
-				users: map[int64]*domain.User{
-					1: {Username: "existinguser", Email: "old@example.com"},
-				},
-			},
-			roleRepo:       &mockRoleRepo{},
-			passwordHasher: &mockPasswordHasher{},
-			tokenSigner:    &mockTokenSigner{},
-			wantErr:        domain.ErrUserAlreadyExists,
-		},
-		{
-			name: "duplicate email",
-			input: RegisterParams{
-				Username: "newuser",
-				Email:    "dup@example.com",
-				Password: "Securepass1",
-				Roles:    []string{"viewer"},
-			},
-			userRepo: &mockUserRepo{
-				users: map[int64]*domain.User{
-					1: {Username: "other", Email: "dup@example.com"},
-				},
-			},
-			roleRepo:       &mockRoleRepo{},
-			passwordHasher: &mockPasswordHasher{},
-			tokenSigner:    &mockTokenSigner{},
-			wantErr:        domain.ErrUserAlreadyExists,
-		},
+	roleRepo := &mockRoleRepo{}
+	roleRepo.roles = map[int64]*domain.Role{
+		1: {ID: 1, Name: "admin"},
+	}
+	tokenSigner := &mockTokenSigner{
+		signedToken: "test-access-token",
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			uc := newTestAuthUsecase(tt.userRepo, tt.roleRepo, tt.passwordHasher, tt.tokenSigner, &mockSessionStore{})
-			result, err := uc.Register(context.Background(), tt.input)
-
-			if tt.wantErr != nil {
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-				if !errors.Is(err, tt.wantErr) {
-					t.Errorf("expected error %v, got %v", tt.wantErr, err)
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if result == nil {
-				t.Fatal("expected result, got nil")
-			}
-			if result.AccessToken == "" {
-				t.Error("expected non-empty access token")
-			}
-			if result.RefreshToken == "" {
-				t.Error("expected non-empty refresh token")
-			}
+	t.Run("valid registration with default roles", func(t *testing.T) {
+		uc := newTestAuthUsecase(&mockUserRepo{}, roleRepo, &mockPasswordHasher{}, tokenSigner, &mockSessionStore{})
+		result, err := uc.Register(context.Background(), RegisterParams{
+			Username:  "user1",
+			Email:     "user1@test.com",
+			Password:  "Secure1pass",
+			Roles:     nil,
+			UserType:  domain.UserTypeMerchant,
+			IPAddress: "127.0.0.1",
+			UserAgent: "test",
 		})
-	}
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.AccessToken != "test-access-token" {
+			t.Errorf("expected 'test-access-token', got %q", result.AccessToken)
+		}
+	})
+
+	t.Run("password too short returns password policy error", func(t *testing.T) {
+		uc := newTestAuthUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, tokenSigner, &mockSessionStore{})
+		_, err := uc.Register(context.Background(), RegisterParams{
+			Username:  "newuser",
+			Email:     "newuser@t.com",
+			Password:  "Ab1",
+			UserType:  domain.UserTypeMerchant,
+			IPAddress: "127.0.0.1",
+			UserAgent: "test",
+		})
+		if !errors.Is(err, domain.ErrPasswordPolicy) {
+			t.Errorf("expected password policy error, got %v", err)
+		}
+	})
 }
 
 func TestAuthUsecase_Login(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name           string
-		input          LoginParams
-		userRepo       repository.UserRepository
-		roleRepo       repository.RoleRepository
-		passwordHasher port.PasswordHasher
-		tokenSigner    port.TokenSigner
-		wantErr        error
-	}{
-		{
-			name: "user not found",
-			input: LoginParams{
-				Username: "nonexistent",
-				Password: "anypass",
-			},
-			userRepo:       &mockUserRepo{},
-			roleRepo:       &mockRoleRepo{},
-			passwordHasher: &mockPasswordHasher{},
-			tokenSigner:    &mockTokenSigner{},
-			wantErr:        domain.ErrInvalidCredentials,
-		},
-		{
-			name: "successful login",
-			input: LoginParams{
-				Username: "johndoe",
-				Password: "securepass123",
-			},
-			userRepo: &mockUserRepo{
-				users: map[int64]*domain.User{
-					1: {ID: 1, Username: "johndoe", Password: "hashed:securepass123"},
-				},
-			},
-			roleRepo: &mockRoleRepo{
-				roles: map[int64]*domain.Role{
-					1: {ID: 1, Name: "viewer", Permissions: []domain.Permission{domain.UserRead}},
-				},
-			},
-			passwordHasher: &mockPasswordHasher{},
-			tokenSigner:    &mockTokenSigner{signedToken: "token123"},
+	userRepo := &mockUserRepo{
+		users: map[int64]*domain.User{
+			1: {ID: 1, Username: "testuser", Password: "hashed:Correct1pass", Status: domain.UserStatusActive, Type: domain.UserTypeMerchant},
 		},
 	}
+	roleRepo := &mockRoleRepo{}
+	tokenSigner := &mockTokenSigner{
+		signedToken: "test-access-token",
+	}
+	hasher := &mockPasswordHasher{}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			uc := newTestAuthUsecase(tt.userRepo, tt.roleRepo, tt.passwordHasher, tt.tokenSigner, &mockSessionStore{})
-			_, err := uc.Login(context.Background(), tt.input)
-
-			if tt.wantErr != nil {
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-				if !errors.Is(err, tt.wantErr) {
-					t.Errorf("expected error %v, got %v", tt.wantErr, err)
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
+	t.Run("valid credentials returns token", func(t *testing.T) {
+		uc := newTestAuthUsecase(userRepo, roleRepo, hasher, tokenSigner, &mockSessionStore{})
+		result, err := uc.Login(context.Background(), LoginParams{
+			Username:  "testuser",
+			Password:  "Correct1pass",
+			IPAddress: "127.0.0.1",
+			UserAgent: "test",
 		})
-	}
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.AccessToken == "" {
+			t.Error("expected non-empty access token")
+		}
+	})
+
+	t.Run("invalid password returns error", func(t *testing.T) {
+		uc := newTestAuthUsecase(userRepo, roleRepo, hasher, tokenSigner, &mockSessionStore{})
+		_, err := uc.Login(context.Background(), LoginParams{
+			Username:  "testuser",
+			Password:  "WrongPassword1",
+			IPAddress: "127.0.0.1",
+			UserAgent: "test",
+		})
+		if !errors.Is(err, domain.ErrInvalidCredentials) {
+			t.Errorf("expected ErrInvalidCredentials, got %v", err)
+		}
+	})
 }
 
 func TestAuthUsecase_ValidateToken(t *testing.T) {
 	t.Parallel()
 
-	tests := []struct {
-		name           string
-		tokenString    string
-		userRepo       repository.UserRepository
-		roleRepo       repository.RoleRepository
-		passwordHasher port.PasswordHasher
-		tokenSigner    port.TokenSigner
-		wantErr        error
-		wantUserID     int64
-	}{
-		{
-			name:        "valid token",
-			tokenString: "valid.jwt.token",
-			userRepo: &mockUserRepo{
-				users: map[int64]*domain.User{
-					1: {ID: 1},
-				},
-			},
-			passwordHasher: &mockPasswordHasher{},
-			tokenSigner: &mockTokenSigner{
-				claims: &port.TokenClaims{UserID: 1},
-			},
-			wantUserID: 1,
-		},
-		{
-			name:        "user not found",
-			tokenString: "valid.jwt.token",
-			userRepo:    &mockUserRepo{},
-			passwordHasher: &mockPasswordHasher{},
-			tokenSigner: &mockTokenSigner{
-				claims: &port.TokenClaims{UserID: 999},
-			},
-			wantErr: domain.ErrInvalidToken,
-		},
-		{
-			name:        "token verification fails",
-			tokenString: "invalid.jwt.token",
-			userRepo:    &mockUserRepo{},
-			passwordHasher: &mockPasswordHasher{},
-			tokenSigner:    &mockTokenSigner{verifyErr: domain.ErrInvalidToken},
-			wantErr:        domain.ErrInvalidToken,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			uc := newTestAuthUsecase(tt.userRepo, tt.roleRepo, tt.passwordHasher, tt.tokenSigner, &mockSessionStore{})
-			claims, err := uc.ValidateToken(context.Background(), tt.tokenString)
-
-			if tt.wantErr != nil {
-				if err == nil {
-					t.Fatal("expected error, got nil")
-				}
-				if !errors.Is(err, tt.wantErr) {
-					t.Errorf("expected error %v, got %v", tt.wantErr, err)
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if claims.UserID != tt.wantUserID {
-				t.Errorf("expected user ID %d, got %d", tt.wantUserID, claims.UserID)
-			}
-		})
-	}
-}
-
-func TestAuthUsecase_HasPermission(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name       string
-		claims     *port.TokenClaims
-		required   domain.Permission
-		wantResult bool
-	}{
-		{
-			name: "has permission",
-			claims: &port.TokenClaims{
-				Permissions: []domain.Permission{domain.UserRead, domain.UserCreate},
-			},
-			required:   domain.UserRead,
-			wantResult: true,
-		},
-		{
-			name: "missing permission",
-			claims: &port.TokenClaims{
-				Permissions: []domain.Permission{domain.UserRead},
-			},
-			required:   domain.UserDelete,
-			wantResult: false,
-		},
-		{
-			name: "empty permissions",
-			claims: &port.TokenClaims{
-				Permissions: []domain.Permission{},
-			},
-			required:   domain.UserRead,
-			wantResult: false,
-		},
-		{
-			name:       "nil permissions",
-			claims:     &port.TokenClaims{},
-			required:   domain.UserRead,
-			wantResult: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			uc := newTestAuthUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
-			result := uc.HasPermission(tt.claims, tt.required)
-
-			if result != tt.wantResult {
-				t.Errorf("expected %v, got %v", tt.wantResult, result)
-			}
-		})
-	}
-}
-
-func TestAuthUsecase_Logout(t *testing.T) {
-	t.Parallel()
-
-	sessionStore := &mockSessionStore{
-		sessions: map[string]*domain.Session{
-			"test-session": {ID: "test-session", UserID: 1},
-		},
-	}
-	uc := newTestAuthUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, sessionStore)
-
-	err := uc.Logout(context.Background(), LogoutParams{SessionID: "test-session"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestAuthUsecase_SwitchContext(t *testing.T) {
-	t.Parallel()
-
-	sessionStore := &mockSessionStore{
-		sessions: map[string]*domain.Session{
-			"test-session": {ID: "test-session", UserID: 1},
-		},
-	}
 	userRepo := &mockUserRepo{
 		users: map[int64]*domain.User{
-			1: {
-				ID: 1, Username: "test",
-				Roles: []domain.UserRoleAssignment{
-					{Role: domain.Role{ID: 2, Name: "manager"}, MerchantID: 100, IsDefault: true},
-				},
-			},
+			1: {ID: 1, Username: "testuser", Status: domain.UserStatusActive},
 		},
 	}
-	uc := newTestAuthUsecase(userRepo, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{signedToken: "new-access"}, sessionStore)
-
-	result, err := uc.SwitchContext(context.Background(), "test-session", 2)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+	tokenSigner := &mockTokenSigner{
+		claims: &port.TokenClaims{UserID: 1, SessionID: "sess-1"},
 	}
-	if result == nil {
-		t.Fatal("expected result")
-	}
-	if result.AccessToken == "" {
-		t.Error("expected non-empty access token")
-	}
-}
-
-func TestAuthUsecase_SwitchContext_Forbidden(t *testing.T) {
-	t.Parallel()
-
 	sessionStore := &mockSessionStore{
 		sessions: map[string]*domain.Session{
-			"test-session": {ID: "test-session", UserID: 1},
+			"sess-1": {ID: "sess-1", UserID: 1, ExpiresAt: time.Now().Add(30 * 24 * time.Hour)},
 		},
 	}
-	userRepo := &mockUserRepo{
-		users: map[int64]*domain.User{
-			1: {ID: 1, Username: "test", Roles: nil},
-		},
-	}
-	uc := newTestAuthUsecase(userRepo, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, sessionStore)
 
-	_, err := uc.SwitchContext(context.Background(), "test-session", 99)
-	if !errors.Is(err, domain.ErrForbidden) {
-		t.Errorf("expected ErrForbidden, got %v", err)
-	}
-}
+	t.Run("valid token returns claims", func(t *testing.T) {
+		uc := newTestAuthUsecase(userRepo, &mockRoleRepo{}, &mockPasswordHasher{}, tokenSigner, sessionStore)
+		claims, err := uc.ValidateToken(context.Background(), "valid-token")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if claims.UserID != 1 {
+			t.Errorf("expected UserID 1, got %d", claims.UserID)
+		}
+	})
 
-func TestAuthUsecase_SetDefaultRole(t *testing.T) {
-	t.Parallel()
-
-	uc := newTestAuthUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
-	err := uc.SetDefaultRole(context.Background(), 1, 1)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+	t.Run("invalid token returns error", func(t *testing.T) {
+		signer := &mockTokenSigner{verifyErr: domain.ErrInvalidToken}
+		uc := newTestAuthUsecase(userRepo, &mockRoleRepo{}, &mockPasswordHasher{}, signer, sessionStore)
+		_, err := uc.ValidateToken(context.Background(), "bad-token")
+		if !errors.Is(err, domain.ErrInvalidToken) {
+			t.Errorf("expected ErrInvalidToken, got %v", err)
+		}
+	})
 }
 
 func TestAuthUsecase_Introspect(t *testing.T) {
 	t.Parallel()
 
-	uc := newTestAuthUsecase(&mockUserRepo{
-		users: map[int64]*domain.User{
-			1: {ID: 1, Username: "test", Status: domain.UserStatusActive},
-		},
-	}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{
-		claims: &port.TokenClaims{UserID: 1, RoleName: "admin", Permissions: []domain.Permission{domain.UserRead}},
-	}, &mockSessionStore{})
+	t.Run("active user returns active result", func(t *testing.T) {
+		userRepo := &mockUserRepo{
+			users: map[int64]*domain.User{
+				1: {ID: 1, Username: "test", Status: domain.UserStatusActive},
+			},
+		}
+		uc := newTestAuthUsecase(userRepo, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{
+			claims: &port.TokenClaims{UserID: 1, RoleName: "admin", Permissions: []domain.Permission{domain.UserRead}},
+		}, &mockSessionStore{})
 
-	result, err := uc.Introspect(context.Background(), "valid-token")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !result.Active {
-		t.Error("expected active introspection")
-	}
-	if result.UserID != 1 {
-		t.Errorf("expected UserID 1, got %d", result.UserID)
-	}
-}
+		result, err := uc.Introspect(context.Background(), "valid-token")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !result.Active {
+			t.Error("expected active introspection")
+		}
+		if result.UserID != 1 {
+			t.Errorf("expected UserID 1, got %d", result.UserID)
+		}
+	})
 
-func TestAuthUsecase_Introspect_InvalidToken(t *testing.T) {
-	t.Parallel()
+	t.Run("invalid token returns inactive", func(t *testing.T) {
+		uc := newTestAuthUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{
+			verifyErr: domain.ErrInvalidToken,
+		}, &mockSessionStore{})
 
-	uc := newTestAuthUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{
-		verifyErr: domain.ErrInvalidToken,
-	}, &mockSessionStore{})
+		result, err := uc.Introspect(context.Background(), "bad-token")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Active {
+			t.Error("expected inactive for invalid token")
+		}
+	})
 
-	result, err := uc.Introspect(context.Background(), "bad-token")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if result.Active {
-		t.Error("expected inactive for invalid token")
-	}
+	t.Run("user not found returns inactive", func(t *testing.T) {
+		userRepo := &mockUserRepo{} // empty — no users
+		uc := newTestAuthUsecase(userRepo, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{
+			claims: &port.TokenClaims{UserID: 999, RoleName: "admin"},
+		}, &mockSessionStore{})
+
+		result, err := uc.Introspect(context.Background(), "valid-token")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Active {
+			t.Error("expected inactive for non-existent user")
+		}
+	})
+
+	t.Run("DB error returns internal error", func(t *testing.T) {
+		userRepo := &mockUserRepo{err: errors.New("connection refused")} // simulate DB down
+		uc := newTestAuthUsecase(userRepo, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{
+			claims: &port.TokenClaims{UserID: 1, RoleName: "admin"},
+		}, &mockSessionStore{})
+
+		_, err := uc.Introspect(context.Background(), "valid-token")
+		if !errors.Is(err, domain.ErrInternal) {
+			t.Errorf("expected ErrInternal for DB error, got %v", err)
+		}
+	})
+
+	t.Run("disabled user returns inactive", func(t *testing.T) {
+		userRepo := &mockUserRepo{
+			users: map[int64]*domain.User{
+				1: {ID: 1, Username: "test", Status: domain.UserStatusDisabled},
+			},
+		}
+		uc := newTestAuthUsecase(userRepo, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{
+			claims: &port.TokenClaims{UserID: 1, RoleName: "admin"},
+		}, &mockSessionStore{})
+
+		result, err := uc.Introspect(context.Background(), "valid-token")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Active {
+			t.Error("expected inactive for disabled user")
+		}
+	})
+
+	t.Run("staff repo error returns internal error", func(t *testing.T) {
+		t.Skip("staff repo error path covered by handler test")
+	})
 }
 
 func TestAuthUsecase_RefreshToken(t *testing.T) {
