@@ -103,13 +103,12 @@ jobs:
       - name: Write vault vars
         env:
           JWT_PRIVATE_KEY_PEM: ${{ secrets.JWT_PRIVATE_KEY_PEM }}
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cat > /tmp/vault-extra.yml << EOV
           vault_postgres_password: "${{ secrets.POSTGRES_PASSWORD }}"
           vault_jwt_key_id: "${{ secrets.JWT_KEY_ID }}"
           vault_ghcr_username: "${{ github.actor }}"
-          vault_ghcr_token: "$GHCR_TOKEN"
+          vault_ghcr_token: "${{ secrets.GH_TOKEN_CHONGYANG }}"
           EOV
           echo 'vault_jwt_private_key_pem: |' >> /tmp/vault-extra.yml
           echo "$JWT_PRIVATE_KEY_PEM" | sed 's/^/  /' >> /tmp/vault-extra.yml
