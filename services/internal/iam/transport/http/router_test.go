@@ -158,6 +158,7 @@ func TestHandler_Routes_Respond(t *testing.T) {
 		&mockTokenSigner{},
 		&mockTokenHasher{},
 		nil,
+		nil,
 	)
 
 	userService := usecase.NewUserUsecase(

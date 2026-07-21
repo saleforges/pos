@@ -46,6 +46,15 @@ func (n *noopEventPublisher) Publish(_ context.Context, eventName string, _ inte
 	return nil
 }
 
+// poolTxBeginner adapts *otel.TracedPool to port.TxBeginner.
+type poolTxBeginner struct {
+	pool *otel.TracedPool
+}
+
+func (p *poolTxBeginner) Begin(ctx context.Context) (port.Tx, error) {
+	return p.pool.Begin(ctx)
+}
+
 func New(cfg Config) (*App, error) {
 	otelShutdown, err := otel.Init(context.Background(), otel.Config{
 		ServiceName:  "iam-service",
@@ -71,12 +80,14 @@ func New(cfg Config) (*App, error) {
 		permissionRepo   repository.PermissionRepository
 		loginAuditRepo   repository.LoginAuditRepository
 		staffRepo        repository.StaffRepository
+		pool             *otel.TracedPool
 	)
 
 	if cfg.DatabaseURL != "" {
 		logger.Info("connecting to PostgreSQL...")
 		ctx := context.Background()
-		pool, err := postgres.Connect(ctx, cfg.DatabaseURL)
+		var err error
+		pool, err = postgres.Connect(ctx, cfg.DatabaseURL)
 		if err != nil {
 			return nil, err
 		}
@@ -131,6 +142,10 @@ func New(cfg Config) (*App, error) {
 	}
 
 	// Focused services (split from the old god authUsecase)
+	var txBeginner port.TxBeginner
+	if cfg.DatabaseURL != "" {
+		txBeginner = &poolTxBeginner{pool: pool}
+	}
 	authUsecase := usecase.NewAuthUsecase(
 		userRepo,
 		roleRepo,
@@ -143,6 +158,7 @@ func New(cfg Config) (*App, error) {
 		tokenSigner,
 		tokenHasher,
 		userCache,
+		txBeginner,
 	)
 
 	userUsecase := usecase.NewUserUsecase(

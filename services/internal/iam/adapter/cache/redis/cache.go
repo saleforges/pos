@@ -8,18 +8,15 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/saleforge/pos/services/internal/iam/domain"
-	"github.com/saleforge/pos/services/internal/iam/port"
-	memcache "github.com/saleforge/pos/services/internal/iam/adapter/cache/memory"
 	"github.com/saleforge/pos/services/pkg/logger"
 )
 
 type UserCache struct {
-	rdb      *redis.Client
-	fallback port.UserCache
-	ttl      time.Duration
+	rdb *redis.Client
+	ttl time.Duration
 }
 
-func NewUserCache(addr string, ttl time.Duration) port.UserCache {
+func NewUserCache(addr string, ttl time.Duration) *UserCache {
 	rdb := redis.NewClient(&redis.Options{
 		Addr: addr,
 	})
@@ -28,62 +25,57 @@ func NewUserCache(addr string, ttl time.Duration) port.UserCache {
 	defer cancel()
 
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		logger.Warn("[cache/redis] connection failed, falling back to in-memory", "error", err.Error())
-		return memcache.NewUserCache(ttl, 5*time.Minute)
+		logger.Error("[cache/redis] connection failed", "error", err.Error())
+		return &UserCache{rdb: nil, ttl: ttl}
 	}
 
-	logger.Info("[cache/redis] connected to redis", "addr", addr)
-	return &UserCache{
-		rdb:      rdb,
-		fallback: memcache.NewUserCache(ttl, 5*time.Minute),
-		ttl:      ttl,
-	}
+	logger.Info("[cache/redis] connected", "addr", addr)
+	return &UserCache{rdb: rdb, ttl: ttl}
 }
 
-func (c *UserCache) Get(ctx context.Context, id int64) (*domain.User, bool) {
+func (c *UserCache) Get(ctx context.Context, id int64) (*domain.User, error) {
 	if c.rdb == nil {
-		return c.fallback.Get(ctx, id)
+		return nil, fmt.Errorf("redis cache not available")
 	}
 
 	data, err := c.rdb.Get(ctx, fmt.Sprintf("user:%d", id)).Bytes()
 	if err != nil {
-		return c.fallback.Get(ctx, id)
+		return nil, err
 	}
 
 	var u domain.User
 	if err := json.Unmarshal(data, &u); err != nil {
-		return c.fallback.Get(ctx, id)
+		return nil, fmt.Errorf("unmarshal user cache: %w", err)
 	}
-	return &u, true
+	return &u, nil
 }
 
-func (c *UserCache) Set(ctx context.Context, u *domain.User, ttl time.Duration) {
+func (c *UserCache) Set(ctx context.Context, u *domain.User, ttl time.Duration) error {
 	if c.rdb == nil {
-		c.fallback.Set(ctx, u, ttl)
-		return
+		return fmt.Errorf("redis cache not available")
 	}
 
 	data, err := json.Marshal(u)
 	if err != nil {
-		return
+		return fmt.Errorf("marshal user cache: %w", err)
 	}
 
 	if ttl == 0 {
 		ttl = c.ttl
 	}
-	c.rdb.Set(ctx, fmt.Sprintf("user:%d", u.ID), data, ttl)
+	return c.rdb.Set(ctx, fmt.Sprintf("user:%d", u.ID), data, ttl).Err()
 }
 
-func (c *UserCache) Delete(ctx context.Context, id int64) {
-	if c.rdb != nil {
-		c.rdb.Del(ctx, fmt.Sprintf("user:%d", id))
+func (c *UserCache) Delete(ctx context.Context, id int64) error {
+	if c.rdb == nil {
+		return nil // not available, nothing to delete
 	}
-	c.fallback.Delete(ctx, id)
+	return c.rdb.Del(ctx, fmt.Sprintf("user:%d", id)).Err()
 }
 
 func (c *UserCache) Close() error {
 	if c.rdb != nil {
 		return c.rdb.Close()
 	}
-	return c.fallback.Close()
+	return nil
 }

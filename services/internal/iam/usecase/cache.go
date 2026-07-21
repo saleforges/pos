@@ -2,9 +2,11 @@ package usecase
 
 import (
 	"context"
+	"time"
 
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port"
+	"github.com/saleforge/pos/services/pkg/logger"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -12,7 +14,8 @@ import (
 func (uc *authUsecase) cacheGet(ctx context.Context, id int64) (*domain.User, error) {
 	span := trace.SpanFromContext(ctx)
 	if uc.userCache != nil {
-		if u, ok := uc.userCache.Get(ctx, id); ok {
+		u, err := uc.userCache.Get(ctx, id)
+		if err == nil && u != nil {
 			span.AddEvent("cache.hit", trace.WithAttributes(attribute.Int64("cache.key", id)))
 			return u, nil
 		}
@@ -23,29 +26,49 @@ func (uc *authUsecase) cacheGet(ctx context.Context, id int64) (*domain.User, er
 		return nil, err
 	}
 	if uc.userCache != nil {
-		uc.userCache.Set(ctx, u, 0)
+		if err := uc.userCache.Set(ctx, u, 0); err != nil {
+			logger.Warn("cache: set failed", "error", err.Error())
+		}
 	}
 	return u, nil
 }
 
-func (uc *authUsecase) cacheSet(ctx context.Context, u *domain.User) {
-	if uc.userCache != nil {
-		uc.userCache.Set(ctx, u, 0)
-	}
-}
-
 func cacheSet(ctx context.Context, cache port.UserCache, u *domain.User) {
 	if cache != nil {
-		cache.Set(ctx, u, 0)
+		if err := cache.Set(ctx, u, 0); err != nil {
+			logger.Warn("cache: set failed", "error", err.Error())
+		}
 	}
 }
 
 func cacheDel(ctx context.Context, cache port.UserCache, id int64) {
 	if cache != nil {
-		cache.Delete(ctx, id)
+		if err := cache.Delete(ctx, id); err != nil {
+			logger.Warn("cache: delete failed", "error", err.Error())
+		}
 	}
 }
 
 func eventPublish(publisher port.EventPublisher, ctx context.Context, eventName string, payload interface{}) {
-	publisher.Publish(ctx, eventName, payload)
+	if err := publisher.Publish(ctx, eventName, payload); err != nil {
+		logger.Warn("event: publish failed", "event", eventName, "error", err.Error())
+	}
+}
+
+// auditLogin persists a login audit event and returns the error.
+func (uc *authUsecase) auditLogin(ctx context.Context, userID int64, email string, success bool, ip, userAgent, reason string) error {
+	audit := &domain.LoginAudit{
+		UserID:    userID,
+		Email:     email,
+		Success:   success,
+		IPAddress: ip,
+		UserAgent: userAgent,
+		Reason:    reason,
+		CreatedAt: time.Now().UTC(),
+	}
+	if err := uc.loginAuditRepo.Create(ctx, audit); err != nil {
+		logger.Warn("audit: login audit failed", "error", err.Error())
+		return err
+	}
+	return nil
 }
