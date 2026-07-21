@@ -45,7 +45,9 @@ func TestListPermissions(t *testing.T) {
 	if rec.Code != http.StatusOK { t.Errorf("expected 200, got %d", rec.Code) }
 
 	var wrapped struct { Data []domain.Permission `json:"data"` }
-	json.Unmarshal(rec.Body.Bytes(), &wrapped)
+	if err := json.Unmarshal(rec.Body.Bytes(), &wrapped); err != nil {
+		t.Fatalf("bad response: %v", err)
+	}
 	if len(wrapped.Data) != 2 { t.Errorf("expected 2 permissions, got %d", len(wrapped.Data)) }
 }
 

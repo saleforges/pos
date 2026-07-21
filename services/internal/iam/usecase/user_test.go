@@ -112,7 +112,9 @@ func TestUserUsecase_ListStaff(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	_ = staff
+	if len(staff) != 0 {
+		t.Errorf("expected empty list, got %d", len(staff))
+	}
 }
 
 func TestUserUsecase_ListUsers(t *testing.T) {
@@ -123,7 +125,9 @@ func TestUserUsecase_ListUsers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	_ = users
+	if len(users) != 0 {
+		t.Errorf("expected empty list, got %d", len(users))
+	}
 }
 
 type mockStaffRepo struct{}

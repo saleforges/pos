@@ -64,7 +64,9 @@ func TestRoleUsecase_ListRoles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	_ = roles
+	if len(roles) != 0 {
+		t.Errorf("expected empty list, got %d", len(roles))
+	}
 }
 
 func TestRoleUsecase_UpdateRole(t *testing.T) {
@@ -139,7 +141,9 @@ func TestPermissionUsecase_ListPermissions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	_ = perms
+	if len(perms) != 0 {
+		t.Errorf("expected empty list, got %d", len(perms))
+	}
 }
 
 func TestPermissionUsecase_CreateDeletePermission(t *testing.T) {
