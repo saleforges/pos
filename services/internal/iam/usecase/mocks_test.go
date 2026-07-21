@@ -203,7 +203,7 @@ func newTestAuthUsecase(
 	return NewAuthUsecase(
 		userRepo, roleRepo, &mockPermissionRepo{}, &mockLoginAuditRepo{},
 		memory.NewStaffRepository(), sessionStore, &mockEventPublisher{},
-		passwordHasher, tokenSigner, &mockTokenHasher{}, nil,
+		passwordHasher, tokenSigner, &mockTokenHasher{}, nil, nil,
 	)
 }
 

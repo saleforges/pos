@@ -30,22 +30,22 @@ func NewUserCache(ttl time.Duration, cleanupInterval time.Duration) *UserCache {
 	return c
 }
 
-func (c *UserCache) Get(_ context.Context, id int64) (*domain.User, bool) {
+func (c *UserCache) Get(_ context.Context, id int64) (*domain.User, error) {
 	c.mu.RLock()
 	it, ok := c.items[id]
 	c.mu.RUnlock()
 
 	if !ok {
-		return nil, false
+		return nil, nil
 	}
 	if time.Now().After(it.expireAt) {
 		c.Delete(nil, id)
-		return nil, false
+		return nil, nil
 	}
-	return it.user, true
+	return it.user, nil
 }
 
-func (c *UserCache) Set(_ context.Context, u *domain.User, ttl time.Duration) {
+func (c *UserCache) Set(_ context.Context, u *domain.User, ttl time.Duration) error {
 	if ttl == 0 {
 		ttl = c.ttl
 	}
@@ -55,12 +55,14 @@ func (c *UserCache) Set(_ context.Context, u *domain.User, ttl time.Duration) {
 		expireAt: time.Now().Add(ttl),
 	}
 	c.mu.Unlock()
+	return nil
 }
 
-func (c *UserCache) Delete(_ context.Context, id int64) {
+func (c *UserCache) Delete(_ context.Context, id int64) error {
 	c.mu.Lock()
 	delete(c.items, id)
 	c.mu.Unlock()
+	return nil
 }
 
 func (c *UserCache) Close() error {

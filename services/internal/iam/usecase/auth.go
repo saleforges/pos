@@ -49,10 +49,14 @@ type LogoutParams struct {
 	SessionID string
 }
 
+type IntrospectParams struct {
+	TokenString string
+}
+
 type IntrospectResult struct {
 	Active      bool                        `json:"active"`
 	UserID      int64                       `json:"user_id,omitempty"`
-	UserType    domain.UserType             `json:"user_type"`
+	UserType    domain.UserType             `json:"user_type,omitempty"`
 	RoleName    string                      `json:"role_name,omitempty"`
 	Staff       []domain.UserRoleAssignment `json:"staff,omitempty"`
 	Permissions []domain.Permission         `json:"permissions,omitempty"`
@@ -70,6 +74,7 @@ type authUsecase struct {
 	tokenSigner    port.TokenSigner
 	tokenHasher    port.TokenHasher
 	userCache      port.UserCache
+	db             port.TxBeginner
 }
 
 func NewAuthUsecase(
@@ -84,6 +89,7 @@ func NewAuthUsecase(
 	tokenSigner port.TokenSigner,
 	tokenHasher port.TokenHasher,
 	userCache port.UserCache,
+	db port.TxBeginner,
 ) *authUsecase {
 	return &authUsecase{
 		userRepo:       userRepo,
@@ -97,8 +103,11 @@ func NewAuthUsecase(
 		tokenSigner:    tokenSigner,
 		tokenHasher:    tokenHasher,
 		userCache:      userCache,
+		db:             db,
 	}
 }
+
+var _ AuthUsecase = (*authUsecase)(nil)
 
 func (uc *authUsecase) Register(ctx context.Context, input RegisterParams) (*AuthResult, error) {
 	ctx, span := otel.StartSpan(ctx, "auth.Register")
@@ -112,11 +121,16 @@ func (uc *authUsecase) Register(ctx context.Context, input RegisterParams) (*Aut
 		input.Roles = []string{"viewer"}
 	}
 
+	// Validate roles before touching the DB.
 	for _, role := range input.Roles {
 		if _, ok := domain.DefaultRoles[role]; !ok {
 			_, err := uc.roleRepo.GetByName(ctx, role)
 			if err != nil {
-				return nil, domain.ErrInvalidRole
+				if errors.Is(err, domain.ErrInvalidRole) {
+					return nil, domain.ErrInvalidRole
+				}
+				logger.Error("register: get role by name failed", "role", role, "error", err.Error())
+				return nil, domain.ErrInternal
 			}
 		}
 	}
@@ -160,6 +174,13 @@ func (uc *authUsecase) Register(ctx context.Context, input RegisterParams) (*Aut
 		UpdatedAt: now,
 	}
 
+	// WIP: Transaction boundaries — see ticket 86eyc73vm. The userRepo.Create
+	// already wraps its INSERT in a local tx (single-statement atomicity).
+	// Cross-repo UoW (user+roles+session+audit in one pg tx) requires
+	// propagating a *TracedTx through repositories. Postgres repos currently
+	// own their pool; wiring a shared tx requires repository.WithTx() methods.
+	// ponytail: cross-repo UoW, add when Register/Login become multi-repo
+	// writes that must roll back together.
 	if err := uc.userRepo.Create(ctx, user); err != nil {
 		logger.Error("register: create user failed", "error", err.Error())
 		return nil, domain.ErrInternal
@@ -177,7 +198,7 @@ func (uc *authUsecase) Register(ctx context.Context, input RegisterParams) (*Aut
 		return nil, domain.ErrInternal
 	}
 
-	uc.cacheSet(ctx, user)
+	cacheSet(ctx, uc.userCache, user)
 
 	systemRoleName := ""
 	if user.SystemRole != nil {
@@ -225,7 +246,7 @@ func (uc *authUsecase) Register(ctx context.Context, input RegisterParams) (*Aut
 		return nil, domain.ErrInternal
 	}
 
-	uc.publishEvent(ctx, "UserCreated", map[string]interface{}{
+	eventPublish(uc.eventPublisher, ctx, "UserCreated", map[string]interface{}{
 		"user_id":  user.ID,
 		"username": user.Username,
 		"email":    user.Email,
@@ -246,8 +267,8 @@ func (uc *authUsecase) Login(ctx context.Context, input LoginParams) (*LoginResu
 
 	user, err := uc.userRepo.GetByUsername(ctx, input.Username)
 	if err != nil {
-		uc.auditLogin(ctx, 0, input.Username, false, input.IPAddress, input.UserAgent, "user not found")
 		if errors.Is(err, domain.ErrUserNotFound) {
+			uc.auditLogin(ctx, 0, input.Username, false, input.IPAddress, input.UserAgent, "user not found")
 			return nil, domain.ErrInvalidCredentials
 		}
 		logger.Error("login: get user failed", "error", err.Error())
@@ -325,7 +346,7 @@ func (uc *authUsecase) Login(ctx context.Context, input LoginParams) (*LoginResu
 
 	uc.auditLogin(ctx, user.ID, input.Username, true, input.IPAddress, input.UserAgent, "")
 
-	uc.cacheSet(ctx, user)
+	cacheSet(ctx, uc.userCache, user)
 
 	return &LoginResult{
 		TokenPair: port.TokenPair{
@@ -518,14 +539,23 @@ func (uc *authUsecase) Introspect(ctx context.Context, tokenString string) (*Int
 		return &IntrospectResult{Active: false}, nil
 	}
 
-	user, err := uc.userRepo.GetByID(ctx, claims.UserID)
-	if err != nil || user.Status == domain.UserStatusDisabled {
+	user, err := uc.cacheGet(ctx, claims.UserID)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return &IntrospectResult{Active: false}, nil
+		}
+		logger.Error("introspect: get user failed", "error", err.Error())
+		return nil, domain.ErrInternal
+	}
+
+	if user.Status == domain.UserStatusDisabled {
 		return &IntrospectResult{Active: false}, nil
 	}
 
 	staff, err := uc.staffRepo.ListByUserID(ctx, claims.UserID)
 	if err != nil {
-		return &IntrospectResult{Active: false}, nil
+		logger.Error("introspect: list staff failed", "error", err.Error())
+		return nil, domain.ErrInternal
 	}
 
 	return &IntrospectResult{
@@ -617,23 +647,4 @@ func (uc *authUsecase) resolveActiveRole(ctx context.Context, userID int64) (rol
 		return r.Role.ID, r.MerchantID, *r.BranchID
 	}
 	return r.Role.ID, r.MerchantID, 0
-}
-
-// auditLogin persists a login audit event.
-func (uc *authUsecase) auditLogin(ctx context.Context, userID int64, email string, success bool, ip, userAgent, reason string) {
-	audit := &domain.LoginAudit{
-		UserID:    userID,
-		Email:     email,
-		Success:   success,
-		IPAddress: ip,
-		UserAgent: userAgent,
-		Reason:    reason,
-		CreatedAt: time.Now().UTC(),
-	}
-	uc.loginAuditRepo.Create(ctx, audit)
-}
-
-// publishEvent publishes a domain event through the event publisher.
-func (uc *authUsecase) publishEvent(ctx context.Context, eventName string, payload interface{}) {
-	uc.eventPublisher.Publish(ctx, eventName, payload)
 }

@@ -8,13 +8,11 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/saleforge/pos/services/internal/iam/domain"
-	sessionmem "github.com/saleforge/pos/services/internal/iam/adapter/session/memory"
 	"github.com/saleforge/pos/services/pkg/logger"
 )
 
 type SessionStore struct {
-	rdb      *redis.Client
-	fallback *sessionmem.SessionStore
+	rdb *redis.Client
 }
 
 func NewSessionStore(addr string) *SessionStore {
@@ -26,16 +24,12 @@ func NewSessionStore(addr string) *SessionStore {
 	defer cancel()
 
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		logger.Warn("[session/redis] connection failed, falling back to in-memory", "error", err.Error())
-		return &SessionStore{
-			fallback: sessionmem.NewSessionStore(),
-		}
+		logger.Error("[session/redis] connection failed", "error", err.Error())
+		return &SessionStore{rdb: nil}
 	}
 
-	logger.Info("[session/redis] connected to redis", "addr", addr)
-	return &SessionStore{
-		rdb: rdb,
-	}
+	logger.Info("[session/redis] connected", "addr", addr)
+	return &SessionStore{rdb: rdb}
 }
 
 func sessionKey(id string) string {
@@ -44,7 +38,7 @@ func sessionKey(id string) string {
 
 func (s *SessionStore) Create(ctx context.Context, session *domain.Session) error {
 	if s.rdb == nil {
-		return s.fallback.Create(ctx, session)
+		return fmt.Errorf("redis session store not available")
 	}
 
 	data, err := json.Marshal(session)
@@ -62,12 +56,12 @@ func (s *SessionStore) Create(ctx context.Context, session *domain.Session) erro
 
 func (s *SessionStore) Get(ctx context.Context, id string) (*domain.Session, error) {
 	if s.rdb == nil {
-		return s.fallback.Get(ctx, id)
+		return nil, fmt.Errorf("redis session store not available")
 	}
 
 	data, err := s.rdb.Get(ctx, sessionKey(id)).Bytes()
 	if err != nil {
-		return s.fallback.Get(ctx, id)
+		return nil, err
 	}
 
 	var session domain.Session
@@ -79,7 +73,7 @@ func (s *SessionStore) Get(ctx context.Context, id string) (*domain.Session, err
 
 func (s *SessionStore) Update(ctx context.Context, session *domain.Session) error {
 	if s.rdb == nil {
-		return s.fallback.Update(ctx, session)
+		return fmt.Errorf("redis session store not available")
 	}
 
 	data, err := json.Marshal(session)
@@ -97,8 +91,7 @@ func (s *SessionStore) Update(ctx context.Context, session *domain.Session) erro
 
 func (s *SessionStore) Delete(ctx context.Context, id string) error {
 	if s.rdb == nil {
-		return s.fallback.Delete(ctx, id)
+		return nil
 	}
-
 	return s.rdb.Del(ctx, sessionKey(id)).Err()
 }

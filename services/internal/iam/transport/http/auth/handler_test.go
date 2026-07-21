@@ -353,20 +353,16 @@ func TestIntrospect(t *testing.T) {
 		if wrapped.Data == nil || !wrapped.Data.Active { t.Error("expected active result") }
 	})
 
-	t.Run("service error returns 200 with inactive", func(t *testing.T) {
+	t.Run("service error returns 500", func(t *testing.T) {
 		as := &mockAuthService{introspectFn: func(_ context.Context, _ string) (*usecase.IntrospectResult, error) {
-			return nil, domain.ErrInvalidToken
+			return nil, domain.ErrInternal
 		}}
 		h, _, rec := setupTest(t, as, nil)
 		c := echo.New().NewContext(request(http.MethodPost, "/auth/introspect", `{"token":"bad"}`), rec)
 		c.SetPath("/auth/introspect")
 
 		h.Introspect(c)
-		if rec.Code != http.StatusOK { t.Errorf("expected 200, got %d", rec.Code) }
-
-		var wrapped struct { Data map[string]interface{} `json:"data"` }
-		json.Unmarshal(rec.Body.Bytes(), &wrapped)
-		if active, ok := wrapped.Data["active"]; !ok || active != false { t.Error("expected active: false") }
+		if rec.Code != http.StatusInternalServerError { t.Errorf("expected 500, got %d", rec.Code) }
 	})
 }
 
