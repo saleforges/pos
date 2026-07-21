@@ -70,26 +70,11 @@ jobs:
           IMAGE=ghcr.io/${{ github.repository }}/iam-service
           docker build -t $IMAGE:${{ github.sha }} -f services/Dockerfile.iam services
           docker push $IMAGE:${{ github.sha }}
-      - name: Verify package on GHCR
-        run: |
-          echo "=== Checking IAM package on GHCR ==="
-          curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/packages/container/iam-service" 2>&1
-          echo ""
-          echo "=== Checking catalog-service for comparison ==="
-          curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/packages/container/catalog-service" 2>&1
-          echo ""
-          echo "=== Docker pull test ==="
-          docker pull ghcr.io/${{ github.repository }}/iam-service:${{ github.sha }} 2>&1 || echo "PULL_FAILED"
 
   deploy-dev:
     if: (github.event_name == 'push' && github.ref == 'refs/heads/development') || github.event_name == 'workflow_dispatch'
     needs: [build]
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
     steps:
       - uses: actions/checkout@v4
       - uses: webfactory/ssh-agent@v0.10.0
