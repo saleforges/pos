@@ -32,6 +32,10 @@ func (h *Handler) Register(c echo.Context) error {
 		return common.WriteError(c, http.StatusBadRequest, common.ErrMissingFields)
 	}
 
+	if !common.EmailRegex.MatchString(req.Email) {
+		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidEmail)
+	}
+
 	result, err := h.authService.Register(c.Request().Context(), usecase.RegisterParams{
 		Username:  req.Username,
 		Email:     req.Email,
@@ -135,7 +139,10 @@ func (h *Handler) Refresh(c echo.Context) error {
 }
 
 func (h *Handler) Logout(c echo.Context) error {
-	claims := c.Get(common.ClaimsKey).(*port.TokenClaims)
+	claims, ok := c.Get(common.ClaimsKey).(*port.TokenClaims)
+	if !ok {
+		return common.WriteError(c, http.StatusUnauthorized, common.ErrUnauthorized)
+	}
 
 	err := h.authService.Logout(c.Request().Context(), usecase.LogoutParams{
 		SessionID: claims.SessionID,
@@ -154,7 +161,10 @@ func (h *Handler) SwitchContext(c echo.Context) error {
 		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidBody)
 	}
 
-	claims := c.Get(common.ClaimsKey).(*port.TokenClaims)
+	claims, ok := c.Get(common.ClaimsKey).(*port.TokenClaims)
+	if !ok {
+		return common.WriteError(c, http.StatusUnauthorized, common.ErrUnauthorized)
+	}
 
 	result, err := h.authService.SwitchContext(c.Request().Context(), claims.SessionID, req.UserRoleID)
 	if err != nil {
@@ -178,10 +188,17 @@ func (h *Handler) SetDefaultRole(c echo.Context) error {
 		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidBody)
 	}
 
-	claims := c.Get(common.ClaimsKey).(*port.TokenClaims)
+	claims, ok := c.Get(common.ClaimsKey).(*port.TokenClaims)
+	if !ok {
+		return common.WriteError(c, http.StatusUnauthorized, common.ErrUnauthorized)
+	}
 
 	if err := h.authService.SetDefaultRole(c.Request().Context(), claims.UserID, req.RoleID); err != nil {
-		return common.WriteError(c, http.StatusInternalServerError, err)
+		if errors.Is(err, domain.ErrInvalidRole) {
+			return common.WriteError(c, http.StatusNotFound, err)
+		}
+		logger.Error("set default role failed", "error", err.Error())
+		return common.WriteError(c, http.StatusInternalServerError, domain.ErrInternal)
 	}
 
 	return common.WriteJSON(c, http.StatusOK, nil)

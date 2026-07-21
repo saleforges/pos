@@ -48,6 +48,13 @@ func (h *Handler) CreateUser(c echo.Context) error {
 		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidBody)
 	}
 
+	if req.Username == "" {
+		return common.WriteError(c, http.StatusBadRequest, common.ErrMissingFields)
+	}
+	if req.Email != "" && !common.EmailRegex.MatchString(req.Email) {
+		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidEmail)
+	}
+
 	result, err := h.authService.Register(c.Request().Context(), usecase.RegisterParams{
 		Username: req.Username,
 		Email:    req.Email,
@@ -74,7 +81,7 @@ func (h *Handler) CreateUser(c echo.Context) error {
 func (h *Handler) GetUser(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		return common.WriteError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidID)
 	}
 	user, err := h.userService.GetUser(c.Request().Context(), id)
 	if err != nil {
@@ -90,7 +97,7 @@ func (h *Handler) GetUser(c echo.Context) error {
 func (h *Handler) UpdateUser(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		return common.WriteError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidID)
 	}
 	var req updateUserRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
@@ -99,8 +106,13 @@ func (h *Handler) UpdateUser(c echo.Context) error {
 
 	var status *domain.UserStatus
 	if req.Status != nil {
-		s := domain.UserStatus(*req.Status)
-		status = &s
+		switch *req.Status {
+		case string(domain.UserStatusActive), string(domain.UserStatusDisabled):
+			s := domain.UserStatus(*req.Status)
+			status = &s
+		default:
+			return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidBody)
+		}
 	}
 
 	user, err := h.userService.UpdateUser(c.Request().Context(), usecase.UpdateUserParams{
@@ -122,7 +134,7 @@ func (h *Handler) UpdateUser(c echo.Context) error {
 func (h *Handler) DeleteUser(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
-		return common.WriteError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidID)
 	}
 	if err := h.userService.DeleteUser(c.Request().Context(), id); err != nil {
 		if errors.Is(err, domain.ErrUserNotFound) {

@@ -5,8 +5,10 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"sort"
 	"time"
 
+	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/pkg/otel"
 	"golang.org/x/crypto/argon2"
 )
@@ -23,76 +25,63 @@ func devPasswordHash(password string) string {
 	return base64.RawStdEncoding.EncodeToString(buf.Bytes())
 }
 
-var defaultPermissions = []string{
-	"catalog.read", "catalog.create", "catalog.update", "catalog.delete",
-	"sales.create", "sales.read", "sales.update", "sales.delete", "sales.refund",
-	"inventory.read", "inventory.write", "inventory.adjust",
-	"merchant.manage",
-	"user.create", "user.read", "user.update", "user.delete", "user.list",
-	"role.create", "role.read", "role.update", "role.delete", "role.assign",
-	"permission.create", "permission.read", "permission.update", "permission.delete", "permission.assign",
-	"session.manage", "apikey.manage",
-	"audit.view",
+// defaultPermissions returns the full set of known permissions from domain.DefaultRoles.
+func defaultPermissions() []string {
+	seen := make(map[string]bool)
+	var perms []string
+	keys := make([]string, 0, len(domain.DefaultRoles))
+	for k := range domain.DefaultRoles {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		role := domain.DefaultRoles[k]
+		for _, p := range role.Permissions {
+			s := string(p)
+			if !seen[s] {
+				seen[s] = true
+				perms = append(perms, s)
+			}
+		}
+	}
+	return perms
 }
 
-var defaultRoles = []struct {
+// seedRoles produces the role/permission data for seeding, driven from domain.DefaultRoles.
+func seedRoles() []struct {
 	Name        string
 	Description string
 	Permissions []string
-}{
-	{
-		Name: "superadmin", Description: "Platform super administrator",
-		Permissions: defaultPermissions,
-	},
-	{
-		Name: "admin", Description: "Platform administrator — custom permissions",
-		Permissions: defaultPermissions,
-	},
-	{
-		Name: "owner", Description: "Merchant owner — full access to own merchant",
-		Permissions: defaultPermissions,
-	},
-	{
-		Name: "manager", Description: "Branch manager",
-		Permissions: []string{
-			"catalog.read", "catalog.create", "catalog.update",
-			"sales.create", "sales.read", "sales.update", "sales.refund",
-			"inventory.read", "inventory.write", "inventory.adjust",
-			"user.read", "user.list",
-		},
-	},
-	{
-		Name: "supervisor", Description: "Branch supervisor",
-		Permissions: []string{
-			"catalog.read", "catalog.create", "catalog.update",
-			"sales.create", "sales.read", "sales.update", "sales.refund",
-			"inventory.read", "inventory.write", "inventory.adjust",
-			"user.read", "user.list",
-		},
-	},
-	{
-		Name: "cashier", Description: "Cashier access",
-		Permissions: []string{
-			"catalog.read",
-			"sales.create", "sales.read",
-			"inventory.read",
-		},
-	},
-	{
-		Name: "viewer", Description: "Read-only access",
-		Permissions: []string{
-			"catalog.read",
-			"sales.read",
-			"inventory.read",
-			"user.read", "user.list",
-		},
-	},
+} {
+	var roles []struct {
+		Name        string
+		Description string
+		Permissions []string
+	}
+	keys := make([]string, 0, len(domain.DefaultRoles))
+	for k := range domain.DefaultRoles {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		r := domain.DefaultRoles[k]
+		perms := make([]string, len(r.Permissions))
+		for i, p := range r.Permissions {
+			perms[i] = string(p)
+		}
+		roles = append(roles, struct {
+			Name        string
+			Description string
+			Permissions []string
+		}{Name: r.Name, Description: r.Description, Permissions: perms})
+	}
+	return roles
 }
 
 func SeedData(ctx context.Context, pool *otel.TracedPool) error {
 	now := time.Now().UTC()
 
-	for _, p := range defaultPermissions {
+	for _, p := range defaultPermissions() {
 		_, err := pool.Exec(ctx,
 			`INSERT INTO permissions (name, created_at) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
 			p, now,
@@ -102,7 +91,7 @@ func SeedData(ctx context.Context, pool *otel.TracedPool) error {
 		}
 	}
 
-	for _, r := range defaultRoles {
+	for _, r := range seedRoles() {
 		_, err := pool.Exec(ctx,
 			`INSERT INTO roles (name, description, is_system, created_at, updated_at) VALUES ($1, $2, true, $3, $3) ON CONFLICT DO NOTHING`,
 			r.Name, r.Description, now,

@@ -67,7 +67,7 @@ func (h *Handler) CreateRole(c echo.Context) error {
 func (h *Handler) GetRole(c echo.Context) error {
 	id, err := parseID(c)
 	if err != nil {
-		return common.WriteError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidID)
 	}
 	role, err := h.roleService.GetRole(c.Request().Context(), id)
 	if err != nil {
@@ -83,7 +83,7 @@ func (h *Handler) GetRole(c echo.Context) error {
 func (h *Handler) UpdateRole(c echo.Context) error {
 	id, err := parseID(c)
 	if err != nil {
-		return common.WriteError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidID)
 	}
 	var req updateRoleRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
@@ -107,7 +107,7 @@ func (h *Handler) UpdateRole(c echo.Context) error {
 func (h *Handler) DeleteRole(c echo.Context) error {
 	id, err := parseID(c)
 	if err != nil {
-		return common.WriteError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidID)
 	}
 	if err := h.roleService.DeleteRole(c.Request().Context(), id); err != nil {
 		if errors.Is(err, domain.ErrInvalidRole) {
@@ -122,7 +122,7 @@ func (h *Handler) DeleteRole(c echo.Context) error {
 func (h *Handler) AssignRole(c echo.Context) error {
 	id, err := parseID(c)
 	if err != nil {
-		return common.WriteError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidID)
 	}
 	var req assignRoleRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
@@ -142,7 +142,7 @@ func (h *Handler) AssignRole(c echo.Context) error {
 func (h *Handler) RemoveRole(c echo.Context) error {
 	id, err := parseID(c)
 	if err != nil {
-		return common.WriteError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidID)
 	}
 	if err := h.roleService.RemoveRole(c.Request().Context(), id, c.Param("roleId")); err != nil {
 		return common.WriteError(c, http.StatusNotFound, err)
@@ -154,7 +154,7 @@ func (h *Handler) RemoveRole(c echo.Context) error {
 func (h *Handler) AssignPermission(c echo.Context) error {
 	id, err := parseID(c)
 	if err != nil {
-		return common.WriteError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidID)
 	}
 	var req assignPermissionRequest
 	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
@@ -174,7 +174,7 @@ func (h *Handler) AssignPermission(c echo.Context) error {
 func (h *Handler) RemovePermission(c echo.Context) error {
 	id, err := parseID(c)
 	if err != nil {
-		return common.WriteError(c, http.StatusBadRequest, domain.ErrInvalidRole)
+		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidID)
 	}
 	if err := h.roleService.RemovePermission(c.Request().Context(), id, domain.Permission(c.Param("permissionId"))); err != nil {
 		if errors.Is(err, domain.ErrInvalidRole) {

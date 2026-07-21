@@ -125,13 +125,3 @@ func TestUserUsecase_ListUsers(t *testing.T) {
 	}
 	_ = users
 }
-
-type mockStaffRepo struct{}
-
-func (m *mockStaffRepo) ListByUserID(_ context.Context, userID int64) ([]domain.UserRoleAssignment, error) {
-	return nil, nil
-}
-func (m *mockStaffRepo) SetDefaultRole(_ context.Context, userID, roleID int64) error { return nil }
-func (m *mockStaffRepo) Create(_ context.Context, userID int64, merchantID int64, merchantName, role string) error {
-	return nil
-}
