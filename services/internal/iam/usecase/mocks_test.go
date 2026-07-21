@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 
-	"github.com/saleforge/pos/services/internal/iam/adapter/repository/memory"
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/port/repository"
@@ -104,6 +103,20 @@ func (m *mockRoleRepo) GetPermissions(_ context.Context, roleID int64) ([]domain
 	return r.Permissions, nil
 }
 
+type mockStaffRepo struct {
+	err error
+}
+
+func (m *mockStaffRepo) ListByUserID(_ context.Context, _ int64) ([]domain.UserRoleAssignment, error) {
+	return nil, m.err
+}
+func (m *mockStaffRepo) Create(_ context.Context, _ int64, _ int64, _, _ string) error {
+	return m.err
+}
+func (m *mockStaffRepo) SetDefaultRole(_ context.Context, _, _ int64) error {
+	return m.err
+}
+
 type mockPermissionRepo struct {
 	permissions map[domain.Permission]bool
 	err         error
@@ -202,7 +215,7 @@ func newTestAuthUsecase(
 	if sessionStore == nil { sessionStore = &mockSessionStore{} }
 	return NewAuthUsecase(
 		userRepo, roleRepo, &mockPermissionRepo{}, &mockLoginAuditRepo{},
-		memory.NewStaffRepository(), sessionStore, &mockEventPublisher{},
+		&mockStaffRepo{}, sessionStore, &mockEventPublisher{},
 		passwordHasher, tokenSigner, &mockTokenHasher{}, nil, nil,
 	)
 }

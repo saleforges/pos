@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"net/http"
+	"regexp"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/iam/domain"
@@ -11,6 +12,9 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/usecase"
 	"github.com/saleforge/pos/services/pkg/logger"
 )
+
+// emailRegex is a basic email format validator.
+var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 
 type Handler struct {
 	authService   usecase.AuthUsecase
@@ -30,6 +34,10 @@ func (h *Handler) Register(c echo.Context) error {
 
 	if req.Username == "" || req.Email == "" || req.Password == "" {
 		return common.WriteError(c, http.StatusBadRequest, common.ErrMissingFields)
+	}
+
+	if !emailRegex.MatchString(req.Email) {
+		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidEmail)
 	}
 
 	result, err := h.authService.Register(c.Request().Context(), usecase.RegisterParams{
@@ -135,7 +143,10 @@ func (h *Handler) Refresh(c echo.Context) error {
 }
 
 func (h *Handler) Logout(c echo.Context) error {
-	claims := c.Get(common.ClaimsKey).(*port.TokenClaims)
+	claims, ok := c.Get(common.ClaimsKey).(*port.TokenClaims)
+	if !ok {
+		return common.WriteError(c, http.StatusUnauthorized, common.ErrUnauthorized)
+	}
 
 	err := h.authService.Logout(c.Request().Context(), usecase.LogoutParams{
 		SessionID: claims.SessionID,
@@ -154,7 +165,10 @@ func (h *Handler) SwitchContext(c echo.Context) error {
 		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidBody)
 	}
 
-	claims := c.Get(common.ClaimsKey).(*port.TokenClaims)
+	claims, ok := c.Get(common.ClaimsKey).(*port.TokenClaims)
+	if !ok {
+		return common.WriteError(c, http.StatusUnauthorized, common.ErrUnauthorized)
+	}
 
 	result, err := h.authService.SwitchContext(c.Request().Context(), claims.SessionID, req.UserRoleID)
 	if err != nil {
@@ -178,7 +192,10 @@ func (h *Handler) SetDefaultRole(c echo.Context) error {
 		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidBody)
 	}
 
-	claims := c.Get(common.ClaimsKey).(*port.TokenClaims)
+	claims, ok := c.Get(common.ClaimsKey).(*port.TokenClaims)
+	if !ok {
+		return common.WriteError(c, http.StatusUnauthorized, common.ErrUnauthorized)
+	}
 
 	if err := h.authService.SetDefaultRole(c.Request().Context(), claims.UserID, req.RoleID); err != nil {
 		return common.WriteError(c, http.StatusInternalServerError, err)

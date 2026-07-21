@@ -37,3 +37,9 @@ services/catalog
 *.log
 deploy/caddy/.env
 go1.24.0.linux-amd64.tar.gz*
+
+# Graphify auto-generated cache (AST artifacts)
+graphify-out/
+services/graphify-out/
+services/internal/iam/graphify-out/
+**/graphify-out/
