@@ -34,15 +34,15 @@ func (uc *authUsecase) cacheSet(ctx context.Context, u *domain.User) {
 	}
 }
 
-func cacheSet(cache port.UserCache, u *domain.User) {
+func cacheSet(ctx context.Context, cache port.UserCache, u *domain.User) {
 	if cache != nil {
-		cache.Set(context.Background(), u, 0)
+		cache.Set(ctx, u, 0)
 	}
 }
 
-func cacheDel(cache port.UserCache, id int64) {
+func cacheDel(ctx context.Context, cache port.UserCache, id int64) {
 	if cache != nil {
-		cache.Delete(context.Background(), id)
+		cache.Delete(ctx, id)
 	}
 }
 

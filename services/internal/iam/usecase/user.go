@@ -2,11 +2,13 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/port/repository"
+	"github.com/saleforge/pos/services/pkg/logger"
 )
 
 type UpdateUserParams struct {
@@ -50,6 +52,10 @@ func (uc *userUsecase) GetUser(ctx context.Context, id int64) (*domain.User, err
 func (uc *userUsecase) UpdateUser(ctx context.Context, input UpdateUserParams) (*domain.User, error) {
 	user, err := uc.userRepo.GetByID(ctx, input.ID)
 	if err != nil {
+		if !errors.Is(err, domain.ErrUserNotFound) {
+			logger.Error("update user: get by id failed", "error", err.Error())
+			return nil, domain.ErrInternal
+		}
 		return nil, domain.ErrUserNotFound
 	}
 	if input.Username != nil {
@@ -63,18 +69,23 @@ func (uc *userUsecase) UpdateUser(ctx context.Context, input UpdateUserParams) (
 	}
 	user.UpdatedAt = time.Now().UTC()
 	if err := uc.userRepo.Update(ctx, user); err != nil {
+		logger.Error("update user: update failed", "error", err.Error())
 		return nil, domain.ErrInternal
 	}
-	cacheDel(uc.userCache, user.ID)
+	cacheDel(ctx, uc.userCache, user.ID)
 	eventPublish(uc.eventPublisher, ctx, "UserUpdated", map[string]interface{}{"user_id": user.ID})
 	return user, nil
 }
 
 func (uc *userUsecase) DeleteUser(ctx context.Context, id int64) error {
 	if err := uc.userRepo.Delete(ctx, id); err != nil {
+		if !errors.Is(err, domain.ErrUserNotFound) {
+			logger.Error("delete user: delete failed", "error", err.Error())
+			return domain.ErrInternal
+		}
 		return domain.ErrUserNotFound
 	}
-	cacheDel(uc.userCache, id)
+	cacheDel(ctx, uc.userCache, id)
 	eventPublish(uc.eventPublisher, ctx, "UserDeleted", map[string]interface{}{"user_id": id})
 	return nil
 }

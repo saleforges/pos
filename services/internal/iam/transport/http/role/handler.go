@@ -2,6 +2,7 @@ package role
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -54,7 +55,7 @@ func (h *Handler) CreateRole(c echo.Context) error {
 		Permissions: perms,
 	})
 	if err != nil {
-		if err == domain.ErrInvalidRole {
+		if errors.Is(err, domain.ErrInvalidRole) {
 			return common.WriteError(c, http.StatusConflict, err)
 		}
 		return common.WriteError(c, http.StatusInternalServerError, err)
@@ -70,7 +71,10 @@ func (h *Handler) GetRole(c echo.Context) error {
 	}
 	role, err := h.roleService.GetRole(c.Request().Context(), id)
 	if err != nil {
-		return common.WriteError(c, http.StatusNotFound, domain.ErrInvalidRole)
+		if errors.Is(err, domain.ErrInvalidRole) {
+			return common.WriteError(c, http.StatusNotFound, domain.ErrInvalidRole)
+		}
+		return common.WriteError(c, http.StatusInternalServerError, err)
 	}
 
 	return common.WriteJSON(c, http.StatusOK, role)
@@ -91,7 +95,7 @@ func (h *Handler) UpdateRole(c echo.Context) error {
 		Description: req.Description,
 	})
 	if err != nil {
-		if err == domain.ErrInvalidRole {
+		if errors.Is(err, domain.ErrInvalidRole) {
 			return common.WriteError(c, http.StatusNotFound, err)
 		}
 		return common.WriteError(c, http.StatusInternalServerError, err)
@@ -106,7 +110,7 @@ func (h *Handler) DeleteRole(c echo.Context) error {
 		return common.WriteError(c, http.StatusBadRequest, domain.ErrInvalidRole)
 	}
 	if err := h.roleService.DeleteRole(c.Request().Context(), id); err != nil {
-		if err == domain.ErrInvalidRole {
+		if errors.Is(err, domain.ErrInvalidRole) {
 			return common.WriteError(c, http.StatusNotFound, domain.ErrInvalidRole)
 		}
 		return common.WriteError(c, http.StatusInternalServerError, err)
@@ -126,7 +130,7 @@ func (h *Handler) AssignRole(c echo.Context) error {
 	}
 
 	if err := h.roleService.AssignRole(c.Request().Context(), id, req.Role); err != nil {
-		if err == domain.ErrInvalidRole || err == domain.ErrUserNotFound {
+		if errors.Is(err, domain.ErrInvalidRole) || errors.Is(err, domain.ErrUserNotFound) {
 			return common.WriteError(c, http.StatusNotFound, err)
 		}
 		return common.WriteError(c, http.StatusInternalServerError, err)
@@ -158,7 +162,7 @@ func (h *Handler) AssignPermission(c echo.Context) error {
 	}
 
 	if err := h.roleService.AssignPermission(c.Request().Context(), id, domain.Permission(req.Permission)); err != nil {
-		if err == domain.ErrInvalidRole {
+		if errors.Is(err, domain.ErrInvalidRole) {
 			return common.WriteError(c, http.StatusNotFound, err)
 		}
 		return common.WriteError(c, http.StatusInternalServerError, err)
@@ -173,7 +177,7 @@ func (h *Handler) RemovePermission(c echo.Context) error {
 		return common.WriteError(c, http.StatusBadRequest, domain.ErrInvalidRole)
 	}
 	if err := h.roleService.RemovePermission(c.Request().Context(), id, domain.Permission(c.Param("permissionId"))); err != nil {
-		if err == domain.ErrInvalidRole {
+		if errors.Is(err, domain.ErrInvalidRole) {
 			return common.WriteError(c, http.StatusNotFound, err)
 		}
 		return common.WriteError(c, http.StatusInternalServerError, err)

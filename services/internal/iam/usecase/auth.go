@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
 
@@ -120,12 +121,20 @@ func (uc *authUsecase) Register(ctx context.Context, input RegisterParams) (*Aut
 		}
 	}
 
-	existing, _ := uc.userRepo.GetByUsername(ctx, input.Username)
+	existing, err := uc.userRepo.GetByUsername(ctx, input.Username)
+	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
+		logger.Error("register: check username failed", "error", err.Error())
+		return nil, domain.ErrInternal
+	}
 	if existing != nil {
 		return nil, domain.ErrUserAlreadyExists
 	}
 
-	existing, _ = uc.userRepo.GetByEmail(ctx, input.Email)
+	existing, err = uc.userRepo.GetByEmail(ctx, input.Email)
+	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
+		logger.Error("register: check email failed", "error", err.Error())
+		return nil, domain.ErrInternal
+	}
 	if existing != nil {
 		return nil, domain.ErrUserAlreadyExists
 	}
@@ -175,7 +184,11 @@ func (uc *authUsecase) Register(ctx context.Context, input RegisterParams) (*Aut
 		systemRoleName = user.SystemRole.Name
 	}
 
-	permissions, _ := uc.collectPermissions(ctx, systemRoleName)
+	permissions, err := uc.collectPermissions(ctx, systemRoleName)
+	if err != nil {
+		logger.Error("register: collect permissions failed", "error", err.Error())
+		return nil, domain.ErrInternal
+	}
 
 	sessionID := uuid.New().String()
 	refreshTokenStr, err := uc.tokenSigner.SignRefreshToken(user.ID, sessionID)
@@ -234,7 +247,11 @@ func (uc *authUsecase) Login(ctx context.Context, input LoginParams) (*LoginResu
 	user, err := uc.userRepo.GetByUsername(ctx, input.Username)
 	if err != nil {
 		uc.auditLogin(ctx, 0, input.Username, false, input.IPAddress, input.UserAgent, "user not found")
-		return nil, domain.ErrInvalidCredentials
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return nil, domain.ErrInvalidCredentials
+		}
+		logger.Error("login: get user failed", "error", err.Error())
+		return nil, domain.ErrInternal
 	}
 
 	if err := uc.passwordHasher.Compare(user.Password, input.Password); err != nil {
@@ -254,6 +271,7 @@ func (uc *authUsecase) Login(ctx context.Context, input LoginParams) (*LoginResu
 
 	permissions, err := uc.collectPermissions(ctx, systemRoleName)
 	if err != nil {
+		logger.Error("login: collect permissions failed", "error", err.Error())
 		return nil, domain.ErrInternal
 	}
 
@@ -283,7 +301,9 @@ func (uc *authUsecase) Login(ctx context.Context, input LoginParams) (*LoginResu
 	if roleID != 0 {
 		session.ActiveUserRoleID = roleID
 		session.UpdatedAt = now
-		uc.sessionStore.Update(ctx, session)
+		if err := uc.sessionStore.Update(ctx, session); err != nil {
+			logger.Error("login: update session with active role failed", "error", err.Error())
+		}
 	}
 
 	claims := port.TokenClaims{
@@ -324,7 +344,11 @@ func (uc *authUsecase) RefreshToken(ctx context.Context, input RefreshTokenParam
 
 	session, err := uc.sessionStore.Get(ctx, sessionID)
 	if err != nil {
-		return nil, domain.ErrInvalidRefreshToken
+		if errors.Is(err, domain.ErrSessionNotFound) {
+			return nil, domain.ErrInvalidRefreshToken
+		}
+		logger.Error("refresh: get session failed", "error", err.Error())
+		return nil, domain.ErrInternal
 	}
 
 	if session.RefreshTokenHash != uc.tokenHasher.HashToken(input.RefreshToken) {
@@ -345,7 +369,11 @@ func (uc *authUsecase) RefreshToken(ctx context.Context, input RefreshTokenParam
 
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil {
-		return nil, domain.ErrInvalidRefreshToken
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return nil, domain.ErrInvalidRefreshToken
+		}
+		logger.Error("refresh: get user failed", "error", err.Error())
+		return nil, domain.ErrInternal
 	}
 
 	if user.Status == domain.UserStatusDisabled {
@@ -359,6 +387,7 @@ func (uc *authUsecase) RefreshToken(ctx context.Context, input RefreshTokenParam
 
 	permissions, err := uc.collectPermissions(ctx, systemRoleName)
 	if err != nil {
+		logger.Error("refresh: collect permissions failed", "error", err.Error())
 		return nil, domain.ErrInternal
 	}
 
@@ -372,6 +401,7 @@ func (uc *authUsecase) RefreshToken(ctx context.Context, input RefreshTokenParam
 	session.LastUsedAt = now
 	session.UpdatedAt = now
 	if err := uc.sessionStore.Update(ctx, session); err != nil {
+		logger.Error("refresh: update session failed", "error", err.Error())
 		return nil, domain.ErrInternal
 	}
 
@@ -413,7 +443,11 @@ func (uc *authUsecase) SwitchContext(ctx context.Context, sessionID string, user
 
 	user, err := uc.userRepo.GetByID(ctx, session.UserID)
 	if err != nil {
-		return nil, domain.ErrForbidden
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return nil, domain.ErrForbidden
+		}
+		logger.Error("switch context: get user failed", "error", err.Error())
+		return nil, domain.ErrInternal
 	}
 
 	var found *domain.UserRoleAssignment
@@ -439,7 +473,11 @@ func (uc *authUsecase) SwitchContext(ctx context.Context, sessionID string, user
 		systemRoleName = user.SystemRole.Name
 	}
 
-	permissions, _ := uc.collectPermissions(ctx, systemRoleName)
+	permissions, err := uc.collectPermissions(ctx, systemRoleName)
+	if err != nil {
+		logger.Error("switch context: collect permissions failed", "error", err.Error())
+		return nil, domain.ErrInternal
+	}
 
 	var branchID int64
 	if found.BranchID != nil {
@@ -485,7 +523,10 @@ func (uc *authUsecase) Introspect(ctx context.Context, tokenString string) (*Int
 		return &IntrospectResult{Active: false}, nil
 	}
 
-	staff, _ := uc.staffRepo.ListByUserID(ctx, claims.UserID)
+	staff, err := uc.staffRepo.ListByUserID(ctx, claims.UserID)
+	if err != nil {
+		return &IntrospectResult{Active: false}, nil
+	}
 
 	return &IntrospectResult{
 		Active:      true,
@@ -505,7 +546,11 @@ func (uc *authUsecase) ValidateToken(ctx context.Context, tokenString string) (*
 
 	user, err := uc.cacheGet(ctx, claims.UserID)
 	if err != nil {
-		return nil, domain.ErrInvalidToken
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return nil, domain.ErrInvalidToken
+		}
+		logger.Error("validate token: get user failed", "error", err.Error())
+		return nil, domain.ErrInternal
 	}
 
 	if user.Status == domain.UserStatusDisabled {
@@ -515,7 +560,11 @@ func (uc *authUsecase) ValidateToken(ctx context.Context, tokenString string) (*
 	if claims.SessionID != "" {
 		session, err := uc.sessionStore.Get(ctx, claims.SessionID)
 		if err != nil {
-			return nil, domain.ErrInvalidToken
+			if errors.Is(err, domain.ErrSessionNotFound) {
+				return nil, domain.ErrInvalidToken
+			}
+			logger.Error("validate token: get session failed", "error", err.Error())
+			return nil, domain.ErrInternal
 		}
 		if session.RevokedAt != nil {
 			return nil, domain.ErrInvalidToken
@@ -544,7 +593,7 @@ func (uc *authUsecase) collectPermissions(ctx context.Context, roleName string) 
 	}
 	role, err := uc.roleRepo.GetByName(ctx, roleName)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 	return role.Permissions, nil
 }
