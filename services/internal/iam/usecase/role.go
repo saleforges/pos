@@ -92,7 +92,7 @@ func (uc *roleUsecase) AssignRole(ctx context.Context, userID int64, roleName st
 				return domain.ErrInvalidRole
 			}
 			logger.Error("assign role: get by name failed", "error", err.Error())
-			return domain.ErrInvalidRole
+			return domain.ErrInternal
 		}
 	}
 	return uc.userRepo.AddRole(ctx, userID, roleName)
