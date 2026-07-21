@@ -10,16 +10,15 @@
     jwt_key_id: "{{ vault_jwt_key_id | default('iam-key-1') }}"
     db_url: "postgres://pos:{{ vault_postgres_password }}@postgres:5432/pos?sslmode=disable"
   tasks:
-    - name: Login to GHCR
-      community.docker.docker_login:
-        registry_url: https://ghcr.io
-        username: "{{ ghcr_username }}"
-        password: "{{ ghcr_token }}"
+    - name: Login to GHCR (fresh)
+      shell: |
+        docker logout ghcr.io 2>/dev/null || true
+        echo "{{ ghcr_token }}" | docker login ghcr.io -u "{{ ghcr_username }}" --password-stdin
       when: ghcr_username != '' and ghcr_token != ''
       no_log: true
 
     - name: Pull IAM image via CLI
-      command: docker pull ghcr.io/saleforges/pos/iam-service:{{ image_tag }}
+      shell: docker pull ghcr.io/saleforges/pos/iam-service:{{ image_tag }}
       when: ghcr_username != '' and ghcr_token != ''
       changed_when: false
 
