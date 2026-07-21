@@ -26,16 +26,12 @@ func NewRouter(
 	authService usecase.AuthUsecase,
 	hasPermissionFunc func(*port.TokenClaims, domain.Permission) bool,
 	jwksProvider port.JWKSProvider,
+	allowedOrigins []string,
 ) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
 
-	e.Pre(middleware.CORSMiddleware([]string{
-		"http://localhost:3000",
-		"http://localhost:5173",
-		"http://127.0.0.1:3000",
-		"http://127.0.0.1:5173",
-	}))
+	e.Pre(middleware.CORSMiddleware(allowedOrigins))
 
 	e.Use(otelecho.Middleware("iam-service"))
 	e.Use(otel.LoggingMiddleware())

@@ -32,6 +32,8 @@ type Config struct {
 	RedisAddr         string
 	TokenHasherSecret string
 	SecureCookies     bool
+	// AllowedOrigins controls CORS. nil or empty = no cross-origin access allowed.
+	AllowedOrigins    []string
 }
 
 type App struct {
@@ -175,7 +177,7 @@ func New(cfg Config) (*App, error) {
 	userHandler := httpuser.NewHandler(authUsecase, userUsecase)
 	roleHandler := httprole.NewHandler(roleUsecase)
 	permHandler := httpperm.NewHandler(permUsecase)
-	router := httptransport.NewRouter(authHandler, userHandler, roleHandler, permHandler, authUsecase, authUsecase.HasPermission, tokenSigner)
+	router := httptransport.NewRouter(authHandler, userHandler, roleHandler, permHandler, authUsecase, authUsecase.HasPermission, tokenSigner, cfg.AllowedOrigins)
 
 	return &App{router: router, otelShutdown: otelShutdown}, nil
 }

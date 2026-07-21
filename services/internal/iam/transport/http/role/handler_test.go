@@ -85,7 +85,9 @@ func TestListRoles(t *testing.T) {
 		if rec.Code != http.StatusOK { t.Errorf("expected 200, got %d", rec.Code) }
 
 		var wrapped struct { Data []domain.Role `json:"data"` }
-		json.Unmarshal(rec.Body.Bytes(), &wrapped)
+		if err := json.Unmarshal(rec.Body.Bytes(), &wrapped); err != nil {
+			t.Fatalf("bad response: %v", err)
+		}
 		if len(wrapped.Data) != 1 { t.Errorf("expected 1 role, got %d", len(wrapped.Data)) }
 	})
 }
@@ -107,7 +109,9 @@ func TestCreateRole(t *testing.T) {
 		if rec.Code != http.StatusCreated { t.Errorf("expected 201, got %d", rec.Code) }
 
 		var wrapped struct { Data domain.Role `json:"data"` }
-		json.Unmarshal(rec.Body.Bytes(), &wrapped)
+		if err := json.Unmarshal(rec.Body.Bytes(), &wrapped); err != nil {
+			t.Fatalf("bad response: %v", err)
+		}
 		if wrapped.Data.Name != "custom_role" { t.Errorf("expected name 'custom_role', got %q", wrapped.Data.Name) }
 	})
 

@@ -22,13 +22,26 @@ func main() {
 	addr := getEnv("HTTP_ADDR", ":8080")
 	jwksURL := deriveJWKSURL(addr)
 	logger.Info("IAM service starting", "addr", addr, "jwks_url", jwksURL)
+
+	originsStr := os.Getenv("CORS_ALLOWED_ORIGINS")
+	var allowedOrigins []string
+	if originsStr != "" {
+		for _, o := range strings.Split(originsStr, ",") {
+			if trimmed := strings.TrimSpace(o); trimmed != "" {
+				allowedOrigins = append(allowedOrigins, trimmed)
+			}
+		}
+	}
+
 	app, err := bootstrap.New(bootstrap.Config{
 		JWTPrivateKeyPEM:  getEnv("JWT_PRIVATE_KEY_PEM", ""),
 		JWTKeyID:          getEnv("JWT_KEY_ID", "iam-key-1"),
 		DatabaseURL:       os.Getenv("DATABASE_URL"),
 		OtelEndpoint:      os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+		RedisAddr:         os.Getenv("REDIS_ADDR"),
 		TokenHasherSecret: getEnv("TOKEN_HASHER_SECRET", ""),
 		SecureCookies:     os.Getenv("SECURE_COOKIES") != "false",
+		AllowedOrigins:    allowedOrigins,
 	})
 	if err != nil {
 		logger.Error("bootstrap failed", "error", err.Error())

@@ -349,7 +349,9 @@ func TestIntrospect(t *testing.T) {
 		if rec.Code != http.StatusOK { t.Errorf("expected 200, got %d", rec.Code) }
 
 		var wrapped struct { Data *usecase.IntrospectResult `json:"data"` }
-		json.Unmarshal(rec.Body.Bytes(), &wrapped)
+		if err := json.Unmarshal(rec.Body.Bytes(), &wrapped); err != nil {
+			t.Fatalf("bad response: %v", err)
+		}
 		if wrapped.Data == nil || !wrapped.Data.Active { t.Error("expected active result") }
 	})
 
