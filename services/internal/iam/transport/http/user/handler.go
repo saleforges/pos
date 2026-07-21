@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"regexp"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
@@ -12,9 +11,6 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/transport/http/common"
 	"github.com/saleforge/pos/services/internal/iam/usecase"
 )
-
-// emailRegex is a basic email format validator.
-var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 
 type Handler struct {
 	authService usecase.AuthUsecase
@@ -55,7 +51,7 @@ func (h *Handler) CreateUser(c echo.Context) error {
 	if req.Username == "" {
 		return common.WriteError(c, http.StatusBadRequest, common.ErrMissingFields)
 	}
-	if req.Email != "" && !emailRegex.MatchString(req.Email) {
+	if req.Email != "" && !common.EmailRegex.MatchString(req.Email) {
 		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidEmail)
 	}
 

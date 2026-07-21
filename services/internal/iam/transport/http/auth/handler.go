@@ -3,7 +3,6 @@ package auth
 import (
 	"errors"
 	"net/http"
-	"regexp"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/iam/domain"
@@ -12,9 +11,6 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/usecase"
 	"github.com/saleforge/pos/services/pkg/logger"
 )
-
-// emailRegex is a basic email format validator.
-var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 
 type Handler struct {
 	authService   usecase.AuthUsecase
@@ -36,7 +32,7 @@ func (h *Handler) Register(c echo.Context) error {
 		return common.WriteError(c, http.StatusBadRequest, common.ErrMissingFields)
 	}
 
-	if !emailRegex.MatchString(req.Email) {
+	if !common.EmailRegex.MatchString(req.Email) {
 		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidEmail)
 	}
 
@@ -198,7 +194,11 @@ func (h *Handler) SetDefaultRole(c echo.Context) error {
 	}
 
 	if err := h.authService.SetDefaultRole(c.Request().Context(), claims.UserID, req.RoleID); err != nil {
-		return common.WriteError(c, http.StatusInternalServerError, err)
+		if errors.Is(err, domain.ErrInvalidRole) {
+			return common.WriteError(c, http.StatusNotFound, err)
+		}
+		logger.Error("set default role failed", "error", err.Error())
+		return common.WriteError(c, http.StatusInternalServerError, domain.ErrInternal)
 	}
 
 	return common.WriteJSON(c, http.StatusOK, nil)

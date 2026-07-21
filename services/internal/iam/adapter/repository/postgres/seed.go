@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"sort"
 	"time"
 
 	"github.com/saleforge/pos/services/internal/iam/domain"
@@ -28,7 +29,13 @@ func devPasswordHash(password string) string {
 func defaultPermissions() []string {
 	seen := make(map[string]bool)
 	var perms []string
-	for _, role := range domain.DefaultRoles {
+	keys := make([]string, 0, len(domain.DefaultRoles))
+	for k := range domain.DefaultRoles {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		role := domain.DefaultRoles[k]
 		for _, p := range role.Permissions {
 			s := string(p)
 			if !seen[s] {
@@ -51,7 +58,13 @@ func seedRoles() []struct {
 		Description string
 		Permissions []string
 	}
-	for _, r := range domain.DefaultRoles {
+	keys := make([]string, 0, len(domain.DefaultRoles))
+	for k := range domain.DefaultRoles {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		r := domain.DefaultRoles[k]
 		perms := make([]string, len(r.Permissions))
 		for i, p := range r.Permissions {
 			perms[i] = string(p)
