@@ -15,6 +15,7 @@ on:
       - "services/go.mod"
       - "services/go.sum"
       - "services/Dockerfile.merchant"
+      - "deploy/ansible/playbooks/deploy-merchant.yml"
       - ".github/workflows/merchant.yml"
   pull_request:
     branches:
@@ -50,7 +51,7 @@ jobs:
           path: services/coverage.out
 
   build:
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development')
+    if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development')) || github.event_name == 'workflow_dispatch'
     needs: [test]
     runs-on: ubuntu-latest
     permissions:
@@ -71,9 +72,12 @@ jobs:
           docker push $IMAGE:${{ github.sha }}
 
   deploy-dev:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/development'
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/development') || github.event_name == 'workflow_dispatch'
     needs: [build]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
       - uses: webfactory/ssh-agent@v0.10.0
