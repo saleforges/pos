@@ -8,10 +8,11 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/domain"
 )
 
-func TestAuthUsecase_CreateRole(t *testing.T) {
+func TestRoleUsecase_CreateRole(t *testing.T) {
 	t.Parallel()
 
-	uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
+	roleRepo := &mockRoleRepo{}
+	uc := NewRoleUsecase(roleRepo, &mockUserRepo{})
 
 	role, err := uc.CreateRole(context.Background(), CreateRoleParams{
 		Name:        "custom_role",
@@ -26,29 +27,27 @@ func TestAuthUsecase_CreateRole(t *testing.T) {
 	}
 
 	// Creating a default role should fail
-	_, err = uc.CreateRole(context.Background(), CreateRoleParams{
-		Name: "admin",
-	})
+	_, err = uc.CreateRole(context.Background(), CreateRoleParams{Name: "admin"})
 	if !errors.Is(err, domain.ErrInvalidRole) {
 		t.Errorf("expected ErrInvalidRole for default role, got %v", err)
 	}
 }
 
-func TestAuthUsecase_GetRole(t *testing.T) {
+func TestRoleUsecase_GetRole(t *testing.T) {
 	t.Parallel()
 
-	uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{
+	uc := NewRoleUsecase(&mockRoleRepo{
 		roles: map[int64]*domain.Role{
 			1: {ID: 1, Name: "viewer"},
 		},
-	}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
+	}, &mockUserRepo{})
 
 	role, err := uc.GetRole(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if role.Name != "viewer" {
-		t.Errorf("expected role name viewer, got %s", role.Name)
+		t.Errorf("expected name viewer, got %s", role.Name)
 	}
 
 	_, err = uc.GetRole(context.Background(), 999)
@@ -57,34 +56,28 @@ func TestAuthUsecase_GetRole(t *testing.T) {
 	}
 }
 
-func TestAuthUsecase_ListRoles(t *testing.T) {
+func TestRoleUsecase_ListRoles(t *testing.T) {
 	t.Parallel()
 
-	uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
+	uc := NewRoleUsecase(&mockRoleRepo{}, &mockUserRepo{})
 	roles, err := uc.ListRoles(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// Mock returns nil slice, which is acceptable
-	if roles != nil {
-		t.Logf("got %d roles", len(roles))
-	}
+	_ = roles
 }
 
-func TestAuthUsecase_UpdateRole(t *testing.T) {
+func TestRoleUsecase_UpdateRole(t *testing.T) {
 	t.Parallel()
 
 	desc := "updated description"
-	uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{
+	uc := NewRoleUsecase(&mockRoleRepo{
 		roles: map[int64]*domain.Role{
 			1: {ID: 1, Name: "custom_role", Description: "old description"},
 		},
-	}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
+	}, &mockUserRepo{})
 
-	role, err := uc.UpdateRole(context.Background(), UpdateRoleParams{
-		ID:          1,
-		Description: &desc,
-	})
+	role, err := uc.UpdateRole(context.Background(), UpdateRoleParams{ID: 1, Description: &desc})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -93,71 +86,71 @@ func TestAuthUsecase_UpdateRole(t *testing.T) {
 	}
 }
 
-func TestAuthUsecase_DeleteRole(t *testing.T) {
+func TestRoleUsecase_DeleteRole(t *testing.T) {
 	t.Parallel()
 
-	uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{
+	uc := NewRoleUsecase(&mockRoleRepo{
 		roles: map[int64]*domain.Role{
 			1: {ID: 1, Name: "custom_role"},
 			2: {ID: 2, Name: "admin", IsSystem: true},
 		},
-	}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
+	}, &mockUserRepo{})
 
-	// Deleting a custom role should succeed
 	if err := uc.DeleteRole(context.Background(), 1); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Deleting a non-existent role should fail
 	if err := uc.DeleteRole(context.Background(), 999); err == nil {
 		t.Fatal("expected error for non-existent role")
 	}
 }
 
-func TestAuthUsecase_AssignPermission(t *testing.T) {
+func TestRoleUsecase_AssignRemoveRole(t *testing.T) {
 	t.Parallel()
 
-	uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
-	if err := uc.AssignPermission(context.Background(), 1, domain.UserRead); err != nil {
+	uc := NewRoleUsecase(&mockRoleRepo{}, &mockUserRepo{})
+
+	if err := uc.AssignRole(context.Background(), 1, "viewer"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if err := uc.RemoveRole(context.Background(), 1, "viewer"); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-func TestAuthUsecase_RemovePermission(t *testing.T) {
+func TestRoleUsecase_AssignRemovePermission(t *testing.T) {
 	t.Parallel()
 
-	uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
+	uc := NewRoleUsecase(&mockRoleRepo{}, &mockUserRepo{})
+
+	if err := uc.AssignPermission(context.Background(), 1, domain.UserRead); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if err := uc.RemovePermission(context.Background(), 1, domain.UserRead); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-func TestAuthUsecase_ListPermissions(t *testing.T) {
+func TestPermissionUsecase_ListPermissions(t *testing.T) {
 	t.Parallel()
 
-	uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
+	uc := NewPermissionUsecase(&mockPermissionRepo{})
 	perms, err := uc.ListPermissions(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// Mock returns nil, which is acceptable
-	if perms != nil {
-		t.Logf("got %d permissions", len(perms))
-	}
+	_ = perms
 }
 
-func TestAuthUsecase_CreateDeletePermission(t *testing.T) {
+func TestPermissionUsecase_CreateDeletePermission(t *testing.T) {
 	t.Parallel()
 
-	uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
+	uc := NewPermissionUsecase(&mockPermissionRepo{})
 
-	err := uc.CreatePermission(context.Background(), domain.Permission("custom.action"))
-	if err != nil {
+	if err := uc.CreatePermission(context.Background(), domain.Permission("custom.action")); err != nil {
 		t.Fatalf("CreatePermission failed: %v", err)
 	}
-
-	err = uc.DeletePermission(context.Background(), domain.Permission("custom.action"))
-	if err != nil {
+	if err := uc.DeletePermission(context.Background(), domain.Permission("custom.action")); err != nil {
 		t.Fatalf("DeletePermission failed: %v", err)
 	}
 }

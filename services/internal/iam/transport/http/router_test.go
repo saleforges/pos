@@ -54,7 +54,6 @@ type mockRoleRepo struct{}
 
 func (m *mockRoleRepo) Create(_ context.Context, role *domain.Role) error {
 	role.ID = 1
-	// Preserve the name and other fields already set by the caller
 	return nil
 }
 func (m *mockRoleRepo) GetByID(_ context.Context, id int64) (*domain.Role, error) {
@@ -147,7 +146,7 @@ func (m *mockTokenSigner) VerifyRefreshToken(_ string) (int64, string, error) {
 func TestHandler_Routes_Respond(t *testing.T) {
 	t.Parallel()
 
-	uc := usecase.NewAuthUsecase(
+	authService := usecase.NewAuthUsecase(
 		&mockUserRepo{},
 		&mockRoleRepo{},
 		&mockPermissionRepo{},
@@ -161,10 +160,22 @@ func TestHandler_Routes_Respond(t *testing.T) {
 		nil,
 	)
 
-	authHandler := auth.NewHandler(uc, uc, true)
-	userHandler := user.NewHandler(uc)
-	roleHandler := role.NewHandler(uc)
-	permHandler := permission.NewHandler(uc)
+	userService := usecase.NewUserUsecase(
+		&mockUserRepo{},
+		&mockStaffRepo{},
+		&mockEventPublisher{},
+		nil,
+	)
+
+	roleService := usecase.NewRoleUsecase(
+		&mockRoleRepo{},
+		&mockUserRepo{},
+	)
+
+	authHandler := auth.NewHandler(authService, userService, true)
+	userHandler := user.NewHandler(authService, userService)
+	roleHandler := role.NewHandler(roleService)
+	permHandler := permission.NewHandler(usecase.NewPermissionUsecase(&mockPermissionRepo{}))
 
 	e := echo.New()
 
@@ -279,7 +290,6 @@ func TestHandler_Routes_Respond(t *testing.T) {
 			t.Errorf("expected 201, got %d: %s", rec.Code, rec.Body.String())
 		}
 
-		// httputil.Success wraps in {"message":"success","data":{...}}
 		var wrapped struct {
 			Data domain.Role `json:"data"`
 		}

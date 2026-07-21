@@ -14,46 +14,66 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/usecase"
 )
 
-type mockUserService struct {
+type mockAuthSvc struct {
+	registerFn   func(ctx context.Context, params usecase.RegisterParams) (*usecase.AuthResult, error)
+}
+
+func (m *mockAuthSvc) Register(ctx context.Context, params usecase.RegisterParams) (*usecase.AuthResult, error) {
+	if m.registerFn != nil { return m.registerFn(ctx, params) }
+	return &usecase.AuthResult{TokenPair: port.TokenPair{AccessToken: "at", RefreshToken: "rt", ExpiresIn: 3600}}, nil
+}
+func (m *mockAuthSvc) Login(ctx context.Context, params usecase.LoginParams) (*usecase.LoginResult, error) {
+	return &usecase.LoginResult{TokenPair: port.TokenPair{AccessToken: "at", RefreshToken: "rt", ExpiresIn: 3600}}, nil
+}
+func (m *mockAuthSvc) RefreshToken(ctx context.Context, params usecase.RefreshTokenParams) (*usecase.LoginResult, error) {
+	return &usecase.LoginResult{TokenPair: port.TokenPair{AccessToken: "at", RefreshToken: "rt", ExpiresIn: 3600}}, nil
+}
+func (m *mockAuthSvc) Logout(ctx context.Context, params usecase.LogoutParams) error { return nil }
+func (m *mockAuthSvc) SwitchContext(ctx context.Context, sessionID string, userRoleID int64) (*usecase.AuthResult, error) {
+	return &usecase.AuthResult{TokenPair: port.TokenPair{AccessToken: "at", ExpiresIn: 3600}}, nil
+}
+func (m *mockAuthSvc) SetDefaultRole(ctx context.Context, userID, roleID int64) error { return nil }
+func (m *mockAuthSvc) Introspect(ctx context.Context, tokenString string) (*usecase.IntrospectResult, error) {
+	return &usecase.IntrospectResult{Active: true, UserID: 1}, nil
+}
+func (m *mockAuthSvc) ValidateToken(ctx context.Context, tokenString string) (*port.TokenClaims, error) {
+	return &port.TokenClaims{UserID: 1, SessionID: "sess"}, nil
+}
+func (m *mockAuthSvc) HasPermission(claims *port.TokenClaims, required domain.Permission) bool { return true }
+
+type mockUserSvc struct {
 	listUsersFn  func(ctx context.Context, offset, limit int) ([]domain.User, error)
 	getUserFn    func(ctx context.Context, id int64) (*domain.User, error)
-	registerFn   func(ctx context.Context, params usecase.RegisterParams) (*usecase.AuthResult, error)
 	updateUserFn func(ctx context.Context, params usecase.UpdateUserParams) (*domain.User, error)
 	deleteUserFn func(ctx context.Context, id int64) error
 }
 
-func (m *mockUserService) Register(ctx context.Context, params usecase.RegisterParams) (*usecase.AuthResult, error) {
-	if m.registerFn != nil { return m.registerFn(ctx, params) }
-	return &usecase.AuthResult{TokenPair: port.TokenPair{AccessToken: "at", RefreshToken: "rt", ExpiresIn: 3600}}, nil
-}
-func (m *mockUserService) ListUsers(ctx context.Context, offset, limit int) ([]domain.User, error) {
+func (m *mockUserSvc) ListUsers(ctx context.Context, offset, limit int) ([]domain.User, error) {
 	if m.listUsersFn != nil { return m.listUsersFn(ctx, offset, limit) }
 	return []domain.User{{ID: 1, Username: "u1"}, {ID: 2, Username: "u2"}}, nil
 }
-func (m *mockUserService) GetUser(ctx context.Context, id int64) (*domain.User, error) {
+func (m *mockUserSvc) GetUser(ctx context.Context, id int64) (*domain.User, error) {
 	if m.getUserFn != nil { return m.getUserFn(ctx, id) }
 	return &domain.User{ID: id, Username: "test", Email: "t@t.com", Status: domain.UserStatusActive}, nil
 }
-func (m *mockUserService) UpdateUser(ctx context.Context, params usecase.UpdateUserParams) (*domain.User, error) {
+func (m *mockUserSvc) UpdateUser(ctx context.Context, params usecase.UpdateUserParams) (*domain.User, error) {
 	if m.updateUserFn != nil { return m.updateUserFn(ctx, params) }
 	return &domain.User{ID: params.ID, Username: *params.Username}, nil
 }
-func (m *mockUserService) DeleteUser(ctx context.Context, id int64) error {
+func (m *mockUserSvc) DeleteUser(ctx context.Context, id int64) error {
 	if m.deleteUserFn != nil { return m.deleteUserFn(ctx, id) }
 	return nil
 }
-func (m *mockUserService) AssignRole(ctx context.Context, userID int64, roleName string) error { return nil }
-func (m *mockUserService) RemoveRole(ctx context.Context, userID int64, roleName string) error { return nil }
-func (m *mockUserService) ListStaff(ctx context.Context, userID int64) ([]domain.UserRoleAssignment, error) { return nil, nil }
+func (m *mockUserSvc) ListStaff(ctx context.Context, userID int64) ([]domain.UserRoleAssignment, error) { return nil, nil }
 
 func newTestHandler(us usecase.UserUsecase) *Handler {
-	return NewHandler(us)
+	return NewHandler(&mockAuthSvc{}, us)
 }
 
 func TestListUsers(t *testing.T) {
 	t.Parallel()
 
-	h := newTestHandler(&mockUserService{})
+	h := newTestHandler(&mockUserSvc{})
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodGet, "/users", nil)
 	rec := httptest.NewRecorder()
@@ -74,7 +94,7 @@ func TestGetUser(t *testing.T) {
 	t.Parallel()
 
 	t.Run("existing user returns 200", func(t *testing.T) {
-		h := newTestHandler(&mockUserService{})
+		h := newTestHandler(&mockUserSvc{})
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodGet, "/users/1", nil)
 		rec := httptest.NewRecorder()
@@ -88,7 +108,7 @@ func TestGetUser(t *testing.T) {
 	})
 
 	t.Run("non-existent user returns 404", func(t *testing.T) {
-		us := &mockUserService{getUserFn: func(_ context.Context, _ int64) (*domain.User, error) {
+		us := &mockUserSvc{getUserFn: func(_ context.Context, _ int64) (*domain.User, error) {
 			return nil, domain.ErrUserNotFound
 		}}
 		h := newTestHandler(us)
@@ -105,7 +125,7 @@ func TestGetUser(t *testing.T) {
 	})
 
 	t.Run("invalid id returns 400", func(t *testing.T) {
-		h := newTestHandler(&mockUserService{})
+		h := newTestHandler(&mockUserSvc{})
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodGet, "/users/abc", nil)
 		rec := httptest.NewRecorder()
@@ -123,7 +143,7 @@ func TestCreateUser(t *testing.T) {
 	t.Parallel()
 
 	t.Run("valid request returns 201", func(t *testing.T) {
-		h := newTestHandler(&mockUserService{})
+		h := newTestHandler(&mockUserSvc{})
 		e := echo.New()
 		body := `{"username":"newu","email":"new@t.com","password":"Secure1pass","roles":["viewer"]}`
 		req := httptest.NewRequest(http.MethodPost, "/users", strings.NewReader(body))
@@ -137,10 +157,9 @@ func TestCreateUser(t *testing.T) {
 	})
 
 	t.Run("password policy error maps to 400", func(t *testing.T) {
-		us := &mockUserService{registerFn: func(_ context.Context, _ usecase.RegisterParams) (*usecase.AuthResult, error) {
+		h := NewHandler(&mockAuthSvc{registerFn: func(_ context.Context, _ usecase.RegisterParams) (*usecase.AuthResult, error) {
 			return nil, domain.ErrPasswordPolicy
-		}}
-		h := newTestHandler(us)
+		}}, &mockUserSvc{})
 		e := echo.New()
 		body := `{"username":"newu","email":"new@t.com","password":"weak"}`
 		req := httptest.NewRequest(http.MethodPost, "/users", strings.NewReader(body))
@@ -154,10 +173,9 @@ func TestCreateUser(t *testing.T) {
 	})
 
 	t.Run("duplicate user maps to 409", func(t *testing.T) {
-		us := &mockUserService{registerFn: func(_ context.Context, _ usecase.RegisterParams) (*usecase.AuthResult, error) {
+		h := NewHandler(&mockAuthSvc{registerFn: func(_ context.Context, _ usecase.RegisterParams) (*usecase.AuthResult, error) {
 			return nil, domain.ErrUserAlreadyExists
-		}}
-		h := newTestHandler(us)
+		}}, &mockUserSvc{})
 		e := echo.New()
 		body := `{"username":"dup","email":"dup@t.com","password":"Secure1pass"}`
 		req := httptest.NewRequest(http.MethodPost, "/users", strings.NewReader(body))
@@ -175,7 +193,7 @@ func TestUpdateUser(t *testing.T) {
 	t.Parallel()
 
 	t.Run("valid update returns 200", func(t *testing.T) {
-		h := newTestHandler(&mockUserService{})
+		h := newTestHandler(&mockUserSvc{})
 		e := echo.New()
 		body := `{"username":"updated"}`
 		req := httptest.NewRequest(http.MethodPatch, "/users/1", strings.NewReader(body))
@@ -191,7 +209,7 @@ func TestUpdateUser(t *testing.T) {
 	})
 
 	t.Run("user not found maps to 404", func(t *testing.T) {
-		us := &mockUserService{updateUserFn: func(_ context.Context, _ usecase.UpdateUserParams) (*domain.User, error) {
+		us := &mockUserSvc{updateUserFn: func(_ context.Context, _ usecase.UpdateUserParams) (*domain.User, error) {
 			return nil, domain.ErrUserNotFound
 		}}
 		h := newTestHandler(us)
@@ -214,7 +232,7 @@ func TestDeleteUser(t *testing.T) {
 	t.Parallel()
 
 	t.Run("existing user returns 200", func(t *testing.T) {
-		h := newTestHandler(&mockUserService{})
+		h := newTestHandler(&mockUserSvc{})
 		e := echo.New()
 		req := httptest.NewRequest(http.MethodDelete, "/users/1", nil)
 		rec := httptest.NewRecorder()

@@ -12,11 +12,12 @@ import (
 )
 
 type Handler struct {
+	authService usecase.AuthUsecase
 	userService usecase.UserUsecase
 }
 
-func NewHandler(userService usecase.UserUsecase) *Handler {
-	return &Handler{userService: userService}
+func NewHandler(authService usecase.AuthUsecase, userService usecase.UserUsecase) *Handler {
+	return &Handler{authService: authService, userService: userService}
 }
 
 func (h *Handler) ListUsers(c echo.Context) error {
@@ -46,7 +47,7 @@ func (h *Handler) CreateUser(c echo.Context) error {
 		return common.WriteError(c, http.StatusBadRequest, common.ErrInvalidBody)
 	}
 
-	result, err := h.userService.Register(c.Request().Context(), usecase.RegisterParams{
+	result, err := h.authService.Register(c.Request().Context(), usecase.RegisterParams{
 		Username: req.Username,
 		Email:    req.Email,
 		Password: req.Password,

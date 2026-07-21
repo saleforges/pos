@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/saleforge/pos/services/internal/iam/domain"
+	"github.com/saleforge/pos/services/internal/iam/port"
+	"github.com/saleforge/pos/services/internal/iam/port/repository"
 )
 
 type UpdateUserParams struct {
@@ -14,20 +16,42 @@ type UpdateUserParams struct {
 	Status   *domain.UserStatus
 }
 
-func (uc *authUsecase) ListUsers(ctx context.Context, offset, limit int) ([]domain.User, error) {
+var _ UserUsecase = (*userUsecase)(nil)
+
+type userUsecase struct {
+	userRepo       repository.UserRepository
+	staffRepo      repository.StaffRepository
+	eventPublisher port.EventPublisher
+	userCache      port.UserCache
+}
+
+func NewUserUsecase(
+	userRepo repository.UserRepository,
+	staffRepo repository.StaffRepository,
+	eventPublisher port.EventPublisher,
+	userCache port.UserCache,
+) *userUsecase {
+	return &userUsecase{
+		userRepo:       userRepo,
+		staffRepo:      staffRepo,
+		eventPublisher: eventPublisher,
+		userCache:      userCache,
+	}
+}
+
+func (uc *userUsecase) ListUsers(ctx context.Context, offset, limit int) ([]domain.User, error) {
 	return uc.userRepo.List(ctx, offset, limit)
 }
 
-func (uc *authUsecase) GetUser(ctx context.Context, id int64) (*domain.User, error) {
+func (uc *userUsecase) GetUser(ctx context.Context, id int64) (*domain.User, error) {
 	return uc.userRepo.GetByID(ctx, id)
 }
 
-func (uc *authUsecase) UpdateUser(ctx context.Context, input UpdateUserParams) (*domain.User, error) {
+func (uc *userUsecase) UpdateUser(ctx context.Context, input UpdateUserParams) (*domain.User, error) {
 	user, err := uc.userRepo.GetByID(ctx, input.ID)
 	if err != nil {
 		return nil, domain.ErrUserNotFound
 	}
-
 	if input.Username != nil {
 		user.Username = *input.Username
 	}
@@ -37,72 +61,24 @@ func (uc *authUsecase) UpdateUser(ctx context.Context, input UpdateUserParams) (
 	if input.Status != nil {
 		user.Status = *input.Status
 	}
-
 	user.UpdatedAt = time.Now().UTC()
-
 	if err := uc.userRepo.Update(ctx, user); err != nil {
 		return nil, domain.ErrInternal
 	}
-
-	uc.cacheDel(ctx, user.ID)
-
-	uc.publishEvent(ctx, "UserUpdated", map[string]interface{}{
-		"user_id": user.ID,
-	})
-
+	cacheDel(uc.userCache, user.ID)
+	eventPublish(uc.eventPublisher, ctx, "UserUpdated", map[string]interface{}{"user_id": user.ID})
 	return user, nil
 }
 
-func (uc *authUsecase) DeleteUser(ctx context.Context, id int64) error {
+func (uc *userUsecase) DeleteUser(ctx context.Context, id int64) error {
 	if err := uc.userRepo.Delete(ctx, id); err != nil {
 		return domain.ErrUserNotFound
 	}
-
-	uc.cacheDel(ctx, id)
-
-	uc.publishEvent(ctx, "UserDeleted", map[string]interface{}{
-		"user_id": id,
-	})
-
+	cacheDel(uc.userCache, id)
+	eventPublish(uc.eventPublisher, ctx, "UserDeleted", map[string]interface{}{"user_id": id})
 	return nil
 }
 
-func (uc *authUsecase) AssignRole(ctx context.Context, userID int64, roleName string) error {
-	if _, ok := domain.DefaultRoles[roleName]; !ok {
-		if _, err := uc.roleRepo.GetByName(ctx, roleName); err != nil {
-			return domain.ErrInvalidRole
-		}
-	}
-
-	if err := uc.userRepo.AddRole(ctx, userID, roleName); err != nil {
-		return err
-	}
-
-	uc.cacheDel(ctx, userID)
-
-	uc.publishEvent(ctx, "RoleAssigned", map[string]interface{}{
-		"user_id": userID,
-		"role":    roleName,
-	})
-
-	return nil
-}
-
-func (uc *authUsecase) RemoveRole(ctx context.Context, userID int64, roleName string) error {
-	if err := uc.userRepo.RemoveRole(ctx, userID, roleName); err != nil {
-		return err
-	}
-
-	uc.cacheDel(ctx, userID)
-
-	uc.publishEvent(ctx, "RoleRevoked", map[string]interface{}{
-		"user_id": userID,
-		"role":    roleName,
-	})
-
-	return nil
-}
-
-func (uc *authUsecase) ListStaff(ctx context.Context, userID int64) ([]domain.UserRoleAssignment, error) {
+func (uc *userUsecase) ListStaff(ctx context.Context, userID int64) ([]domain.UserRoleAssignment, error) {
 	return uc.staffRepo.ListByUserID(ctx, userID)
 }

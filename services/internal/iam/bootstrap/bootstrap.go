@@ -129,6 +129,8 @@ func New(cfg Config) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Focused services (split from the old god authUsecase)
 	authUsecase := usecase.NewAuthUsecase(
 		userRepo,
 		roleRepo,
@@ -142,10 +144,21 @@ func New(cfg Config) (*App, error) {
 		tokenHasher,
 		userCache,
 	)
-	authHandler := httpauth.NewHandler(authUsecase, authUsecase, cfg.SecureCookies)
-	userHandler := httpuser.NewHandler(authUsecase)
-	roleHandler := httprole.NewHandler(authUsecase)
-	permHandler := httpperm.NewHandler(authUsecase)
+
+	userUsecase := usecase.NewUserUsecase(
+		userRepo,
+		staffRepo,
+		eventPublisher,
+		userCache,
+	)
+
+	roleUsecase := usecase.NewRoleUsecase(roleRepo, userRepo)
+	permUsecase := usecase.NewPermissionUsecase(permissionRepo)
+
+	authHandler := httpauth.NewHandler(authUsecase, userUsecase, cfg.SecureCookies)
+	userHandler := httpuser.NewHandler(authUsecase, userUsecase)
+	roleHandler := httprole.NewHandler(roleUsecase)
+	permHandler := httpperm.NewHandler(permUsecase)
 	router := httptransport.NewRouter(authHandler, userHandler, roleHandler, permHandler, authUsecase, authUsecase.HasPermission, tokenSigner)
 
 	return &App{router: router, otelShutdown: otelShutdown}, nil
