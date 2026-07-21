@@ -98,7 +98,7 @@ func TestAuthUsecase_Register(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			uc := newTestUsecase(tt.userRepo, tt.roleRepo, tt.passwordHasher, tt.tokenSigner, &mockSessionStore{})
+			uc := newTestAuthUsecase(tt.userRepo, tt.roleRepo, tt.passwordHasher, tt.tokenSigner, &mockSessionStore{})
 			result, err := uc.Register(context.Background(), tt.input)
 
 			if tt.wantErr != nil {
@@ -176,7 +176,7 @@ func TestAuthUsecase_Login(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			uc := newTestUsecase(tt.userRepo, tt.roleRepo, tt.passwordHasher, tt.tokenSigner, &mockSessionStore{})
+			uc := newTestAuthUsecase(tt.userRepo, tt.roleRepo, tt.passwordHasher, tt.tokenSigner, &mockSessionStore{})
 			_, err := uc.Login(context.Background(), tt.input)
 
 			if tt.wantErr != nil {
@@ -203,6 +203,7 @@ func TestAuthUsecase_ValidateToken(t *testing.T) {
 		name           string
 		tokenString    string
 		userRepo       repository.UserRepository
+		roleRepo       repository.RoleRepository
 		passwordHasher port.PasswordHasher
 		tokenSigner    port.TokenSigner
 		wantErr        error
@@ -223,9 +224,9 @@ func TestAuthUsecase_ValidateToken(t *testing.T) {
 			wantUserID: 1,
 		},
 		{
-			name:           "user not found",
-			tokenString:    "valid.jwt.token",
-			userRepo:       &mockUserRepo{},
+			name:        "user not found",
+			tokenString: "valid.jwt.token",
+			userRepo:    &mockUserRepo{},
 			passwordHasher: &mockPasswordHasher{},
 			tokenSigner: &mockTokenSigner{
 				claims: &port.TokenClaims{UserID: 999},
@@ -233,9 +234,9 @@ func TestAuthUsecase_ValidateToken(t *testing.T) {
 			wantErr: domain.ErrInvalidToken,
 		},
 		{
-			name:           "token verification fails",
-			tokenString:    "invalid.jwt.token",
-			userRepo:       &mockUserRepo{},
+			name:        "token verification fails",
+			tokenString: "invalid.jwt.token",
+			userRepo:    &mockUserRepo{},
 			passwordHasher: &mockPasswordHasher{},
 			tokenSigner:    &mockTokenSigner{verifyErr: domain.ErrInvalidToken},
 			wantErr:        domain.ErrInvalidToken,
@@ -246,8 +247,7 @@ func TestAuthUsecase_ValidateToken(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			sessionStore := &mockSessionStore{}
-			uc := newTestUsecase(tt.userRepo, &mockRoleRepo{}, tt.passwordHasher, tt.tokenSigner, sessionStore)
+			uc := newTestAuthUsecase(tt.userRepo, tt.roleRepo, tt.passwordHasher, tt.tokenSigner, &mockSessionStore{})
 			claims, err := uc.ValidateToken(context.Background(), tt.tokenString)
 
 			if tt.wantErr != nil {
@@ -315,7 +315,7 @@ func TestAuthUsecase_HasPermission(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
+			uc := newTestAuthUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
 			result := uc.HasPermission(tt.claims, tt.required)
 
 			if result != tt.wantResult {
@@ -333,7 +333,7 @@ func TestAuthUsecase_Logout(t *testing.T) {
 			"test-session": {ID: "test-session", UserID: 1},
 		},
 	}
-	uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, sessionStore)
+	uc := newTestAuthUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, sessionStore)
 
 	err := uc.Logout(context.Background(), LogoutParams{SessionID: "test-session"})
 	if err != nil {
@@ -359,7 +359,7 @@ func TestAuthUsecase_SwitchContext(t *testing.T) {
 			},
 		},
 	}
-	uc := newTestUsecase(userRepo, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{signedToken: "new-access"}, sessionStore)
+	uc := newTestAuthUsecase(userRepo, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{signedToken: "new-access"}, sessionStore)
 
 	result, err := uc.SwitchContext(context.Background(), "test-session", 2)
 	if err != nil {
@@ -386,7 +386,7 @@ func TestAuthUsecase_SwitchContext_Forbidden(t *testing.T) {
 			1: {ID: 1, Username: "test", Roles: nil},
 		},
 	}
-	uc := newTestUsecase(userRepo, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, sessionStore)
+	uc := newTestAuthUsecase(userRepo, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, sessionStore)
 
 	_, err := uc.SwitchContext(context.Background(), "test-session", 99)
 	if !errors.Is(err, domain.ErrForbidden) {
@@ -397,7 +397,7 @@ func TestAuthUsecase_SwitchContext_Forbidden(t *testing.T) {
 func TestAuthUsecase_SetDefaultRole(t *testing.T) {
 	t.Parallel()
 
-	uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
+	uc := newTestAuthUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
 	err := uc.SetDefaultRole(context.Background(), 1, 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -407,7 +407,7 @@ func TestAuthUsecase_SetDefaultRole(t *testing.T) {
 func TestAuthUsecase_Introspect(t *testing.T) {
 	t.Parallel()
 
-	uc := newTestUsecase(&mockUserRepo{
+	uc := newTestAuthUsecase(&mockUserRepo{
 		users: map[int64]*domain.User{
 			1: {ID: 1, Username: "test", Status: domain.UserStatusActive},
 		},
@@ -430,7 +430,7 @@ func TestAuthUsecase_Introspect(t *testing.T) {
 func TestAuthUsecase_Introspect_InvalidToken(t *testing.T) {
 	t.Parallel()
 
-	uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{
+	uc := newTestAuthUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{
 		verifyErr: domain.ErrInvalidToken,
 	}, &mockSessionStore{})
 
@@ -461,7 +461,7 @@ func TestAuthUsecase_RefreshToken(t *testing.T) {
 			1: {ID: 1, Username: "test", Status: domain.UserStatusActive},
 		},
 	}
-	uc := newTestUsecase(userRepo, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{
+	uc := newTestAuthUsecase(userRepo, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{
 		signedToken:   "new-access-token",
 		refreshUserID: 1,
 	}, sessionStore)
@@ -478,7 +478,7 @@ func TestAuthUsecase_RefreshToken(t *testing.T) {
 func TestAuthUsecase_RefreshToken_Invalid(t *testing.T) {
 	t.Parallel()
 
-	uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
+	uc := newTestAuthUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
 	_, err := uc.RefreshToken(context.Background(), RefreshTokenParams{RefreshToken: "bad"})
 	if !errors.Is(err, domain.ErrInvalidRefreshToken) {
 		t.Errorf("expected ErrInvalidRefreshToken, got %v", err)
@@ -488,7 +488,7 @@ func TestAuthUsecase_RefreshToken_Invalid(t *testing.T) {
 func TestAuthUsecase_Register_PasswordValidation(t *testing.T) {
 	t.Parallel()
 
-	uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
+	uc := newTestAuthUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
 
 	t.Run("password too short", func(t *testing.T) {
 		_, err := uc.Register(context.Background(), RegisterParams{

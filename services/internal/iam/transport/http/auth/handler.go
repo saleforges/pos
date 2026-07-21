@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -39,10 +40,10 @@ func (h *Handler) Register(c echo.Context) error {
 		UserAgent: c.Request().UserAgent(),
 	})
 	if err != nil {
-		if err == domain.ErrPasswordPolicy {
+		if errors.Is(err, domain.ErrPasswordPolicy) {
 			return common.WriteError(c, http.StatusBadRequest, err)
 		}
-		if err == domain.ErrUserAlreadyExists || err == domain.ErrInvalidRole {
+		if errors.Is(err, domain.ErrUserAlreadyExists) || errors.Is(err, domain.ErrInvalidRole) {
 			return common.WriteError(c, http.StatusConflict, err)
 		}
 		logger.Error("register failed", "error", err.Error())
@@ -75,7 +76,7 @@ func (h *Handler) Login(c echo.Context) error {
 		UserAgent: c.Request().UserAgent(),
 	})
 	if err != nil {
-		if err == domain.ErrInvalidCredentials || err == domain.ErrUserDisabled {
+		if errors.Is(err, domain.ErrInvalidCredentials) || errors.Is(err, domain.ErrUserDisabled) {
 			return common.WriteError(c, http.StatusUnauthorized, err)
 		}
 		return common.WriteError(c, http.StatusInternalServerError, err)
@@ -114,11 +115,11 @@ func (h *Handler) Refresh(c echo.Context) error {
 		UserAgent:    c.Request().UserAgent(),
 	})
 	if err != nil {
-		if err == domain.ErrInvalidRefreshToken {
+		if errors.Is(err, domain.ErrInvalidRefreshToken) {
 			clearTokenCookies(c, h.secureCookies)
 			return common.WriteError(c, http.StatusUnauthorized, err)
 		}
-		if err == domain.ErrUserDisabled {
+		if errors.Is(err, domain.ErrUserDisabled) {
 			return common.WriteError(c, http.StatusForbidden, err)
 		}
 		return common.WriteError(c, http.StatusInternalServerError, err)
@@ -157,7 +158,7 @@ func (h *Handler) SwitchContext(c echo.Context) error {
 
 	result, err := h.authService.SwitchContext(c.Request().Context(), claims.SessionID, req.UserRoleID)
 	if err != nil {
-		if err == domain.ErrSessionNotFound || err == domain.ErrForbidden {
+		if errors.Is(err, domain.ErrSessionNotFound) || errors.Is(err, domain.ErrForbidden) {
 			return common.WriteError(c, http.StatusForbidden, err)
 		}
 		return common.WriteError(c, http.StatusInternalServerError, err)
@@ -208,7 +209,7 @@ func (h *Handler) Me(c echo.Context) error {
 
 	user, err := h.userService.GetUser(c.Request().Context(), claims.UserID)
 	if err != nil {
-		if err == domain.ErrUserNotFound {
+		if errors.Is(err, domain.ErrUserNotFound) {
 			return common.WriteError(c, http.StatusNotFound, err)
 		}
 		logger.Error("me: get user failed", "error", err.Error())

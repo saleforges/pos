@@ -8,7 +8,7 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/domain"
 )
 
-func TestAuthUsecase_UpdateUser(t *testing.T) {
+func TestUserUsecase_UpdateUser(t *testing.T) {
 	t.Parallel()
 
 	username := "updated"
@@ -48,10 +48,8 @@ func TestAuthUsecase_UpdateUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-
-			uc := newTestUsecase(tt.userRepo, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
+			uc := NewUserUsecase(tt.userRepo, &mockStaffRepo{}, &mockEventPublisher{}, nil)
 			_, err := uc.UpdateUser(context.Background(), tt.input)
-
 			if tt.wantErr != nil {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -61,7 +59,6 @@ func TestAuthUsecase_UpdateUser(t *testing.T) {
 				}
 				return
 			}
-
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -69,14 +66,14 @@ func TestAuthUsecase_UpdateUser(t *testing.T) {
 	}
 }
 
-func TestAuthUsecase_GetUser(t *testing.T) {
+func TestUserUsecase_GetUser(t *testing.T) {
 	t.Parallel()
 
-	uc := newTestUsecase(&mockUserRepo{
+	uc := NewUserUsecase(&mockUserRepo{
 		users: map[int64]*domain.User{
 			1: {ID: 1, Username: "johndoe"},
 		},
-	}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
+	}, &mockStaffRepo{}, &mockEventPublisher{}, nil)
 
 	user, err := uc.GetUser(context.Background(), 1)
 	if err != nil {
@@ -92,7 +89,7 @@ func TestAuthUsecase_GetUser(t *testing.T) {
 	}
 }
 
-func TestAuthUsecase_DeleteUser(t *testing.T) {
+func TestUserUsecase_DeleteUser(t *testing.T) {
 	t.Parallel()
 
 	userRepo := &mockUserRepo{
@@ -100,65 +97,41 @@ func TestAuthUsecase_DeleteUser(t *testing.T) {
 			1: {ID: 1, Username: "johndoe"},
 		},
 	}
-	uc := newTestUsecase(userRepo, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
+	uc := NewUserUsecase(userRepo, &mockStaffRepo{}, &mockEventPublisher{}, nil)
 
 	if err := uc.DeleteUser(context.Background(), 1); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	// Deleting a non-existent user may not return an error depending on mock implementation
-	// The usecase wraps repo.Delete and returns ErrUserNotFound on error
-	_ = uc.DeleteUser(context.Background(), 999)
 }
 
-func TestAuthUsecase_ListStaff(t *testing.T) {
+func TestUserUsecase_ListStaff(t *testing.T) {
 	t.Parallel()
 
-	uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
+	uc := NewUserUsecase(&mockUserRepo{}, &mockStaffRepo{}, &mockEventPublisher{}, nil)
 	staff, err := uc.ListStaff(context.Background(), 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// Memory repo returns nil for unknown users
 	_ = staff
 }
 
-func TestAuthUsecase_AssignRole(t *testing.T) {
+func TestUserUsecase_ListUsers(t *testing.T) {
 	t.Parallel()
 
-	uc := newTestUsecase(&mockUserRepo{
-		users: map[int64]*domain.User{
-			1: {ID: 1},
-		},
-	}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
-
-	if err := uc.AssignRole(context.Background(), 1, "viewer"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestAuthUsecase_RemoveRole(t *testing.T) {
-	t.Parallel()
-
-	uc := newTestUsecase(&mockUserRepo{
-		users: map[int64]*domain.User{
-			1: {ID: 1},
-		},
-	}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
-
-	if err := uc.RemoveRole(context.Background(), 1, "viewer"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestAuthUsecase_ListUsers(t *testing.T) {
-	t.Parallel()
-
-	uc := newTestUsecase(&mockUserRepo{}, &mockRoleRepo{}, &mockPasswordHasher{}, &mockTokenSigner{}, &mockSessionStore{})
+	uc := NewUserUsecase(&mockUserRepo{}, &mockStaffRepo{}, &mockEventPublisher{}, nil)
 	users, err := uc.ListUsers(context.Background(), 0, 100)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// Mock returns nil, which is acceptable
 	_ = users
+}
+
+type mockStaffRepo struct{}
+
+func (m *mockStaffRepo) ListByUserID(_ context.Context, userID int64) ([]domain.UserRoleAssignment, error) {
+	return nil, nil
+}
+func (m *mockStaffRepo) SetDefaultRole(_ context.Context, userID, roleID int64) error { return nil }
+func (m *mockStaffRepo) Create(_ context.Context, userID int64, merchantID int64, merchantName, role string) error {
+	return nil
 }
