@@ -1,5 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../shared/models/product.dart';
+import '../../../../core/database/app_database.dart';
+import '../../../../core/database/daos/product_dao.dart';
 import 'remote/product_remote_data_source.dart';
+import 'remote/fake_product_remote_data_source.dart';
 import 'remote/category_remote_data_source.dart';
 import 'remote/customer_remote_data_source.dart';
 import 'remote/order_remote_data_source.dart';
@@ -12,10 +16,19 @@ import 'repositories/product_repository.dart';
 import 'repositories/category_repository.dart';
 import 'repositories/customer_repository.dart';
 import 'repositories/order_repository.dart';
+import 'product_list_notifier.dart';
+
+final appDatabaseProvider = Provider<AppDatabase>((ref) {
+  return AppDatabase();
+});
+
+final productDaoProvider = Provider<ProductDao>((ref) {
+  return ref.read(appDatabaseProvider).productDao;
+});
 
 // Remote Data Sources
 final productRemoteDataSourceProvider = Provider<ProductRemoteDataSource>((ref) {
-  return ProductRemoteDataSource();
+  return FakeProductRemoteDataSource();
 });
 
 final categoryRemoteDataSourceProvider = Provider<CategoryRemoteDataSource>((ref) {
@@ -32,7 +45,7 @@ final orderRemoteDataSourceProvider = Provider<OrderRemoteDataSource>((ref) {
 
 // Local Data Sources
 final productLocalDataSourceProvider = Provider<ProductLocalDataSource>((ref) {
-  return ProductLocalDataSource();
+  return ProductLocalDataSource(ref.read(productDaoProvider));
 });
 
 final categoryLocalDataSourceProvider = Provider<CategoryLocalDataSource>((ref) {
@@ -78,4 +91,8 @@ final orderRepositoryProvider = Provider<OrderRepository>((ref) {
     remoteDataSource: ref.read(orderRemoteDataSourceProvider),
     localDataSource: ref.read(orderLocalDataSourceProvider),
   );
+});
+
+final productListProvider = StateNotifierProvider<ProductListNotifier, List<Product>>((ref) {
+  return ProductListNotifier(ref.read(productRepositoryProvider));
 });

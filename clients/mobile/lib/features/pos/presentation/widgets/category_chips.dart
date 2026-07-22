@@ -78,6 +78,8 @@ class CategoryChips extends ConsumerWidget {
         return Icons.shopping_bag;
       case 'build':
         return Icons.build;
+      case 'cake':
+        return Icons.cake;
       default:
         return Icons.grid_view;
     }

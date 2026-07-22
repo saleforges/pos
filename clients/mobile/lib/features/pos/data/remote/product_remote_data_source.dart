@@ -1,8 +1,7 @@
 import '../../../../../shared/models/product.dart';
 
 class ProductRemoteDataSource {
-  Future<List<Product>> getProducts({String? category, String? searchQuery}) async {
-    // TODO: Implement API call
+  Future<List<Product>> getProducts() async {
     throw UnimplementedError('ProductRemoteDataSource.getProducts not yet implemented');
   }
 

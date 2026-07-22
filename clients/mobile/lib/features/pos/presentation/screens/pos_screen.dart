@@ -7,7 +7,7 @@ import '../../../../shared/models/customer.dart';
 import '../../../../core/config/translations.dart';
 import '../../data/bluetooth_printer_service.dart';
 import '../../data/customer_store.dart';
-import '../../data/product_store.dart';
+import '../../data/providers.dart';
 import '../../data/cart_store.dart';
 import '../../data/view_mode_store.dart';
 import '../widgets/search_bar.dart';
@@ -24,18 +24,20 @@ const Color kBg = Color(0xFFF7F5F8);
 
 const List<Map<String, String>> _categories = [
   {'label': 'all', 'icon': 'grid_view'},
-  {'label': 'food', 'icon': 'restaurant'},
-  {'label': 'beverage', 'icon': 'local_cafe'},
-  {'label': 'merchandise', 'icon': 'shopping_bag'},
-  {'label': 'services', 'icon': 'build'},
+  {'label': 'coffee', 'icon': 'local_cafe'},
+  {'label': 'tea', 'icon': 'local_cafe'},
+  {'label': 'bakery', 'icon': 'restaurant'},
+  {'label': 'dessert', 'icon': 'cake'},
+  {'label': 'grocery', 'icon': 'shopping_bag'},
 ];
 
 String _categoryKeyToDb(String key) {
   switch (key) {
-    case 'food': return 'Food';
-    case 'beverage': return 'Beverage';
-    case 'merchandise': return 'Merchandise';
-    case 'services': return 'Services';
+    case 'coffee': return 'Coffee';
+    case 'tea': return 'Tea';
+    case 'bakery': return 'Bakery';
+    case 'dessert': return 'Dessert';
+    case 'grocery': return 'Grocery';
     default: return 'All';
   }
 }
@@ -73,8 +75,7 @@ class _PosBodyState extends ConsumerState<PosScreenBody> {
   int get _tax => (_subtotal * _taxRate).round();
   int get _grandTotal => _subtotal + _tax - _discount;
 
-  List<Product> get _filteredProducts {
-    final products = ref.read(productStoreProvider);
+  List<Product> _applyFilters(List<Product> products) {
     var list = products;
     if (_selectedCategory != 'all') {
       final cat = _categoryKeyToDb(_selectedCategory);
@@ -456,7 +457,8 @@ class _PosBodyState extends ConsumerState<PosScreenBody> {
   Widget build(BuildContext context) {
     final t = _t();
     final viewMode = ref.watch(viewModeProvider);
-    final filteredProducts = _filteredProducts;
+    final allProducts = ref.watch(productListProvider);
+    final filteredProducts = _applyFilters(allProducts);
 
     return Column(
       children: [

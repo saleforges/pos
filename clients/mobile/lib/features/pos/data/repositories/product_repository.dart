@@ -12,17 +12,18 @@ class ProductRepository {
   })  : _remoteDataSource = remoteDataSource,
         _localDataSource = localDataSource;
 
-  Future<List<Product>> getProducts({String? category, String? searchQuery}) async {
-    try {
-      final products = await _remoteDataSource.getProducts(
-        category: category,
-        searchQuery: searchQuery,
-      );
-      await _localDataSource.cacheProducts(products);
-      return products;
-    } catch (_) {
-      return await _localDataSource.getCachedProducts();
-    }
+  Future<List<Product>> getCachedProducts() async {
+    return await _localDataSource.getCachedProducts();
+  }
+
+  Future<bool> hasCachedProducts() async {
+    return await _localDataSource.hasCachedProducts();
+  }
+
+  Future<List<Product>> refreshProducts() async {
+    final fresh = await _remoteDataSource.getProducts();
+    await _localDataSource.cacheProducts(fresh);
+    return fresh;
   }
 
   Future<Product> getProduct(String id) async {

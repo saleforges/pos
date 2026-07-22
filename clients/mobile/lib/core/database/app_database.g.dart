@@ -27,10 +27,54 @@ class $ProductsTableTable extends ProductsTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _priceMeta = const VerificationMeta('price');
+  static const VerificationMeta _skuMeta = const VerificationMeta('sku');
   @override
-  late final GeneratedColumn<int> price = GeneratedColumn<int>(
-    'price',
+  late final GeneratedColumn<String> sku = GeneratedColumn<String>(
+    'sku',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _barcodeMeta = const VerificationMeta(
+    'barcode',
+  );
+  @override
+  late final GeneratedColumn<String> barcode = GeneratedColumn<String>(
+    'barcode',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _descriptionMeta = const VerificationMeta(
+    'description',
+  );
+  @override
+  late final GeneratedColumn<String> description = GeneratedColumn<String>(
+    'description',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sellingPriceMeta = const VerificationMeta(
+    'sellingPrice',
+  );
+  @override
+  late final GeneratedColumn<int> sellingPrice = GeneratedColumn<int>(
+    'selling_price',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _costPriceMeta = const VerificationMeta(
+    'costPrice',
+  );
+  @override
+  late final GeneratedColumn<int> costPrice = GeneratedColumn<int>(
+    'cost_price',
     aliasedName,
     false,
     type: DriftSqlType.int,
@@ -75,6 +119,29 @@ class $ProductsTableTable extends ProductsTable
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
+  );
+  static const VerificationMeta _unitMeta = const VerificationMeta('unit');
+  @override
+  late final GeneratedColumn<String> unit = GeneratedColumn<String>(
+    'unit',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
   );
   static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
     'isFavorite',
@@ -130,11 +197,17 @@ class $ProductsTableTable extends ProductsTable
   List<GeneratedColumn> get $columns => [
     id,
     name,
-    price,
+    sku,
+    barcode,
+    description,
+    sellingPrice,
+    costPrice,
     stock,
     category,
     image,
     subtitle,
+    unit,
+    isActive,
     isFavorite,
     hasVariants,
     createdAt,
@@ -165,13 +238,47 @@ class $ProductsTableTable extends ProductsTable
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
-    if (data.containsKey('price')) {
+    if (data.containsKey('sku')) {
       context.handle(
-        _priceMeta,
-        price.isAcceptableOrUnknown(data['price']!, _priceMeta),
+        _skuMeta,
+        sku.isAcceptableOrUnknown(data['sku']!, _skuMeta),
       );
     } else if (isInserting) {
-      context.missing(_priceMeta);
+      context.missing(_skuMeta);
+    }
+    if (data.containsKey('barcode')) {
+      context.handle(
+        _barcodeMeta,
+        barcode.isAcceptableOrUnknown(data['barcode']!, _barcodeMeta),
+      );
+    }
+    if (data.containsKey('description')) {
+      context.handle(
+        _descriptionMeta,
+        description.isAcceptableOrUnknown(
+          data['description']!,
+          _descriptionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('selling_price')) {
+      context.handle(
+        _sellingPriceMeta,
+        sellingPrice.isAcceptableOrUnknown(
+          data['selling_price']!,
+          _sellingPriceMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_sellingPriceMeta);
+    }
+    if (data.containsKey('cost_price')) {
+      context.handle(
+        _costPriceMeta,
+        costPrice.isAcceptableOrUnknown(data['cost_price']!, _costPriceMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_costPriceMeta);
     }
     if (data.containsKey('stock')) {
       context.handle(
@@ -200,6 +307,22 @@ class $ProductsTableTable extends ProductsTable
         _subtitleMeta,
         subtitle.isAcceptableOrUnknown(data['subtitle']!, _subtitleMeta),
       );
+    }
+    if (data.containsKey('unit')) {
+      context.handle(
+        _unitMeta,
+        unit.isAcceptableOrUnknown(data['unit']!, _unitMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_unitMeta);
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_isActiveMeta);
     }
     if (data.containsKey('is_favorite')) {
       context.handle(
@@ -253,9 +376,25 @@ class $ProductsTableTable extends ProductsTable
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
-      price: attachedDatabase.typeMapping.read(
+      sku: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sku'],
+      )!,
+      barcode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}barcode'],
+      ),
+      description: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}description'],
+      ),
+      sellingPrice: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
-        data['${effectivePrefix}price'],
+        data['${effectivePrefix}selling_price'],
+      )!,
+      costPrice: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cost_price'],
       )!,
       stock: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -273,6 +412,14 @@ class $ProductsTableTable extends ProductsTable
         DriftSqlType.string,
         data['${effectivePrefix}subtitle'],
       ),
+      unit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}unit'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
       isFavorite: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_favorite'],
@@ -301,11 +448,17 @@ class $ProductsTableTable extends ProductsTable
 class ProductDb extends DataClass implements Insertable<ProductDb> {
   final String id;
   final String name;
-  final int price;
+  final String sku;
+  final String? barcode;
+  final String? description;
+  final int sellingPrice;
+  final int costPrice;
   final int stock;
   final String category;
   final String? image;
   final String? subtitle;
+  final String unit;
+  final bool isActive;
   final bool isFavorite;
   final bool hasVariants;
   final String createdAt;
@@ -313,11 +466,17 @@ class ProductDb extends DataClass implements Insertable<ProductDb> {
   const ProductDb({
     required this.id,
     required this.name,
-    required this.price,
+    required this.sku,
+    this.barcode,
+    this.description,
+    required this.sellingPrice,
+    required this.costPrice,
     required this.stock,
     required this.category,
     this.image,
     this.subtitle,
+    required this.unit,
+    required this.isActive,
     required this.isFavorite,
     required this.hasVariants,
     required this.createdAt,
@@ -328,7 +487,15 @@ class ProductDb extends DataClass implements Insertable<ProductDb> {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
-    map['price'] = Variable<int>(price);
+    map['sku'] = Variable<String>(sku);
+    if (!nullToAbsent || barcode != null) {
+      map['barcode'] = Variable<String>(barcode);
+    }
+    if (!nullToAbsent || description != null) {
+      map['description'] = Variable<String>(description);
+    }
+    map['selling_price'] = Variable<int>(sellingPrice);
+    map['cost_price'] = Variable<int>(costPrice);
     map['stock'] = Variable<int>(stock);
     map['category'] = Variable<String>(category);
     if (!nullToAbsent || image != null) {
@@ -337,6 +504,8 @@ class ProductDb extends DataClass implements Insertable<ProductDb> {
     if (!nullToAbsent || subtitle != null) {
       map['subtitle'] = Variable<String>(subtitle);
     }
+    map['unit'] = Variable<String>(unit);
+    map['is_active'] = Variable<bool>(isActive);
     map['is_favorite'] = Variable<bool>(isFavorite);
     map['has_variants'] = Variable<bool>(hasVariants);
     map['created_at'] = Variable<String>(createdAt);
@@ -348,7 +517,15 @@ class ProductDb extends DataClass implements Insertable<ProductDb> {
     return ProductsTableCompanion(
       id: Value(id),
       name: Value(name),
-      price: Value(price),
+      sku: Value(sku),
+      barcode: barcode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(barcode),
+      description: description == null && nullToAbsent
+          ? const Value.absent()
+          : Value(description),
+      sellingPrice: Value(sellingPrice),
+      costPrice: Value(costPrice),
       stock: Value(stock),
       category: Value(category),
       image: image == null && nullToAbsent
@@ -357,6 +534,8 @@ class ProductDb extends DataClass implements Insertable<ProductDb> {
       subtitle: subtitle == null && nullToAbsent
           ? const Value.absent()
           : Value(subtitle),
+      unit: Value(unit),
+      isActive: Value(isActive),
       isFavorite: Value(isFavorite),
       hasVariants: Value(hasVariants),
       createdAt: Value(createdAt),
@@ -372,11 +551,17 @@ class ProductDb extends DataClass implements Insertable<ProductDb> {
     return ProductDb(
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
-      price: serializer.fromJson<int>(json['price']),
+      sku: serializer.fromJson<String>(json['sku']),
+      barcode: serializer.fromJson<String?>(json['barcode']),
+      description: serializer.fromJson<String?>(json['description']),
+      sellingPrice: serializer.fromJson<int>(json['sellingPrice']),
+      costPrice: serializer.fromJson<int>(json['costPrice']),
       stock: serializer.fromJson<int>(json['stock']),
       category: serializer.fromJson<String>(json['category']),
       image: serializer.fromJson<String?>(json['image']),
       subtitle: serializer.fromJson<String?>(json['subtitle']),
+      unit: serializer.fromJson<String>(json['unit']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       hasVariants: serializer.fromJson<bool>(json['hasVariants']),
       createdAt: serializer.fromJson<String>(json['createdAt']),
@@ -389,11 +574,17 @@ class ProductDb extends DataClass implements Insertable<ProductDb> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
-      'price': serializer.toJson<int>(price),
+      'sku': serializer.toJson<String>(sku),
+      'barcode': serializer.toJson<String?>(barcode),
+      'description': serializer.toJson<String?>(description),
+      'sellingPrice': serializer.toJson<int>(sellingPrice),
+      'costPrice': serializer.toJson<int>(costPrice),
       'stock': serializer.toJson<int>(stock),
       'category': serializer.toJson<String>(category),
       'image': serializer.toJson<String?>(image),
       'subtitle': serializer.toJson<String?>(subtitle),
+      'unit': serializer.toJson<String>(unit),
+      'isActive': serializer.toJson<bool>(isActive),
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'hasVariants': serializer.toJson<bool>(hasVariants),
       'createdAt': serializer.toJson<String>(createdAt),
@@ -404,11 +595,17 @@ class ProductDb extends DataClass implements Insertable<ProductDb> {
   ProductDb copyWith({
     String? id,
     String? name,
-    int? price,
+    String? sku,
+    Value<String?> barcode = const Value.absent(),
+    Value<String?> description = const Value.absent(),
+    int? sellingPrice,
+    int? costPrice,
     int? stock,
     String? category,
     Value<String?> image = const Value.absent(),
     Value<String?> subtitle = const Value.absent(),
+    String? unit,
+    bool? isActive,
     bool? isFavorite,
     bool? hasVariants,
     String? createdAt,
@@ -416,11 +613,17 @@ class ProductDb extends DataClass implements Insertable<ProductDb> {
   }) => ProductDb(
     id: id ?? this.id,
     name: name ?? this.name,
-    price: price ?? this.price,
+    sku: sku ?? this.sku,
+    barcode: barcode.present ? barcode.value : this.barcode,
+    description: description.present ? description.value : this.description,
+    sellingPrice: sellingPrice ?? this.sellingPrice,
+    costPrice: costPrice ?? this.costPrice,
     stock: stock ?? this.stock,
     category: category ?? this.category,
     image: image.present ? image.value : this.image,
     subtitle: subtitle.present ? subtitle.value : this.subtitle,
+    unit: unit ?? this.unit,
+    isActive: isActive ?? this.isActive,
     isFavorite: isFavorite ?? this.isFavorite,
     hasVariants: hasVariants ?? this.hasVariants,
     createdAt: createdAt ?? this.createdAt,
@@ -430,11 +633,21 @@ class ProductDb extends DataClass implements Insertable<ProductDb> {
     return ProductDb(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
-      price: data.price.present ? data.price.value : this.price,
+      sku: data.sku.present ? data.sku.value : this.sku,
+      barcode: data.barcode.present ? data.barcode.value : this.barcode,
+      description: data.description.present
+          ? data.description.value
+          : this.description,
+      sellingPrice: data.sellingPrice.present
+          ? data.sellingPrice.value
+          : this.sellingPrice,
+      costPrice: data.costPrice.present ? data.costPrice.value : this.costPrice,
       stock: data.stock.present ? data.stock.value : this.stock,
       category: data.category.present ? data.category.value : this.category,
       image: data.image.present ? data.image.value : this.image,
       subtitle: data.subtitle.present ? data.subtitle.value : this.subtitle,
+      unit: data.unit.present ? data.unit.value : this.unit,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
       isFavorite: data.isFavorite.present
           ? data.isFavorite.value
           : this.isFavorite,
@@ -451,11 +664,17 @@ class ProductDb extends DataClass implements Insertable<ProductDb> {
     return (StringBuffer('ProductDb(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('price: $price, ')
+          ..write('sku: $sku, ')
+          ..write('barcode: $barcode, ')
+          ..write('description: $description, ')
+          ..write('sellingPrice: $sellingPrice, ')
+          ..write('costPrice: $costPrice, ')
           ..write('stock: $stock, ')
           ..write('category: $category, ')
           ..write('image: $image, ')
           ..write('subtitle: $subtitle, ')
+          ..write('unit: $unit, ')
+          ..write('isActive: $isActive, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('hasVariants: $hasVariants, ')
           ..write('createdAt: $createdAt, ')
@@ -468,11 +687,17 @@ class ProductDb extends DataClass implements Insertable<ProductDb> {
   int get hashCode => Object.hash(
     id,
     name,
-    price,
+    sku,
+    barcode,
+    description,
+    sellingPrice,
+    costPrice,
     stock,
     category,
     image,
     subtitle,
+    unit,
+    isActive,
     isFavorite,
     hasVariants,
     createdAt,
@@ -484,11 +709,17 @@ class ProductDb extends DataClass implements Insertable<ProductDb> {
       (other is ProductDb &&
           other.id == this.id &&
           other.name == this.name &&
-          other.price == this.price &&
+          other.sku == this.sku &&
+          other.barcode == this.barcode &&
+          other.description == this.description &&
+          other.sellingPrice == this.sellingPrice &&
+          other.costPrice == this.costPrice &&
           other.stock == this.stock &&
           other.category == this.category &&
           other.image == this.image &&
           other.subtitle == this.subtitle &&
+          other.unit == this.unit &&
+          other.isActive == this.isActive &&
           other.isFavorite == this.isFavorite &&
           other.hasVariants == this.hasVariants &&
           other.createdAt == this.createdAt &&
@@ -498,11 +729,17 @@ class ProductDb extends DataClass implements Insertable<ProductDb> {
 class ProductsTableCompanion extends UpdateCompanion<ProductDb> {
   final Value<String> id;
   final Value<String> name;
-  final Value<int> price;
+  final Value<String> sku;
+  final Value<String?> barcode;
+  final Value<String?> description;
+  final Value<int> sellingPrice;
+  final Value<int> costPrice;
   final Value<int> stock;
   final Value<String> category;
   final Value<String?> image;
   final Value<String?> subtitle;
+  final Value<String> unit;
+  final Value<bool> isActive;
   final Value<bool> isFavorite;
   final Value<bool> hasVariants;
   final Value<String> createdAt;
@@ -511,11 +748,17 @@ class ProductsTableCompanion extends UpdateCompanion<ProductDb> {
   const ProductsTableCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
-    this.price = const Value.absent(),
+    this.sku = const Value.absent(),
+    this.barcode = const Value.absent(),
+    this.description = const Value.absent(),
+    this.sellingPrice = const Value.absent(),
+    this.costPrice = const Value.absent(),
     this.stock = const Value.absent(),
     this.category = const Value.absent(),
     this.image = const Value.absent(),
     this.subtitle = const Value.absent(),
+    this.unit = const Value.absent(),
+    this.isActive = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.hasVariants = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -525,11 +768,17 @@ class ProductsTableCompanion extends UpdateCompanion<ProductDb> {
   ProductsTableCompanion.insert({
     required String id,
     required String name,
-    required int price,
+    required String sku,
+    this.barcode = const Value.absent(),
+    this.description = const Value.absent(),
+    required int sellingPrice,
+    required int costPrice,
     required int stock,
     required String category,
     this.image = const Value.absent(),
     this.subtitle = const Value.absent(),
+    required String unit,
+    required bool isActive,
     required bool isFavorite,
     required bool hasVariants,
     required String createdAt,
@@ -537,9 +786,13 @@ class ProductsTableCompanion extends UpdateCompanion<ProductDb> {
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        name = Value(name),
-       price = Value(price),
+       sku = Value(sku),
+       sellingPrice = Value(sellingPrice),
+       costPrice = Value(costPrice),
        stock = Value(stock),
        category = Value(category),
+       unit = Value(unit),
+       isActive = Value(isActive),
        isFavorite = Value(isFavorite),
        hasVariants = Value(hasVariants),
        createdAt = Value(createdAt),
@@ -547,11 +800,17 @@ class ProductsTableCompanion extends UpdateCompanion<ProductDb> {
   static Insertable<ProductDb> custom({
     Expression<String>? id,
     Expression<String>? name,
-    Expression<int>? price,
+    Expression<String>? sku,
+    Expression<String>? barcode,
+    Expression<String>? description,
+    Expression<int>? sellingPrice,
+    Expression<int>? costPrice,
     Expression<int>? stock,
     Expression<String>? category,
     Expression<String>? image,
     Expression<String>? subtitle,
+    Expression<String>? unit,
+    Expression<bool>? isActive,
     Expression<bool>? isFavorite,
     Expression<bool>? hasVariants,
     Expression<String>? createdAt,
@@ -561,11 +820,17 @@ class ProductsTableCompanion extends UpdateCompanion<ProductDb> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
-      if (price != null) 'price': price,
+      if (sku != null) 'sku': sku,
+      if (barcode != null) 'barcode': barcode,
+      if (description != null) 'description': description,
+      if (sellingPrice != null) 'selling_price': sellingPrice,
+      if (costPrice != null) 'cost_price': costPrice,
       if (stock != null) 'stock': stock,
       if (category != null) 'category': category,
       if (image != null) 'image': image,
       if (subtitle != null) 'subtitle': subtitle,
+      if (unit != null) 'unit': unit,
+      if (isActive != null) 'is_active': isActive,
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (hasVariants != null) 'has_variants': hasVariants,
       if (createdAt != null) 'created_at': createdAt,
@@ -577,11 +842,17 @@ class ProductsTableCompanion extends UpdateCompanion<ProductDb> {
   ProductsTableCompanion copyWith({
     Value<String>? id,
     Value<String>? name,
-    Value<int>? price,
+    Value<String>? sku,
+    Value<String?>? barcode,
+    Value<String?>? description,
+    Value<int>? sellingPrice,
+    Value<int>? costPrice,
     Value<int>? stock,
     Value<String>? category,
     Value<String?>? image,
     Value<String?>? subtitle,
+    Value<String>? unit,
+    Value<bool>? isActive,
     Value<bool>? isFavorite,
     Value<bool>? hasVariants,
     Value<String>? createdAt,
@@ -591,11 +862,17 @@ class ProductsTableCompanion extends UpdateCompanion<ProductDb> {
     return ProductsTableCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
-      price: price ?? this.price,
+      sku: sku ?? this.sku,
+      barcode: barcode ?? this.barcode,
+      description: description ?? this.description,
+      sellingPrice: sellingPrice ?? this.sellingPrice,
+      costPrice: costPrice ?? this.costPrice,
       stock: stock ?? this.stock,
       category: category ?? this.category,
       image: image ?? this.image,
       subtitle: subtitle ?? this.subtitle,
+      unit: unit ?? this.unit,
+      isActive: isActive ?? this.isActive,
       isFavorite: isFavorite ?? this.isFavorite,
       hasVariants: hasVariants ?? this.hasVariants,
       createdAt: createdAt ?? this.createdAt,
@@ -613,8 +890,20 @@ class ProductsTableCompanion extends UpdateCompanion<ProductDb> {
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
-    if (price.present) {
-      map['price'] = Variable<int>(price.value);
+    if (sku.present) {
+      map['sku'] = Variable<String>(sku.value);
+    }
+    if (barcode.present) {
+      map['barcode'] = Variable<String>(barcode.value);
+    }
+    if (description.present) {
+      map['description'] = Variable<String>(description.value);
+    }
+    if (sellingPrice.present) {
+      map['selling_price'] = Variable<int>(sellingPrice.value);
+    }
+    if (costPrice.present) {
+      map['cost_price'] = Variable<int>(costPrice.value);
     }
     if (stock.present) {
       map['stock'] = Variable<int>(stock.value);
@@ -627,6 +916,12 @@ class ProductsTableCompanion extends UpdateCompanion<ProductDb> {
     }
     if (subtitle.present) {
       map['subtitle'] = Variable<String>(subtitle.value);
+    }
+    if (unit.present) {
+      map['unit'] = Variable<String>(unit.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
     }
     if (isFavorite.present) {
       map['is_favorite'] = Variable<bool>(isFavorite.value);
@@ -651,11 +946,17 @@ class ProductsTableCompanion extends UpdateCompanion<ProductDb> {
     return (StringBuffer('ProductsTableCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('price: $price, ')
+          ..write('sku: $sku, ')
+          ..write('barcode: $barcode, ')
+          ..write('description: $description, ')
+          ..write('sellingPrice: $sellingPrice, ')
+          ..write('costPrice: $costPrice, ')
           ..write('stock: $stock, ')
           ..write('category: $category, ')
           ..write('image: $image, ')
           ..write('subtitle: $subtitle, ')
+          ..write('unit: $unit, ')
+          ..write('isActive: $isActive, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('hasVariants: $hasVariants, ')
           ..write('createdAt: $createdAt, ')
@@ -4385,11 +4686,17 @@ typedef $$ProductsTableTableCreateCompanionBuilder =
     ProductsTableCompanion Function({
       required String id,
       required String name,
-      required int price,
+      required String sku,
+      Value<String?> barcode,
+      Value<String?> description,
+      required int sellingPrice,
+      required int costPrice,
       required int stock,
       required String category,
       Value<String?> image,
       Value<String?> subtitle,
+      required String unit,
+      required bool isActive,
       required bool isFavorite,
       required bool hasVariants,
       required String createdAt,
@@ -4400,11 +4707,17 @@ typedef $$ProductsTableTableUpdateCompanionBuilder =
     ProductsTableCompanion Function({
       Value<String> id,
       Value<String> name,
-      Value<int> price,
+      Value<String> sku,
+      Value<String?> barcode,
+      Value<String?> description,
+      Value<int> sellingPrice,
+      Value<int> costPrice,
       Value<int> stock,
       Value<String> category,
       Value<String?> image,
       Value<String?> subtitle,
+      Value<String> unit,
+      Value<bool> isActive,
       Value<bool> isFavorite,
       Value<bool> hasVariants,
       Value<String> createdAt,
@@ -4431,8 +4744,28 @@ class $$ProductsTableTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get price => $composableBuilder(
-    column: $table.price,
+  ColumnFilters<String> get sku => $composableBuilder(
+    column: $table.sku,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sellingPrice => $composableBuilder(
+    column: $table.sellingPrice,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get costPrice => $composableBuilder(
+    column: $table.costPrice,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4453,6 +4786,16 @@ class $$ProductsTableTableFilterComposer
 
   ColumnFilters<String> get subtitle => $composableBuilder(
     column: $table.subtitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get unit => $composableBuilder(
+    column: $table.unit,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4496,8 +4839,28 @@ class $$ProductsTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get price => $composableBuilder(
-    column: $table.price,
+  ColumnOrderings<String> get sku => $composableBuilder(
+    column: $table.sku,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get barcode => $composableBuilder(
+    column: $table.barcode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sellingPrice => $composableBuilder(
+    column: $table.sellingPrice,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get costPrice => $composableBuilder(
+    column: $table.costPrice,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4518,6 +4881,16 @@ class $$ProductsTableTableOrderingComposer
 
   ColumnOrderings<String> get subtitle => $composableBuilder(
     column: $table.subtitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get unit => $composableBuilder(
+    column: $table.unit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4557,8 +4930,24 @@ class $$ProductsTableTableAnnotationComposer
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
 
-  GeneratedColumn<int> get price =>
-      $composableBuilder(column: $table.price, builder: (column) => column);
+  GeneratedColumn<String> get sku =>
+      $composableBuilder(column: $table.sku, builder: (column) => column);
+
+  GeneratedColumn<String> get barcode =>
+      $composableBuilder(column: $table.barcode, builder: (column) => column);
+
+  GeneratedColumn<String> get description => $composableBuilder(
+    column: $table.description,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get sellingPrice => $composableBuilder(
+    column: $table.sellingPrice,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get costPrice =>
+      $composableBuilder(column: $table.costPrice, builder: (column) => column);
 
   GeneratedColumn<int> get stock =>
       $composableBuilder(column: $table.stock, builder: (column) => column);
@@ -4571,6 +4960,12 @@ class $$ProductsTableTableAnnotationComposer
 
   GeneratedColumn<String> get subtitle =>
       $composableBuilder(column: $table.subtitle, builder: (column) => column);
+
+  GeneratedColumn<String> get unit =>
+      $composableBuilder(column: $table.unit, builder: (column) => column);
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
 
   GeneratedColumn<bool> get isFavorite => $composableBuilder(
     column: $table.isFavorite,
@@ -4622,11 +5017,17 @@ class $$ProductsTableTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
-                Value<int> price = const Value.absent(),
+                Value<String> sku = const Value.absent(),
+                Value<String?> barcode = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                Value<int> sellingPrice = const Value.absent(),
+                Value<int> costPrice = const Value.absent(),
                 Value<int> stock = const Value.absent(),
                 Value<String> category = const Value.absent(),
                 Value<String?> image = const Value.absent(),
                 Value<String?> subtitle = const Value.absent(),
+                Value<String> unit = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<bool> hasVariants = const Value.absent(),
                 Value<String> createdAt = const Value.absent(),
@@ -4635,11 +5036,17 @@ class $$ProductsTableTableTableManager
               }) => ProductsTableCompanion(
                 id: id,
                 name: name,
-                price: price,
+                sku: sku,
+                barcode: barcode,
+                description: description,
+                sellingPrice: sellingPrice,
+                costPrice: costPrice,
                 stock: stock,
                 category: category,
                 image: image,
                 subtitle: subtitle,
+                unit: unit,
+                isActive: isActive,
                 isFavorite: isFavorite,
                 hasVariants: hasVariants,
                 createdAt: createdAt,
@@ -4650,11 +5057,17 @@ class $$ProductsTableTableTableManager
               ({
                 required String id,
                 required String name,
-                required int price,
+                required String sku,
+                Value<String?> barcode = const Value.absent(),
+                Value<String?> description = const Value.absent(),
+                required int sellingPrice,
+                required int costPrice,
                 required int stock,
                 required String category,
                 Value<String?> image = const Value.absent(),
                 Value<String?> subtitle = const Value.absent(),
+                required String unit,
+                required bool isActive,
                 required bool isFavorite,
                 required bool hasVariants,
                 required String createdAt,
@@ -4663,11 +5076,17 @@ class $$ProductsTableTableTableManager
               }) => ProductsTableCompanion.insert(
                 id: id,
                 name: name,
-                price: price,
+                sku: sku,
+                barcode: barcode,
+                description: description,
+                sellingPrice: sellingPrice,
+                costPrice: costPrice,
                 stock: stock,
                 category: category,
                 image: image,
                 subtitle: subtitle,
+                unit: unit,
+                isActive: isActive,
                 isFavorite: isFavorite,
                 hasVariants: hasVariants,
                 createdAt: createdAt,

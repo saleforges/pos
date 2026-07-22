@@ -13,6 +13,7 @@ import 'tables/order_items_table.dart';
 import 'tables/settings_table.dart';
 import 'tables/session_table.dart';
 import 'tables/sync_queue_table.dart';
+import 'daos/product_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -33,8 +34,22 @@ part 'app_database.g.dart';
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  late final ProductDao productDao = ProductDao(this);
+
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration {
+    return MigrationStrategy(
+      onCreate: (m) => m.createAll(),
+      onUpgrade: (m, from, to) async {
+        if (from < 2) {
+          await m.createTable(productsTable);
+        }
+      },
+    );
+  }
 
   static QueryExecutor _openConnection() {
     return LazyDatabase(() async {
