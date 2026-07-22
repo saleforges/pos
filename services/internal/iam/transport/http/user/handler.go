@@ -10,6 +10,7 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/transport/http/common"
 	"github.com/saleforge/pos/services/internal/iam/usecase"
+	"github.com/saleforge/pos/services/pkg/httputil"
 )
 
 type Handler struct {
@@ -22,14 +23,8 @@ func NewHandler(authService usecase.AuthUsecase, userService usecase.UserUsecase
 }
 
 func (h *Handler) ListUsers(c echo.Context) error {
-	offset, limit := 0, 100
-	if o, err := strconv.Atoi(c.QueryParam("offset")); err == nil && o >= 0 {
-		offset = o
-	}
-	if l, err := strconv.Atoi(c.QueryParam("limit")); err == nil && l > 0 && l <= 1000 {
-		limit = l
-	}
-	users, err := h.userService.ListUsers(c.Request().Context(), offset, limit)
+	p := httputil.ParsePageParams(c)
+	users, meta, err := h.userService.ListUsers(c.Request().Context(), p)
 	if err != nil {
 		return common.WriteError(c, http.StatusInternalServerError, err)
 	}
@@ -39,7 +34,7 @@ func (h *Handler) ListUsers(c echo.Context) error {
 		result = append(result, toUserResponse(u))
 	}
 
-	return common.WriteJSON(c, http.StatusOK, result)
+	return httputil.WritePaginated(c, http.StatusOK, result, *meta)
 }
 
 func (h *Handler) CreateUser(c echo.Context) error {

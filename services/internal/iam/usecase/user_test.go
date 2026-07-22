@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/saleforge/pos/services/internal/iam/domain"
+	"github.com/saleforge/pos/services/pkg/pagination"
 )
 
 func TestUserUsecase_UpdateUser(t *testing.T) {
@@ -121,7 +122,7 @@ func TestUserUsecase_ListUsers(t *testing.T) {
 	t.Parallel()
 
 	uc := NewUserUsecase(&mockUserRepo{}, &mockStaffRepo{}, &mockEventPublisher{}, nil)
-	users, err := uc.ListUsers(context.Background(), 0, 100)
+	users, _, err := uc.ListUsers(context.Background(), pagination.Params{Offset: 0, Limit: 100})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

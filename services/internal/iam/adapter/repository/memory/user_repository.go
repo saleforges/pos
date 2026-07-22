@@ -64,21 +64,29 @@ func (r *UserRepository) GetByEmail(_ context.Context, email string) (*domain.Us
 	return nil, domain.ErrUserNotFound
 }
 
-func (r *UserRepository) List(_ context.Context, offset, limit int) ([]domain.User, error) {
+func (r *UserRepository) List(_ context.Context, offset, limit int) ([]domain.User, int64, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+
+	total := int64(len(r.users))
+
+	if limit == -1 {
+		limit = len(r.users)
+		offset = 0
+	}
+
 	all := make([]domain.User, 0, len(r.users))
 	for _, u := range r.users {
 		all = append(all, *u)
 	}
 	if offset >= len(all) {
-		return []domain.User{}, nil
+		return []domain.User{}, total, nil
 	}
 	end := offset + limit
 	if end > len(all) {
 		end = len(all)
 	}
-	return all[offset:end], nil
+	return all[offset:end], total, nil
 }
 
 func (r *UserRepository) Update(_ context.Context, user *domain.User) error {
@@ -329,15 +337,23 @@ func (r *LoginAuditRepository) Create(_ context.Context, audit *domain.LoginAudi
 	return nil
 }
 
-func (r *LoginAuditRepository) List(_ context.Context, offset, limit int) ([]domain.LoginAudit, error) {
+func (r *LoginAuditRepository) List(_ context.Context, offset, limit int) ([]domain.LoginAudit, int64, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+
+	total := int64(len(r.audits))
+
+	if limit == -1 {
+		limit = len(r.audits)
+		offset = 0
+	}
+
 	if offset >= len(r.audits) {
-		return []domain.LoginAudit{}, nil
+		return []domain.LoginAudit{}, total, nil
 	}
 	end := offset + limit
 	if end > len(r.audits) {
 		end = len(r.audits)
 	}
-	return r.audits[offset:end], nil
+	return r.audits[offset:end], total, nil
 }
