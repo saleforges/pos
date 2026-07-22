@@ -14,8 +14,7 @@ COPY backoffice ./backoffice
 ARG TURBO_TELEMETRY_DISABLED=1
 RUN ./node_modules/.bin/turbo run build --filter=backoffice
 
-FROM nginx:alpine AS runner
-COPY --from=build /app/backoffice/dist /usr/share/nginx/html
-COPY backoffice/nginx.conf.template /etc/nginx/templates/default.conf.template
+FROM caddy:alpine AS runner
+COPY --from=build /app/backoffice/dist /usr/share/caddy/html
+COPY backoffice/Caddyfile /etc/caddy/Caddyfile
 EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
