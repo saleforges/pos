@@ -12,6 +12,7 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/usecase"
+	"github.com/saleforge/pos/services/pkg/pagination"
 )
 
 type mockAuthSvc struct {
@@ -42,15 +43,15 @@ func (m *mockAuthSvc) ValidateToken(ctx context.Context, tokenString string) (*p
 func (m *mockAuthSvc) HasPermission(claims *port.TokenClaims, required domain.Permission) bool { return true }
 
 type mockUserSvc struct {
-	listUsersFn  func(ctx context.Context, offset, limit int) ([]domain.User, error)
+	listUsersFn  func(ctx context.Context, p pagination.Params) ([]domain.User, *pagination.Metadata, error)
 	getUserFn    func(ctx context.Context, id int64) (*domain.User, error)
 	updateUserFn func(ctx context.Context, params usecase.UpdateUserParams) (*domain.User, error)
 	deleteUserFn func(ctx context.Context, id int64) error
 }
 
-func (m *mockUserSvc) ListUsers(ctx context.Context, offset, limit int) ([]domain.User, error) {
-	if m.listUsersFn != nil { return m.listUsersFn(ctx, offset, limit) }
-	return []domain.User{{ID: 1, Username: "u1"}, {ID: 2, Username: "u2"}}, nil
+func (m *mockUserSvc) ListUsers(ctx context.Context, p pagination.Params) ([]domain.User, *pagination.Metadata, error) {
+	if m.listUsersFn != nil { return m.listUsersFn(ctx, p) }
+	return []domain.User{{ID: 1, Username: "u1"}, {ID: 2, Username: "u2"}}, &pagination.Metadata{Total: 2, Offset: 0, Limit: 20, ReturnCount: 2}, nil
 }
 func (m *mockUserSvc) GetUser(ctx context.Context, id int64) (*domain.User, error) {
 	if m.getUserFn != nil { return m.getUserFn(ctx, id) }
@@ -84,12 +85,14 @@ func TestListUsers(t *testing.T) {
 	if rec.Code != http.StatusOK { t.Errorf("expected 200, got %d", rec.Code) }
 
 	var wrapped struct {
-		Data []domain.User `json:"data"`
+		Data       []domain.User   `json:"data"`
+		Pagination pagination.Metadata `json:"pagination"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &wrapped); err != nil {
 		t.Fatalf("bad response: %v", err)
 	}
 	if len(wrapped.Data) != 2 { t.Errorf("expected 2 users, got %d", len(wrapped.Data)) }
+	if wrapped.Pagination.Total != 2 { t.Errorf("expected total 2, got %d", wrapped.Pagination.Total) }
 }
 
 func TestGetUser(t *testing.T) {

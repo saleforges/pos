@@ -9,6 +9,7 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/port/repository"
 	"github.com/saleforge/pos/services/pkg/logger"
+	"github.com/saleforge/pos/services/pkg/pagination"
 )
 
 type UpdateUserParams struct {
@@ -41,8 +42,18 @@ func NewUserUsecase(
 	}
 }
 
-func (uc *userUsecase) ListUsers(ctx context.Context, offset, limit int) ([]domain.User, error) {
-	return uc.userRepo.List(ctx, offset, limit)
+func (uc *userUsecase) ListUsers(ctx context.Context, p pagination.Params) ([]domain.User, *pagination.Metadata, error) {
+	data, total, err := uc.userRepo.List(ctx, p.Offset, p.Limit)
+	if err != nil {
+		return nil, nil, err
+	}
+	meta := &pagination.Metadata{
+		Total:       total,
+		Offset:      p.Offset,
+		Limit:       p.Limit,
+		ReturnCount: len(data),
+	}
+	return data, meta, nil
 }
 
 func (uc *userUsecase) GetUser(ctx context.Context, id int64) (*domain.User, error) {

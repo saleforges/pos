@@ -46,7 +46,7 @@ func (m *mockUserRepo) GetByEmail(_ context.Context, email string) (*domain.User
 	return nil, domain.ErrUserNotFound
 }
 
-func (m *mockUserRepo) List(_ context.Context, offset, limit int) ([]domain.User, error) { return nil, nil }
+func (m *mockUserRepo) List(_ context.Context, offset, limit int) ([]domain.User, int64, error) { return nil, 0, nil }
 func (m *mockUserRepo) Update(_ context.Context, user *domain.User) error {
 	if m.err != nil { return m.err }
 	m.users[user.ID] = user
@@ -158,7 +158,7 @@ func (m *mockSessionStore) Delete(_ context.Context, id string) error {
 
 type mockLoginAuditRepo struct { err error }
 func (m *mockLoginAuditRepo) Create(_ context.Context, audit *domain.LoginAudit) error { return nil }
-func (m *mockLoginAuditRepo) List(_ context.Context, offset, limit int) ([]domain.LoginAudit, error) { return nil, nil }
+func (m *mockLoginAuditRepo) List(_ context.Context, offset, limit int) ([]domain.LoginAudit, int64, error) { return nil, 0, nil }
 
 type mockEventPublisher struct { err error }
 func (m *mockEventPublisher) Publish(_ context.Context, _ string, _ interface{}) error { return nil }

@@ -94,13 +94,24 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.
 	return user, nil
 }
 
-func (r *UserRepository) List(ctx context.Context, offset, limit int) ([]domain.User, error) {
+func (r *UserRepository) List(ctx context.Context, offset, limit int) ([]domain.User, int64, error) {
+	var total int64
+	if err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM users`).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
+	if limit == -1 {
+		limit = int(total)
+		if limit == 0 { limit = 1 }
+		offset = 0
+	}
+
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, username, email, password, type, status, created_at, updated_at FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
 		limit, offset,
 	)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -108,20 +119,20 @@ func (r *UserRepository) List(ctx context.Context, offset, limit int) ([]domain.
 	for rows.Next() {
 		var u domain.User
 		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.Password, &u.Type, &u.Status, &u.CreatedAt, &u.UpdatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		u.SystemRole, err = loadUserSystemRole(ctx, r.pool, u.ID)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		roles, err := loadScopedRoles(ctx, r.pool, u.ID)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		u.Roles = roles
 		users = append(users, u)
 	}
-	return users, rows.Err()
+	return users, total, rows.Err()
 }
 
 func (r *UserRepository) Update(ctx context.Context, user *domain.User) error {

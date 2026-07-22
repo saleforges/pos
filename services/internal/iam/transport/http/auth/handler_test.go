@@ -13,6 +13,7 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/transport/http/common"
 	"github.com/saleforge/pos/services/internal/iam/usecase"
+	"github.com/saleforge/pos/services/pkg/pagination"
 )
 
 // mockAuthService implements usecase.AuthService
@@ -74,7 +75,7 @@ type mockUserService struct {
 func (m *mockUserService) Register(ctx context.Context, params usecase.RegisterParams) (*usecase.AuthResult, error) {
 	return &usecase.AuthResult{TokenPair: port.TokenPair{AccessToken: "at", RefreshToken: "rt", ExpiresIn: 3600}}, nil
 }
-func (m *mockUserService) ListUsers(ctx context.Context, offset, limit int) ([]domain.User, error) { return nil, nil }
+func (m *mockUserService) ListUsers(ctx context.Context, p pagination.Params) ([]domain.User, *pagination.Metadata, error) { return nil, nil, nil }
 func (m *mockUserService) GetUser(ctx context.Context, id int64) (*domain.User, error) {
 	if m.getUserFn != nil { return m.getUserFn(ctx, id) }
 	return &domain.User{ID: id, Username: "test", Email: "t@t.com", Status: domain.UserStatusActive}, nil

@@ -83,7 +83,7 @@ func TestUserRepository_List(t *testing.T) {
 	repo.Create(context.Background(), &domain.User{Username: "b"})
 	repo.Create(context.Background(), &domain.User{Username: "c"})
 
-	all, err := repo.List(context.Background(), 0, 10)
+	all, _, err := repo.List(context.Background(), 0, 10)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestUserRepository_List(t *testing.T) {
 		t.Errorf("expected 3 users, got %d", len(all))
 	}
 
-	page, err := repo.List(context.Background(), 1, 1)
+	page, _, err := repo.List(context.Background(), 1, 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -99,7 +99,7 @@ func TestUserRepository_List(t *testing.T) {
 		t.Errorf("expected 1 user, got %d", len(page))
 	}
 
-	empty, err := repo.List(context.Background(), 10, 10)
+	empty, _, err := repo.List(context.Background(), 10, 10)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -351,7 +351,7 @@ func TestLoginAuditRepository(t *testing.T) {
 			t.Fatalf("Create failed: %v", err)
 		}
 
-		audits, err := repo.List(ctx, 0, 10)
+		audits, _, err := repo.List(ctx, 0, 10)
 		if err != nil {
 			t.Fatalf("List failed: %v", err)
 		}
@@ -361,7 +361,7 @@ func TestLoginAuditRepository(t *testing.T) {
 	})
 
 	t.Run("list with offset past end returns empty", func(t *testing.T) {
-		audits, err := repo.List(ctx, 100, 10)
+		audits, _, err := repo.List(ctx, 100, 10)
 		if err != nil {
 			t.Fatalf("List failed: %v", err)
 		}
