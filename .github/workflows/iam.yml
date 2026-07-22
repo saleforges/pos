@@ -109,6 +109,7 @@ jobs:
           vault_jwt_key_id: "${{ secrets.JWT_KEY_ID }}"
           vault_ghcr_username: "${{ github.actor }}"
           vault_ghcr_token: "${{ secrets.GITHUB_TOKEN }}"
+          vault_token_hasher_secret: "9b3747114e7407c821a8b6b1ab4f00cb7ded7ff912b8d3e7a646196c5763b521"
           EOV
           echo 'vault_jwt_private_key_pem: |' >> /tmp/vault-extra.yml
           echo "$JWT_PRIVATE_KEY_PEM" | sed 's/^/  /' >> /tmp/vault-extra.yml
