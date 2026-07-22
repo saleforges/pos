@@ -1,14 +1,33 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/storage/session_local_data_source.dart';
 import '../../../../shared/models/user.dart';
 import '../../data/auth_repository.dart';
+import '../../data/remote/auth_remote_data_source.dart';
+import '../../data/local/auth_local_data_source.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   return ApiClient();
 });
 
+final sessionLocalDataSourceProvider = Provider<SessionLocalDataSource>((ref) {
+  return SessionLocalDataSource();
+});
+
+final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
+  return AuthRemoteDataSource(ref.read(apiClientProvider));
+});
+
+final authLocalDataSourceProvider = Provider<AuthLocalDataSource>((ref) {
+  return AuthLocalDataSource();
+});
+
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository(ref.read(apiClientProvider));
+  return AuthRepository(
+    remoteDataSource: ref.read(authRemoteDataSourceProvider),
+    localDataSource: ref.read(authLocalDataSourceProvider),
+    sessionDataSource: ref.read(sessionLocalDataSourceProvider),
+  );
 });
 
 enum AuthStatus { initial, loading, authenticated, unauthenticated, error }
@@ -82,11 +101,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> login(String username, String password) async {
     state = state.copyWith(status: AuthStatus.loading, error: null);
     try {
-      final loginResponse = await _repository.login(username, password);
-      await _repository.saveTokens(
-        loginResponse.accessToken,
-        loginResponse.refreshToken,
-      );
+      await _repository.login(username, password);
       final user = await _repository.getCurrentUser();
       final uniqueBranches = _getUniqueBranches(user);
 
@@ -119,7 +134,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
-    await _repository.clearSelectedBranchId();
     await _repository.logout();
     state = AuthState(status: AuthStatus.unauthenticated);
   }

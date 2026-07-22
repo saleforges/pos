@@ -1,90 +1,61 @@
-import 'package:dio/dio.dart';
-import '../../../core/config/api_config.dart';
-import '../../../core/network/api_client.dart';
-import '../../../shared/models/auth_response.dart';
-import '../../../shared/models/user.dart';
+import '../../../../shared/models/auth_response.dart';
+import '../../../../shared/models/user.dart';
+import '../../../core/storage/session_local_data_source.dart';
+import 'remote/auth_remote_data_source.dart';
+import 'local/auth_local_data_source.dart';
 
 class AuthRepository {
-  final ApiClient _apiClient;
+  final AuthRemoteDataSource _remoteDataSource;
+  final AuthLocalDataSource _localDataSource;
+  final SessionLocalDataSource _sessionDataSource;
 
-  AuthRepository(this._apiClient);
+  AuthRepository({
+    required AuthRemoteDataSource remoteDataSource,
+    required AuthLocalDataSource localDataSource,
+    required SessionLocalDataSource sessionDataSource,
+  })  : _remoteDataSource = remoteDataSource,
+        _localDataSource = localDataSource,
+        _sessionDataSource = sessionDataSource;
 
   Future<LoginResponse> login(String username, String password) async {
-    try {
-      final response = await _apiClient.dio.post(
-        '${ApiConfig.authEndpoint}/login',
-        data: LoginRequest(username: username, password: password).toJson(),
-        options: Options(headers: {'Authorization': null}),
-      );
-
-      final apiResponse = ApiResponse.fromJson(response.data, (data) {
-        return LoginResponse.fromJson(data as Map<String, dynamic>);
-      });
-
-      if (apiResponse.data == null) {
-        throw Exception(apiResponse.message);
-      }
-
-      return apiResponse.data!;
-    } on DioException catch (e) {
-      if (e.response?.data != null) {
-        throw Exception(e.response!.data['message'] ?? 'Login failed');
-      }
-      throw Exception('Network error: ${e.message}');
-    }
+    final response = await _remoteDataSource.login(username, password);
+    await _sessionDataSource.saveAccessToken(response.accessToken);
+    await _sessionDataSource.saveRefreshToken(response.refreshToken);
+    return response;
   }
 
   Future<User> getCurrentUser() async {
-    try {
-      final response = await _apiClient.dio.get(
-        '${ApiConfig.authEndpoint}/me',
-      );
-
-      final apiResponse = ApiResponse.fromJson(response.data, (data) {
-        return User.fromJson(data as Map<String, dynamic>);
-      });
-
-      if (apiResponse.data == null) {
-        throw Exception(apiResponse.message);
-      }
-
-      return apiResponse.data!;
-    } on DioException catch (e) {
-      if (e.response?.data != null) {
-        throw Exception(e.response!.data['message'] ?? 'Failed to get user');
-      }
-      throw Exception('Network error: ${e.message}');
-    }
+    final user = await _remoteDataSource.getCurrentUser();
+    await _localDataSource.cacheUser(user);
+    return user;
   }
 
   Future<void> logout() async {
-    try {
-      await _apiClient.dio.post('${ApiConfig.authEndpoint}/logout');
-    } catch (e) {
-      // Ignore logout errors
-    } finally {
-      await _apiClient.clearTokens();
-    }
-  }
-
-  Future<void> saveTokens(String accessToken, String refreshToken) async {
-    await _apiClient.saveTokens(accessToken, refreshToken);
+    await _remoteDataSource.logout();
+    await _sessionDataSource.clearAccessToken();
+    await _sessionDataSource.clearRefreshToken();
+    await _sessionDataSource.clearSelectedBranchId();
+    await _localDataSource.clearCachedUser();
   }
 
   Future<bool> isLoggedIn() async {
-    final token = await _apiClient.getAccessToken();
-    return token != null;
+    return await _sessionDataSource.isLoggedIn();
+  }
+
+  Future<void> saveTokens(String accessToken, String refreshToken) async {
+    await _sessionDataSource.saveAccessToken(accessToken);
+    await _sessionDataSource.saveRefreshToken(refreshToken);
   }
 
   Future<void> saveSelectedBranchId(int branchId) async {
-    await _apiClient.saveSelectedBranchId(branchId);
+    await _sessionDataSource.saveSelectedBranchId(branchId);
   }
 
   Future<int?> getSelectedBranchId() async {
-    return await _apiClient.getSelectedBranchId();
+    return await _sessionDataSource.getSelectedBranchId();
   }
 
   Future<void> clearSelectedBranchId() async {
-    await _apiClient.clearSelectedBranchId();
+    await _sessionDataSource.clearSelectedBranchId();
   }
 }
