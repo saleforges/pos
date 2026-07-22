@@ -133,7 +133,7 @@ The `internal/iam/usecase` package owns the business workflow for authentication
 
 The `internal/iam/adapter` package contains infrastructure implementations:
 
-- `adapter/security/bcrypt.go` implements `PasswordHasher` using Argon2id
+- `adapter/security/argon2.go` implements `PasswordHasher` using Argon2id
 - `adapter/security/jwt.go` implements `TokenSigner` using RS256 with 15-minute access tokens and 30-day refresh tokens
 - `adapter/repository/memory/` implements all repository interfaces in-memory
 - `adapter/repository/postgres/` implements all repository interfaces backed by PostgreSQL with:

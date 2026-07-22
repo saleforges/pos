@@ -147,7 +147,7 @@ func SeedData(ctx context.Context, pool *otel.TracedPool) error {
 		_, err := pool.Exec(ctx,
 			`INSERT INTO users (username, email, password, type, status, created_at, updated_at)
 			 VALUES ($1, $2, $3, $4, 'active', $5, $5)
-			 ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password, updated_at = NOW()`,
+			 ON CONFLICT (username) DO NOTHING`,
 			u.Username, u.Email, u.Password, u.Type, now,
 		)
 		if err != nil {
