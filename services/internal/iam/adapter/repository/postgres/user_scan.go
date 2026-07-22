@@ -13,6 +13,9 @@ func scanUser(row pgx.Row) (*domain.User, error) {
 	var u domain.User
 	err := row.Scan(&u.ID, &u.Username, &u.Email, &u.Password, &u.Type, &u.Status, &u.CreatedAt, &u.UpdatedAt)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrUserNotFound
+		}
 		return nil, err
 	}
 	return &u, nil
