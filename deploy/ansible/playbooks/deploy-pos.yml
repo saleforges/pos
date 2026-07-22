@@ -8,23 +8,28 @@
     ghcr_token: "{{ vault_ghcr_token | default('') }}"
     api_proxy_target: "{{ vault_api_proxy_target | default('https://api-dev.saleforges.com') }}"
   tasks:
-    - name: Login to GHCR
-      community.docker.docker_login:
-        registry_url: https://ghcr.io
-        username: "{{ ghcr_username }}"
-        password: "{{ ghcr_token }}"
+    - name: Login to GHCR (fresh)
+      shell: |
+        docker logout ghcr.io 2>/dev/null || true
+        echo "{{ ghcr_token }}" | docker login ghcr.io -u "{{ ghcr_username }}" --password-stdin
       when: ghcr_username != '' and ghcr_token != ''
       no_log: true
 
-    - name: Pull and run POS container
+    - name: Pull Backoffice image via CLI
+      shell: docker pull ghcr.io/saleforges/pos/backoffice:{{ image_tag }}
+      when: ghcr_username != '' and ghcr_token != ''
+      changed_when: false
+
+    - name: Run Backoffice container
       community.docker.docker_container:
-        name: pos
-        image: "{{ image_repository }}:{{ image_tag }}"
+        name: backoffice
+        image: ghcr.io/saleforges/pos/backoffice:{{ image_tag }}
         state: started
         restart_policy: always
-        pull: true
+        pull: false
         networks:
           - name: pos
+        etc_hosts:
+          "api-dev.saleforges.com": "host-gateway"
         env:
           API_PROXY_TARGET: "{{ api_proxy_target }}"
-          PORT: "3000"
