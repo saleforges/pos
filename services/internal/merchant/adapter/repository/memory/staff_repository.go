@@ -36,34 +36,58 @@ func (r *StaffRepository) GetByID(_ context.Context, id int64) (*domain.StaffMem
 	return s, nil
 }
 
-func (r *StaffRepository) ListByBranch(_ context.Context, branchID int64) ([]domain.StaffMember, error) {
+func (r *StaffRepository) ListByBranch(_ context.Context, branchID int64, offset, limit int) ([]domain.StaffMember, int64, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	var result []domain.StaffMember
+
+	var all []domain.StaffMember
 	for _, s := range r.staff {
 		if s.BranchID == branchID {
-			result = append(result, *s)
+			all = append(all, *s)
 		}
 	}
-	if result == nil {
-		return []domain.StaffMember{}, nil
+	total := int64(len(all))
+
+	if limit == -1 {
+		limit = len(all)
+		offset = 0
 	}
-	return result, nil
+
+	if offset >= len(all) {
+		return []domain.StaffMember{}, total, nil
+	}
+	end := offset + limit
+	if end > len(all) {
+		end = len(all)
+	}
+	return all[offset:end], total, nil
 }
 
-func (r *StaffRepository) ListByMerchant(_ context.Context, merchantID int64) ([]domain.StaffMember, error) {
+func (r *StaffRepository) ListByMerchant(_ context.Context, merchantID int64, offset, limit int) ([]domain.StaffMember, int64, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	var result []domain.StaffMember
+
+	var all []domain.StaffMember
 	for _, s := range r.staff {
 		if s.MerchantID == merchantID {
-			result = append(result, *s)
+			all = append(all, *s)
 		}
 	}
-	if result == nil {
-		return []domain.StaffMember{}, nil
+	total := int64(len(all))
+
+	if limit == -1 {
+		limit = len(all)
+		offset = 0
 	}
-	return result, nil
+
+	if offset >= len(all) {
+		return []domain.StaffMember{}, total, nil
+	}
+	end := offset + limit
+	if end > len(all) {
+		end = len(all)
+	}
+	return all[offset:end], total, nil
 }
 
 func (r *StaffRepository) GetByUserAndBranch(_ context.Context, userID, branchID int64) (*domain.StaffMember, error) {

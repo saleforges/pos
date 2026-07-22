@@ -8,7 +8,9 @@ import (
 	"github.com/saleforge/pos/services/internal/merchant/adapter/repository/memory"
 	"github.com/saleforge/pos/services/internal/merchant/adapter/repository/postgres"
 	httptransport "github.com/saleforge/pos/services/internal/merchant/transport/http"
-	"github.com/saleforge/pos/services/internal/merchant/transport/http/handler"
+	"github.com/saleforge/pos/services/internal/merchant/transport/http/branch"
+	"github.com/saleforge/pos/services/internal/merchant/transport/http/merchant"
+	"github.com/saleforge/pos/services/internal/merchant/transport/http/staff"
 	"github.com/saleforge/pos/services/internal/merchant/usecase"
 	"github.com/saleforge/pos/services/pkg/jwks"
 	"github.com/saleforge/pos/services/pkg/logger"
@@ -74,9 +76,9 @@ func New(cfg Config) (*App, error) {
 	}
 
 	uc := usecase.NewMerchantUsecase(merchantRepo, branchRepo, staffRepo)
-	merchantHandler := handler.NewMerchantHandler(uc)
-	branchHandler := handler.NewBranchHandler(uc)
-	staffHandler := handler.NewStaffHandler(uc)
+	merchantHandler := merchant.NewHandler(uc)
+	branchHandler := branch.NewHandler(uc)
+	staffHandler := staff.NewHandler(uc)
 	e := httptransport.NewRouter(merchantHandler, branchHandler, staffHandler, verifier, staffRepo)
 
 	return &App{router: e, otelShutdown: otelShutdown}, nil

@@ -6,17 +6,10 @@ import (
 	"time"
 
 	"github.com/saleforge/pos/services/internal/merchant/domain"
+	"github.com/saleforge/pos/services/pkg/pagination"
 )
 
-type BranchUsecase interface {
-	CreateBranch(ctx context.Context, input CreateBranchInput) (*domain.Branch, error)
-	GetBranch(ctx context.Context, id int64) (*domain.Branch, error)
-	ListBranches(ctx context.Context, merchantID int64) ([]domain.Branch, error)
-	UpdateBranch(ctx context.Context, input UpdateBranchInput) (*domain.Branch, error)
-	DeleteBranch(ctx context.Context, id int64) error
-}
-
-type CreateBranchInput struct {
+type CreateBranchParams struct {
 	MerchantID     int64
 	Name           string
 	Code           string
@@ -26,7 +19,7 @@ type CreateBranchInput struct {
 	OperatingHours *domain.OperatingHours
 }
 
-type UpdateBranchInput struct {
+type UpdateBranchParams struct {
 	ID             int64
 	Name           *string
 	Address        *string
@@ -36,7 +29,7 @@ type UpdateBranchInput struct {
 	OperatingHours *domain.OperatingHours
 }
 
-func (uc *merchantUsecase) CreateBranch(ctx context.Context, input CreateBranchInput) (*domain.Branch, error) {
+func (uc *merchantUsecase) CreateBranch(ctx context.Context, input CreateBranchParams) (*domain.Branch, error) {
 	if input.Name == "" || input.Code == "" {
 		return nil, domain.ErrInvalidBranch
 	}
@@ -76,11 +69,21 @@ func (uc *merchantUsecase) GetBranch(ctx context.Context, id int64) (*domain.Bra
 	return uc.branchRepo.GetByID(ctx, id)
 }
 
-func (uc *merchantUsecase) ListBranches(ctx context.Context, merchantID int64) ([]domain.Branch, error) {
-	return uc.branchRepo.ListByMerchant(ctx, merchantID)
+func (uc *merchantUsecase) ListBranches(ctx context.Context, merchantID int64, p pagination.Params) ([]domain.Branch, *pagination.Metadata, error) {
+	data, total, err := uc.branchRepo.ListByMerchant(ctx, merchantID, p.Offset, p.Limit)
+	if err != nil {
+		return nil, nil, err
+	}
+	meta := &pagination.Metadata{
+		Total:       total,
+		Offset:      p.Offset,
+		Limit:       p.Limit,
+		ReturnCount: len(data),
+	}
+	return data, meta, nil
 }
 
-func (uc *merchantUsecase) UpdateBranch(ctx context.Context, input UpdateBranchInput) (*domain.Branch, error) {
+func (uc *merchantUsecase) UpdateBranch(ctx context.Context, input UpdateBranchParams) (*domain.Branch, error) {
 	if input.Name != nil && *input.Name == "" {
 		return nil, domain.ErrInvalidBranch
 	}

@@ -69,14 +69,25 @@ func (r *BranchRepository) GetByID(ctx context.Context, id int64) (*domain.Branc
 	return b, nil
 }
 
-func (r *BranchRepository) ListByMerchant(ctx context.Context, merchantID int64) ([]domain.Branch, error) {
+func (r *BranchRepository) ListByMerchant(ctx context.Context, merchantID int64, offset, limit int) ([]domain.Branch, int64, error) {
+	var total int64
+	if err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM branches WHERE merchant_id = $1`, merchantID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count branches: %w", err)
+	}
+
+	if limit == -1 {
+		limit = int(total)
+		if limit == 0 { limit = 1 }
+		offset = 0
+	}
+
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, merchant_id, name, code, address, phone,
 		       status, operating_days, open_time, close_time,
 		       created_at, updated_at
-		FROM branches WHERE merchant_id = $1 ORDER BY name`, merchantID)
+		FROM branches WHERE merchant_id = $1 ORDER BY name OFFSET $2 LIMIT $3`, merchantID, offset, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list branches: %w", err)
+		return nil, 0, fmt.Errorf("failed to list branches: %w", err)
 	}
 	defer rows.Close()
 
@@ -91,14 +102,14 @@ func (r *BranchRepository) ListByMerchant(ctx context.Context, merchantID int64)
 			&b.OperatingHours.Open, &b.OperatingHours.Close,
 			&b.CreatedAt, &b.UpdatedAt,
 		); err != nil {
-			return nil, fmt.Errorf("failed to scan branch: %w", err)
+			return nil, 0, fmt.Errorf("failed to scan branch: %w", err)
 		}
 		result = append(result, b)
 	}
 	if result == nil {
-		return []domain.Branch{}, nil
+		return []domain.Branch{}, total, nil
 	}
-	return result, nil
+	return result, total, nil
 }
 
 func (r *BranchRepository) Update(ctx context.Context, branch *domain.Branch) error {

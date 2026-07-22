@@ -1,4 +1,4 @@
-package handler
+package staff
 
 import (
 	"encoding/json"
@@ -11,22 +11,15 @@ import (
 	"github.com/saleforge/pos/services/pkg/httputil"
 )
 
-type StaffHandler struct {
+type Handler struct {
 	uc usecase.StaffUsecase
 }
 
-func NewStaffHandler(uc usecase.StaffUsecase) *StaffHandler {
-	return &StaffHandler{uc: uc}
+func NewHandler(uc usecase.StaffUsecase) *Handler {
+	return &Handler{uc: uc}
 }
 
-type assignStaffReq struct {
-	BranchID  int64           `json:"branch_id"`
-	UserID    int64           `json:"user_id"`
-	Role      domain.StaffRole `json:"role"`
-	IsDefault bool            `json:"is_default"`
-}
-
-func (h *StaffHandler) AssignStaff(c echo.Context) error {
+func (h *Handler) AssignStaff(c echo.Context) error {
 	var req assignStaffReq
 	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
@@ -36,7 +29,7 @@ func (h *StaffHandler) AssignStaff(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrMissingFields)
 	}
 
-	result, err := h.uc.AssignStaff(c.Request().Context(), usecase.AssignStaffInput{
+	result, err := h.uc.AssignStaff(c.Request().Context(), usecase.AssignStaffParams{
 		MerchantID: merchantID,
 		BranchID:   req.BranchID,
 		UserID:     req.UserID,
@@ -57,7 +50,7 @@ func (h *StaffHandler) AssignStaff(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusCreated, result)
 }
 
-func (h *StaffHandler) GetStaff(c echo.Context) error {
+func (h *Handler) GetStaff(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
@@ -72,33 +65,30 @@ func (h *StaffHandler) GetStaff(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, staff)
 }
 
-func (h *StaffHandler) ListStaffByBranch(c echo.Context) error {
+func (h *Handler) ListStaffByBranch(c echo.Context) error {
 	branchID, err := strconv.ParseInt(c.Param("branchId"), 10, 64)
 	if err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
-	staff, err := h.uc.ListStaffByBranch(c.Request().Context(), branchID)
+	p := httputil.ParsePageParams(c)
+	data, meta, err := h.uc.ListStaffByBranch(c.Request().Context(), branchID, p)
 	if err != nil {
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}
-	return httputil.WriteJSON(c, http.StatusOK, staff)
+	return httputil.WritePaginated(c, http.StatusOK, data, *meta)
 }
 
-func (h *StaffHandler) ListStaffByMerchant(c echo.Context) error {
+func (h *Handler) ListStaffByMerchant(c echo.Context) error {
 	merchantID := httputil.GetMerchantID(c)
-	staff, err := h.uc.ListStaffByMerchant(c.Request().Context(), merchantID)
+	p := httputil.ParsePageParams(c)
+	data, meta, err := h.uc.ListStaffByMerchant(c.Request().Context(), merchantID, p)
 	if err != nil {
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}
-	return httputil.WriteJSON(c, http.StatusOK, staff)
+	return httputil.WritePaginated(c, http.StatusOK, data, *meta)
 }
 
-type updateStaffReq struct {
-	Role   *domain.StaffRole   `json:"role,omitempty"`
-	Status *domain.StaffStatus `json:"status,omitempty"`
-}
-
-func (h *StaffHandler) UpdateStaff(c echo.Context) error {
+func (h *Handler) UpdateStaff(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
@@ -108,7 +98,7 @@ func (h *StaffHandler) UpdateStaff(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
 
-	staff, err := h.uc.UpdateStaff(c.Request().Context(), usecase.UpdateStaffInput{
+	staff, err := h.uc.UpdateStaff(c.Request().Context(), usecase.UpdateStaffParams{
 		ID:     id,
 		Role:   req.Role,
 		Status: req.Status,
@@ -122,7 +112,7 @@ func (h *StaffHandler) UpdateStaff(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, staff)
 }
 
-func (h *StaffHandler) RemoveStaff(c echo.Context) error {
+func (h *Handler) RemoveStaff(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
@@ -136,7 +126,7 @@ func (h *StaffHandler) RemoveStaff(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, nil)
 }
 
-func (h *StaffHandler) MyStaffAssignments(c echo.Context) error {
+func (h *Handler) MyStaffAssignments(c echo.Context) error {
 	userID, ok := c.Get("user_id").(int64)
 	if !ok {
 		return httputil.WriteError(c, http.StatusUnauthorized, httputil.ErrMissingFields)
@@ -153,11 +143,7 @@ func (h *StaffHandler) MyStaffAssignments(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, assignments)
 }
 
-type setDefaultBranchReq struct {
-	BranchID int64 `json:"branch_id"`
-}
-
-func (h *StaffHandler) SetMyDefaultBranch(c echo.Context) error {
+func (h *Handler) SetMyDefaultBranch(c echo.Context) error {
 	var req setDefaultBranchReq
 	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)

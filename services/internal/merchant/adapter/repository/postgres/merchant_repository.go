@@ -70,14 +70,29 @@ func (r *MerchantRepository) GetByID(ctx context.Context, id int64) (*domain.Mer
 	return m, nil
 }
 
-func (r *MerchantRepository) List(ctx context.Context, offset, limit int) ([]domain.Merchant, error) {
+func (r *MerchantRepository) List(ctx context.Context, offset, limit int) ([]domain.Merchant, int64, error) {
+	var total int64
+	err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM merchants`).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count merchants: %w", err)
+	}
+
+	// all=true → return all rows
+	if limit == -1 {
+		limit = int(total)
+		if limit == 0 {
+			limit = 1
+		}
+		offset = 0
+	}
+
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, name, legal_name, address, phone, email, logo_url, tax_id,
 		       status, tax_rate, currency, timezone, receipt_footer, receipt_logo,
 		       order_prefix, low_stock_threshold, created_at, updated_at
 		FROM merchants ORDER BY created_at DESC OFFSET $1 LIMIT $2`, offset, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list merchants: %w", err)
+		return nil, 0, fmt.Errorf("failed to list merchants: %w", err)
 	}
 	defer rows.Close()
 
@@ -92,14 +107,14 @@ func (r *MerchantRepository) List(ctx context.Context, offset, limit int) ([]dom
 			&m.Settings.ReceiptLogo, &m.Settings.OrderPrefix,
 			&m.Settings.LowStockThreshold, &m.CreatedAt, &m.UpdatedAt,
 		); err != nil {
-			return nil, fmt.Errorf("failed to scan merchant: %w", err)
+			return nil, 0, fmt.Errorf("failed to scan merchant: %w", err)
 		}
 		result = append(result, m)
 	}
 	if result == nil {
-		return []domain.Merchant{}, nil
+		return []domain.Merchant{}, total, nil
 	}
-	return result, nil
+	return result, total, nil
 }
 
 func (r *MerchantRepository) Update(ctx context.Context, merchant *domain.Merchant) error {
