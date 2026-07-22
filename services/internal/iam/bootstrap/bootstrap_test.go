@@ -42,9 +42,9 @@ type apiResponse struct {
 }
 
 type authResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int    `json:"expires_in"`
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+	ExpiresIn    int    `json:"expiresIn"`
 }
 
 func TestApp_HTTPFlow(t *testing.T) {

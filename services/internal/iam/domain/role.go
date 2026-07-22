@@ -41,7 +41,7 @@ type Role struct {
 	Name        string       `json:"name"`
 	Description string       `json:"description"`
 	Permissions []Permission `json:"permissions"`
-	IsSystem    bool         `json:"is_system"`
+	IsSystem    bool         `json:"isSystem"`
 }
 
 var DefaultRoles = map[string]Role{
