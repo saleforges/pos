@@ -15,6 +15,10 @@ class Order {
   final OrderStatus status;
   final String paymentMethod;
   final DateTime createdAt;
+  final int discount;
+  final int tax;
+  final int serviceCharge;
+  final int rounding;
 
   Order({
     required this.id,
@@ -23,5 +27,9 @@ class Order {
     required this.status,
     required this.paymentMethod,
     required this.createdAt,
+    this.discount = 0,
+    this.tax = 0,
+    this.serviceCharge = 0,
+    this.rounding = 0,
   });
 }

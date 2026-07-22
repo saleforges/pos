@@ -72,3 +72,7 @@ app.*.map.json
 
 # Environment variables
 .env
+
+# Graphify
+.graphify/
+graphify-out/

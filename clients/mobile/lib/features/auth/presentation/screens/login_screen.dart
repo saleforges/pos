@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/config/app_config.dart';
 import '../providers/auth_provider.dart';
-import 'branch_selection_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -53,12 +52,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final authState = ref.watch(authProvider);
 
     ref.listen<AuthState>(authProvider, (previous, next) {
-      if (next.status == AuthStatus.authenticated) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const BranchSelectionScreen()),
-        );
-      } else if (next.status == AuthStatus.error && next.error != null) {
+      if (next.status == AuthStatus.error && next.error != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(next.error!), backgroundColor: Colors.red),
         );

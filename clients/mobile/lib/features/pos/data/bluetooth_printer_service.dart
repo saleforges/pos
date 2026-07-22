@@ -48,7 +48,15 @@ class BluetoothPrinterService {
     _onDevicesChanged.add(_devices);
     await _eventSub?.cancel();
     _eventSub = _eventChannel.receiveBroadcastStream().listen(_onEvent);
-    await _channel.invokeMethod('startScan');
+    try {
+      await _channel.invokeMethod('startScan');
+    } on PlatformException catch (e) {
+      if (e.code == 'bt_off') {
+        _eventSub?.cancel();
+        _eventSub = null;
+      }
+      rethrow;
+    }
   }
 
   Future<void> stopScan() async {
@@ -65,6 +73,13 @@ class BluetoothPrinterService {
 
   Future<void> printBytes(List<int> bytes) async {
     if (!supported) throw Exception('Bluetooth not supported on this platform');
+    try {
+      final ok = await _channel.invokeMethod('isConnected');
+      if (ok != true) {
+        _connected = false;
+        throw Exception('Printer not connected');
+      }
+    } catch (_) {}
     if (!_connected) throw Exception('Printer not connected');
     await _channel.invokeMethod('writeData', Uint8List.fromList(bytes));
   }
@@ -82,11 +97,14 @@ class BluetoothPrinterService {
 
   static List<int> receiptToBytes(String text) {
     final bytes = <int>[0x1B, 0x40];
-    for (final line in text.split('\n')) {
-      bytes.addAll(utf8.encode(line));
-      bytes.add(0x0A);
+    final textBytes = latin1.encode(text.replaceAll('\r\n', '\n'));
+    for (final b in textBytes) {
+      bytes.add(b);
     }
-    bytes.addAll([0x0A, 0x0A, 0x1D, 0x56, 0x00]);
+    bytes.add(0x0A);
+    bytes.add(0x1D);
+    bytes.add(0x56);
+    bytes.add(0x00);
     return bytes;
   }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/config/app_config.dart';
+import 'core/config/translations.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/auth/presentation/screens/branch_selection_screen.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
@@ -12,10 +14,18 @@ class PosMobileApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
+    final locale = ref.watch(localeProvider);
 
     return MaterialApp(
       title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
+      locale: locale == AppLocale.id ? const Locale('id', 'ID') : const Locale('en', 'US'),
+      supportedLocales: const [Locale('id', 'ID'), Locale('en', 'US')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF6366F1),

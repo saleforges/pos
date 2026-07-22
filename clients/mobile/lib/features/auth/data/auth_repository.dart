@@ -75,4 +75,16 @@ class AuthRepository {
     final token = await _apiClient.getAccessToken();
     return token != null;
   }
+
+  Future<void> saveSelectedBranchId(int branchId) async {
+    await _apiClient.saveSelectedBranchId(branchId);
+  }
+
+  Future<int?> getSelectedBranchId() async {
+    return await _apiClient.getSelectedBranchId();
+  }
+
+  Future<void> clearSelectedBranchId() async {
+    await _apiClient.clearSelectedBranchId();
+  }
 }

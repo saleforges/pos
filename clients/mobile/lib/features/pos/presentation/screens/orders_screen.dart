@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/models/order.dart';
+import '../../../../core/config/translations.dart';
 import '../../data/print_service.dart';
 import 'main_shell.dart';
 
-class OrdersScreen extends ConsumerWidget {
+class OrdersScreen extends StatelessWidget {
   const OrdersScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Orders')),
-      body: const OrdersScreenBody(),
-    );
+  Widget build(BuildContext context) {
+    return const OrdersScreenBody();
   }
 }
 
@@ -51,6 +49,7 @@ class _OrdersScreenBodyState extends ConsumerState<OrdersScreenBody> {
 
   @override
   Widget build(BuildContext context) {
+    final t = ref.watch(translationsProvider);
     final allOrders = ref.watch(orderStoreProvider).orders;
     final orders = _filterOrders(allOrders);
 
@@ -62,11 +61,18 @@ class _OrdersScreenBodyState extends ConsumerState<OrdersScreenBody> {
             controller: _searchController,
             onChanged: (v) => setState(() => _query = v),
             decoration: InputDecoration(
-              hintText: 'Search by ID or item name...',
+              hintText: t.tr('search_orders'),
+              hintStyle: TextStyle(color: Colors.grey.shade400),
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _query.isNotEmpty
                   ? IconButton(icon: const Icon(Icons.clear), onPressed: () { _searchController.clear(); setState(() => _query = ''); })
                   : null,
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
             ),
           ),
         ),
@@ -74,24 +80,25 @@ class _OrdersScreenBodyState extends ConsumerState<OrdersScreenBody> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              _FilterChip(label: 'All', selected: _filter == null, onTap: () => setState(() => _filter = null)),
+              _FilterChip(label: t.tr('all_orders'), selected: _filter == null, onTap: () => setState(() => _filter = null)),
               const SizedBox(width: 8),
-              _FilterChip(label: 'Unpaid', selected: _filter == OrderStatus.unpaid, onTap: () => setState(() => _filter = OrderStatus.unpaid)),
+              _FilterChip(label: t.tr('unpaid'), selected: _filter == OrderStatus.unpaid, onTap: () => setState(() => _filter = OrderStatus.unpaid)),
               const SizedBox(width: 8),
-              _FilterChip(label: 'Paid', selected: _filter == OrderStatus.paid, onTap: () => setState(() => _filter = OrderStatus.paid)),
+              _FilterChip(label: t.tr('paid'), selected: _filter == OrderStatus.paid, onTap: () => setState(() => _filter = OrderStatus.paid)),
             ],
           ),
         ),
         const SizedBox(height: 8),
         Expanded(
           child: orders.isEmpty
-              ? Center(child: Text('No orders found', style: TextStyle(color: Colors.grey.shade400)))
+              ? Center(child: Text(t.tr('no_orders'), style: TextStyle(color: Colors.grey.shade400)))
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: orders.length,
                   itemBuilder: (context, index) {
                     final order = orders[index];
                     return Card(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
@@ -109,7 +116,7 @@ class _OrdersScreenBodyState extends ConsumerState<OrdersScreenBody> {
                                     border: Border.all(color: order.status == OrderStatus.unpaid ? Colors.orange.shade200 : Colors.green.shade200),
                                   ),
                                   child: Text(
-                                    order.status == OrderStatus.unpaid ? 'UNPAID' : 'PAID',
+                                    order.status == OrderStatus.unpaid ? t.tr('unpaid').toUpperCase() : t.tr('paid').toUpperCase(),
                                     style: TextStyle(
                                       color: order.status == OrderStatus.unpaid ? Colors.orange.shade700 : Colors.green.shade700,
                                       fontSize: 11, fontWeight: FontWeight.bold,
@@ -126,7 +133,7 @@ class _OrdersScreenBodyState extends ConsumerState<OrdersScreenBody> {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text('${item.name} x${item.quantity}', style: const TextStyle(fontSize: 14)),
+                                  Flexible(child: Text('${item.name} x${item.quantity}', style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis)),
                                   Text('Rp ${(item.price * item.quantity).toStringAsFixed(0)}', style: const TextStyle(fontSize: 14)),
                                 ],
                               ),
@@ -135,7 +142,7 @@ class _OrdersScreenBodyState extends ConsumerState<OrdersScreenBody> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Total', style: TextStyle(fontWeight: FontWeight.bold)),
+                                Text(t.tr('total'), style: const TextStyle(fontWeight: FontWeight.bold)),
                                 Text('Rp ${order.total.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF6366F1))),
                               ],
                             ),
@@ -147,10 +154,11 @@ class _OrdersScreenBodyState extends ConsumerState<OrdersScreenBody> {
                                   onPressed: () {
                                     ref.read(orderStoreProvider).markPaid(order.id);
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('${order.id} marked as paid')),
+                                      SnackBar(content: Text('${order.id} ${t.tr('paid')}')),
                                     );
                                   },
-                                  child: const Text('Mark as Paid'),
+                                  style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                                  child: Text(t.tr('mark_paid')),
                                 ),
                               ),
                             ],
@@ -160,7 +168,8 @@ class _OrdersScreenBodyState extends ConsumerState<OrdersScreenBody> {
                               child: OutlinedButton.icon(
                                 onPressed: () => PrintService.printReceipt(context, order),
                                 icon: const Icon(Icons.receipt, size: 18),
-                                label: const Text('Print Receipt'),
+                                label: Text(t.tr('print_receipt')),
+                                style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                               ),
                             ),
                           ],

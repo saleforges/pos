@@ -53,7 +53,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
     if (isLoggedIn) {
       try {
         final user = await _repository.getCurrentUser();
-        state = AuthState(status: AuthStatus.authenticated, user: user);
+        final uniqueBranches = _getUniqueBranches(user);
+        final savedBranchId = await _repository.getSelectedBranchId();
+
+        Branch? selectedBranch;
+        if (savedBranchId != null) {
+          selectedBranch = uniqueBranches.where((b) => b.id == savedBranchId).firstOrNull;
+        }
+
+        if (selectedBranch == null && uniqueBranches.length == 1) {
+          selectedBranch = uniqueBranches.first;
+          await _repository.saveSelectedBranchId(selectedBranch.id);
+        }
+
+        state = AuthState(
+          status: AuthStatus.authenticated,
+          user: user,
+          selectedBranch: selectedBranch,
+        );
       } catch (_) {
         state = AuthState(status: AuthStatus.unauthenticated);
       }
@@ -71,7 +88,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
         loginResponse.refreshToken,
       );
       final user = await _repository.getCurrentUser();
-      state = AuthState(status: AuthStatus.authenticated, user: user);
+      final uniqueBranches = _getUniqueBranches(user);
+
+      Branch? selectedBranch;
+      if (uniqueBranches.length == 1) {
+        selectedBranch = uniqueBranches.first;
+        await _repository.saveSelectedBranchId(selectedBranch.id);
+      }
+
+      state = AuthState(
+        status: AuthStatus.authenticated,
+        user: user,
+        selectedBranch: selectedBranch,
+      );
     } catch (e) {
       state = AuthState(
         status: AuthStatus.error,
@@ -80,13 +109,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  void selectBranch(Branch? branch) {
+  Future<void> selectBranch(Branch? branch) async {
+    if (branch != null) {
+      await _repository.saveSelectedBranchId(branch.id);
+    } else {
+      await _repository.clearSelectedBranchId();
+    }
     state = state.copyWith(selectedBranch: branch);
   }
 
   Future<void> logout() async {
+    await _repository.clearSelectedBranchId();
     await _repository.logout();
     state = AuthState(status: AuthStatus.unauthenticated);
+  }
+
+  List<Branch> _getUniqueBranches(User user) {
+    final seen = <int>{};
+    return user.roles.where((r) => seen.add(r.branch.id)).map((r) => r.branch).toList();
   }
 }
 

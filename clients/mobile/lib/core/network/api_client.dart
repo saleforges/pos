@@ -80,4 +80,17 @@ class ApiClient {
   Future<String?> getAccessToken() async {
     return await _storage.read(key: 'access_token');
   }
+
+  Future<void> saveSelectedBranchId(int branchId) async {
+    await _storage.write(key: 'selected_branch_id', value: branchId.toString());
+  }
+
+  Future<int?> getSelectedBranchId() async {
+    final value = await _storage.read(key: 'selected_branch_id');
+    return value != null ? int.tryParse(value) : null;
+  }
+
+  Future<void> clearSelectedBranchId() async {
+    await _storage.delete(key: 'selected_branch_id');
+  }
 }

@@ -1,30 +1,63 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/models/order.dart';
+import '../../../../core/config/translations.dart';
+import '../../auth/presentation/providers/auth_provider.dart';
 import 'receipt_service.dart';
 import 'bluetooth_printer_service.dart';
 
 class PrintService {
-  static Future<void> printReceipt(BuildContext context, Order order) async {
+  static Future<void> printReceipt(
+    BuildContext context,
+    Order order, {
+    String customer = '',
+  }) async {
+    final container = ProviderScope.containerOf(context, listen: false);
+    final t = container.read(translationsProvider);
+    final auth = container.read(authProvider);
+
+    final cashier = auth.user?.username ?? '';
+    final branch = auth.selectedBranch?.name;
+    final merchantName = auth.user?.roles.firstOrNull?.merchant.name ?? '';
+
     final bt = BluetoothPrinterService();
-    final receipt = ReceiptService.format(order);
+    final receipt = ReceiptService.format(
+      order,
+      t: t,
+      customer: customer,
+      cashier: cashier,
+      branchName: branch,
+      merchantName: merchantName,
+    );
 
     if (bt.isConnected) {
       try {
         await bt.printBytes(BluetoothPrinterService.receiptToBytes(receipt));
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Receipt printed')),
+            SnackBar(content: Text(t.tr('receipt_printed'))),
           );
         }
         return;
-      } catch (_) {}
+      } catch (e, stack) {
+        debugPrint('Print error: $e\n$stack');
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Cetak gagal: $e'),
+              backgroundColor: Colors.red.shade400,
+            ),
+          );
+        }
+      }
     }
 
     if (!context.mounted) return;
-    _showReceiptDialog(context, receipt);
+    _showReceiptDialog(context, receipt, t);
   }
 
-  static void _showReceiptDialog(BuildContext context, String receipt) {
+  static void _showReceiptDialog(
+      BuildContext context, String receipt, Translations t) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -32,11 +65,11 @@ class PrintService {
           children: [
             const Icon(Icons.receipt, size: 24),
             const SizedBox(width: 8),
-            const Text('Receipt'),
+            Text(t.tr('receipt')),
             const Spacer(),
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
+              child: Text(t.tr('close')),
             ),
           ],
         ),

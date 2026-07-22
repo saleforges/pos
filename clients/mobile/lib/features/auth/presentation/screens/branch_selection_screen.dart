@@ -2,28 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/auth_provider.dart';
 import '../../../../shared/models/user.dart';
-import '../../../pos/presentation/screens/main_shell.dart';
+import '../../../../core/config/translations.dart';
 
 class BranchSelectionScreen extends ConsumerWidget {
   const BranchSelectionScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(translationsProvider);
     final authState = ref.watch(authProvider);
     final roles = authState.user?.roles ?? [];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Select Branch')),
+      appBar: AppBar(title: Text(t.tr('select_branch'))),
       body: roles.isEmpty
-          ? const Center(child: Text('No branches available'))
-          : _BranchList(roles: roles),
+          ? Center(child: Text(t.tr('no_branches')))
+          : _BranchList(roles: roles, translations: t),
     );
   }
 }
 
 class _BranchList extends StatefulWidget {
   final List<Role> roles;
-  const _BranchList({required this.roles});
+  final Translations translations;
+
+  const _BranchList({required this.roles, required this.translations});
 
   @override
   State<_BranchList> createState() => _BranchListState();
@@ -34,6 +37,7 @@ class _BranchListState extends State<_BranchList> {
 
   @override
   Widget build(BuildContext context) {
+    final t = widget.translations;
     return Column(
       children: [
         const SizedBox(height: 8),
@@ -119,16 +123,12 @@ class _BranchListState extends State<_BranchList> {
           child: SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: _selected == null ? null : () {
-                ProviderScope.containerOf(context, listen: false)
+              onPressed: _selected == null ? null : () async {
+                await ProviderScope.containerOf(context, listen: false)
                   .read(authProvider.notifier)
                   .selectBranch(_selected!.branch);
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (_) => const MainShell()),
-                );
               },
-              child: const Text('Continue', style: TextStyle(fontSize: 16)),
+              child: Text(t.tr('continue'), style: const TextStyle(fontSize: 16)),
             ),
           ),
         ),

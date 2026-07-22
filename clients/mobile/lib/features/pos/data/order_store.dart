@@ -22,6 +22,10 @@ class OrderStore {
         status: OrderStatus.paid,
         paymentMethod: _orders[i].paymentMethod,
         createdAt: _orders[i].createdAt,
+        discount: _orders[i].discount,
+        tax: _orders[i].tax,
+        serviceCharge: _orders[i].serviceCharge,
+        rounding: _orders[i].rounding,
       );
     }
   }
