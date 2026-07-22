@@ -18,14 +18,14 @@ const (
 )
 
 type UserRoleAssignment struct {
-	ID           int64
-	Role         Role
-	MerchantID   int64
-	MerchantName string
-	BranchID     *int64
-	BranchName   string
-	IsDefault    bool
-	BranchScope  BranchScope
+	ID           int64       `json:"id"`
+	Role         Role        `json:"role"`
+	MerchantID   int64       `json:"merchantId"`
+	MerchantName string      `json:"merchantName"`
+	BranchID     *int64      `json:"branchId"`
+	BranchName   string      `json:"branchName"`
+	IsDefault    bool        `json:"isDefault"`
+	BranchScope  BranchScope `json:"branchScope"`
 }
 
 type User struct {

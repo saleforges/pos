@@ -55,9 +55,9 @@ type IntrospectParams struct {
 
 type IntrospectResult struct {
 	Active      bool                        `json:"active"`
-	UserID      int64                       `json:"user_id,omitempty"`
-	UserType    domain.UserType             `json:"user_type,omitempty"`
-	RoleName    string                      `json:"role_name,omitempty"`
+	UserID      int64                       `json:"userId,omitempty"`
+	UserType    domain.UserType             `json:"userType,omitempty"`
+	RoleName    string                      `json:"roleName,omitempty"`
 	Staff       []domain.UserRoleAssignment `json:"staff,omitempty"`
 	Permissions []domain.Permission         `json:"permissions,omitempty"`
 }
