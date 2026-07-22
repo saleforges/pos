@@ -56,7 +56,7 @@ export const authApi = {
   login: async (username: string, password: string) => {
     // Backend sets access_token + refresh_token as HttpOnly cookies via Set-Cookie.
     // Browser handles cookie storage and sending automatically.
-    const res = await api<{ access_token: string; refresh_token: string; expires_in: number }>(
+    await api<{ access_token: string; refresh_token: string; expires_in: number }>(
       '/auth/login',
       {
         method: 'POST',

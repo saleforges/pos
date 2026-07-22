@@ -19,14 +19,19 @@ export default defineConfig(({ mode }) => {
           secure: false,
           rewrite: (path) => path.replace(/^\/api/, ''),
           configure: (proxy) => {
+            proxy.on('proxyReq', (proxyReq) => {
+              // Strip Origin header so backend sees a same-origin request,
+              // avoiding CORS 403 when localhost:5173 isn't in its allow-list.
+              proxyReq.removeHeader('origin');
+            });
             proxy.on('proxyRes', (proxyRes) => {
               // Strip Secure flag from Set-Cookie in dev (browser is on HTTP).
               // In production, Caddy/ingress handles TLS so Secure works correctly.
               const cookies = proxyRes.headers['set-cookie'];
               if (cookies) {
-                proxyRes.headers['set-cookie'] = Array.isArray(cookies)
-                  ? cookies.map((c) => c.replace(/;\s*Secure/gi, ''))
-                  : cookies.replace(/;\s*Secure/gi, '');
+                proxyRes.headers['set-cookie'] = cookies.map((c) =>
+                  c.replace(/;\s*Secure/gi, ''),
+                );
               }
             });
           },
