@@ -82,6 +82,9 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/development'
     needs: build-and-push
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v4
 
