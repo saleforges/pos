@@ -8,15 +8,8 @@ import (
 	"github.com/saleforge/pos/services/internal/merchant/domain"
 	"github.com/saleforge/pos/services/internal/merchant/port/repository"
 	"github.com/saleforge/pos/services/pkg/otel"
+	"github.com/saleforge/pos/services/pkg/pagination"
 )
-
-type MerchantUsecase interface {
-	CreateMerchant(ctx context.Context, input CreateMerchantInput) (*domain.Merchant, error)
-	GetMerchant(ctx context.Context, id int64) (*domain.Merchant, error)
-	ListMerchants(ctx context.Context, offset, limit int) ([]domain.Merchant, error)
-	UpdateMerchant(ctx context.Context, input UpdateMerchantInput) (*domain.Merchant, error)
-	DeleteMerchant(ctx context.Context, id int64) error
-}
 
 type merchantUsecase struct {
 	merchantRepo repository.MerchantRepository
@@ -28,7 +21,7 @@ func NewMerchantUsecase(merchantRepo repository.MerchantRepository, branchRepo r
 	return &merchantUsecase{merchantRepo: merchantRepo, branchRepo: branchRepo, staffRepo: staffRepo}
 }
 
-type CreateMerchantInput struct {
+type CreateMerchantParams struct {
 	Name      string
 	LegalName string
 	Address   string
@@ -38,7 +31,7 @@ type CreateMerchantInput struct {
 	Settings  domain.MerchantSettings
 }
 
-type UpdateMerchantInput struct {
+type UpdateMerchantParams struct {
 	ID        int64
 	Name      *string
 	LegalName *string
@@ -50,7 +43,7 @@ type UpdateMerchantInput struct {
 	Settings  *domain.MerchantSettings
 }
 
-func (uc *merchantUsecase) CreateMerchant(ctx context.Context, input CreateMerchantInput) (*domain.Merchant, error) {
+func (uc *merchantUsecase) CreateMerchant(ctx context.Context, input CreateMerchantParams) (*domain.Merchant, error) {
 	ctx, span := otel.StartSpan(ctx, "merchant.CreateMerchant")
 	defer span.End()
 
@@ -94,17 +87,24 @@ func (uc *merchantUsecase) GetMerchant(ctx context.Context, id int64) (*domain.M
 	return uc.merchantRepo.GetByID(ctx, id)
 }
 
-func (uc *merchantUsecase) ListMerchants(ctx context.Context, offset, limit int) ([]domain.Merchant, error) {
+func (uc *merchantUsecase) ListMerchants(ctx context.Context, p pagination.Params) ([]domain.Merchant, *pagination.Metadata, error) {
 	ctx, span := otel.StartSpan(ctx, "merchant.ListMerchants")
 	defer span.End()
 
-	if limit <= 0 || limit > 100 {
-		limit = 20
+	data, total, err := uc.merchantRepo.List(ctx, p.Offset, p.Limit)
+	if err != nil {
+		return nil, nil, err
 	}
-	return uc.merchantRepo.List(ctx, offset, limit)
+	meta := &pagination.Metadata{
+		Total:       total,
+		Offset:      p.Offset,
+		Limit:       p.Limit,
+		ReturnCount: len(data),
+	}
+	return data, meta, nil
 }
 
-func (uc *merchantUsecase) UpdateMerchant(ctx context.Context, input UpdateMerchantInput) (*domain.Merchant, error) {
+func (uc *merchantUsecase) UpdateMerchant(ctx context.Context, input UpdateMerchantParams) (*domain.Merchant, error) {
 	if input.Name != nil && *input.Name == "" {
 		return nil, domain.ErrInvalidMerchant
 	}

@@ -11,26 +11,26 @@ const (
 )
 
 type MerchantSettings struct {
-	TaxRate            float64 `json:"tax_rate"`
+	TaxRate            float64 `json:"taxRate"`
 	Currency           string  `json:"currency"`
 	Timezone           string  `json:"timezone"`
-	ReceiptFooter      string  `json:"receipt_footer,omitempty"`
-	ReceiptLogo        string  `json:"receipt_logo,omitempty"`
-	OrderPrefix        string  `json:"order_prefix,omitempty"`
-	LowStockThreshold  int     `json:"low_stock_threshold"`
+	ReceiptFooter      string  `json:"receiptFooter,omitempty"`
+	ReceiptLogo        string  `json:"receiptLogo,omitempty"`
+	OrderPrefix        string  `json:"orderPrefix,omitempty"`
+	LowStockThreshold  int     `json:"lowStockThreshold"`
 }
 
 type Merchant struct {
 	ID        int64           `json:"id"`
 	Name      string           `json:"name"`
-	LegalName string           `json:"legal_name"`
+	LegalName string           `json:"legalName"`
 	Address   string           `json:"address"`
 	Phone     string           `json:"phone"`
 	Email     string           `json:"email"`
-	LogoURL   string           `json:"logo_url,omitempty"`
-	TaxID     string           `json:"tax_id,omitempty"`
+	LogoURL   string           `json:"logoUrl,omitempty"`
+	TaxID     string           `json:"taxId,omitempty"`
 	Status    MerchantStatus   `json:"status"`
 	Settings  MerchantSettings `json:"settings"`
-	CreatedAt time.Time       `json:"created_at"`
-	UpdatedAt time.Time       `json:"updated_at"`
+	CreatedAt time.Time       `json:"createdAt"`
+	UpdatedAt time.Time       `json:"updatedAt"`
 }

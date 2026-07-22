@@ -20,12 +20,12 @@ const (
 
 type StaffMember struct {
 	ID         int64       `json:"id"`
-	MerchantID int64       `json:"merchant_id"`
-	BranchID   int64       `json:"branch_id"`
-	UserID     int64       `json:"user_id"`
+	MerchantID int64       `json:"merchantId"`
+	BranchID   int64       `json:"branchId"`
+	UserID     int64       `json:"userId"`
 	Role       StaffRole   `json:"role"`
 	Status     StaffStatus `json:"status"`
-	IsDefault  bool        `json:"is_default"`
-	CreatedAt  time.Time   `json:"created_at"`
-	UpdatedAt  time.Time   `json:"updated_at"`
+	IsDefault  bool        `json:"isDefault"`
+	CreatedAt  time.Time   `json:"createdAt"`
+	UpdatedAt  time.Time   `json:"updatedAt"`
 }

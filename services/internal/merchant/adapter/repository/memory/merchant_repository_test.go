@@ -45,7 +45,7 @@ func TestMerchantRepository_List(t *testing.T) {
 	repo.Create(context.Background(), &domain.Merchant{Name: "B"})
 	repo.Create(context.Background(), &domain.Merchant{Name: "C"})
 
-	all, err := repo.List(context.Background(), 0, 10)
+	all, _, err := repo.List(context.Background(), 0, 10)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -126,7 +126,7 @@ func TestBranchRepository_ListByMerchant(t *testing.T) {
 	repo.Create(context.Background(), &domain.Branch{MerchantID: 1})
 	repo.Create(context.Background(), &domain.Branch{MerchantID: 2})
 
-	branches, err := repo.ListByMerchant(context.Background(), 1)
+	branches, _, err := repo.ListByMerchant(context.Background(), 1, 0, 10)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestBranchRepository_ListByMerchant(t *testing.T) {
 		t.Errorf("expected 2 branches, got %d", len(branches))
 	}
 
-	empty, err := repo.ListByMerchant(context.Background(), 999)
+	empty, _, err := repo.ListByMerchant(context.Background(), 999, 0, 10)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

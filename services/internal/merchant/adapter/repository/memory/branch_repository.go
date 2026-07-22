@@ -36,19 +36,31 @@ func (r *BranchRepository) GetByID(_ context.Context, id int64) (*domain.Branch,
 	return b, nil
 }
 
-func (r *BranchRepository) ListByMerchant(_ context.Context, merchantID int64) ([]domain.Branch, error) {
+func (r *BranchRepository) ListByMerchant(_ context.Context, merchantID int64, offset, limit int) ([]domain.Branch, int64, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	var result []domain.Branch
+
+	var all []domain.Branch
 	for _, b := range r.branches {
 		if b.MerchantID == merchantID {
-			result = append(result, *b)
+			all = append(all, *b)
 		}
 	}
-	if result == nil {
-		return []domain.Branch{}, nil
+	total := int64(len(all))
+
+	if limit == -1 {
+		limit = len(all)
+		offset = 0
 	}
-	return result, nil
+
+	if offset >= len(all) {
+		return []domain.Branch{}, total, nil
+	}
+	end := offset + limit
+	if end > len(all) {
+		end = len(all)
+	}
+	return all[offset:end], total, nil
 }
 
 func (r *BranchRepository) Update(_ context.Context, branch *domain.Branch) error {

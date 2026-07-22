@@ -1,4 +1,4 @@
-package handler
+package branch
 
 import (
 	"encoding/json"
@@ -11,24 +11,15 @@ import (
 	"github.com/saleforge/pos/services/pkg/httputil"
 )
 
-type BranchHandler struct {
+type Handler struct {
 	uc usecase.BranchUsecase
 }
 
-func NewBranchHandler(uc usecase.BranchUsecase) *BranchHandler {
-	return &BranchHandler{uc: uc}
+func NewHandler(uc usecase.BranchUsecase) *Handler {
+	return &Handler{uc: uc}
 }
 
-type createBranchReq struct {
-	Name           string                 `json:"name"`
-	Code           string                 `json:"code"`
-	Address        string                 `json:"address"`
-	Phone          string                 `json:"phone"`
-	OperatingDays  []string               `json:"operating_days"`
-	OperatingHours *domain.OperatingHours `json:"operating_hours"`
-}
-
-func (h *BranchHandler) CreateBranch(c echo.Context) error {
+func (h *Handler) CreateBranch(c echo.Context) error {
 	var req createBranchReq
 	if err := json.NewDecoder(c.Request().Body).Decode(&req); err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
@@ -38,7 +29,7 @@ func (h *BranchHandler) CreateBranch(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrMissingFields)
 	}
 
-	result, err := h.uc.CreateBranch(c.Request().Context(), usecase.CreateBranchInput{
+	result, err := h.uc.CreateBranch(c.Request().Context(), usecase.CreateBranchParams{
 		MerchantID:     merchantID,
 		Name:           req.Name,
 		Code:           req.Code,
@@ -61,7 +52,7 @@ func (h *BranchHandler) CreateBranch(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusCreated, result)
 }
 
-func (h *BranchHandler) GetBranch(c echo.Context) error {
+func (h *Handler) GetBranch(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
@@ -76,25 +67,17 @@ func (h *BranchHandler) GetBranch(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, branch)
 }
 
-func (h *BranchHandler) ListBranches(c echo.Context) error {
+func (h *Handler) ListBranches(c echo.Context) error {
 	merchantID := httputil.GetMerchantID(c)
-	branches, err := h.uc.ListBranches(c.Request().Context(), merchantID)
+	p := httputil.ParsePageParams(c)
+	data, meta, err := h.uc.ListBranches(c.Request().Context(), merchantID, p)
 	if err != nil {
 		return httputil.WriteError(c, http.StatusInternalServerError, err)
 	}
-	return httputil.WriteJSON(c, http.StatusOK, branches)
+	return httputil.WritePaginated(c, http.StatusOK, data, *meta)
 }
 
-type updateBranchReq struct {
-	Name           *string                `json:"name,omitempty"`
-	Address        *string                `json:"address,omitempty"`
-	Phone          *string                `json:"phone,omitempty"`
-	Status         *domain.BranchStatus   `json:"status,omitempty"`
-	OperatingDays  []string               `json:"operating_days,omitempty"`
-	OperatingHours *domain.OperatingHours `json:"operating_hours,omitempty"`
-}
-
-func (h *BranchHandler) UpdateBranch(c echo.Context) error {
+func (h *Handler) UpdateBranch(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
@@ -104,7 +87,7 @@ func (h *BranchHandler) UpdateBranch(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
 
-	branch, err := h.uc.UpdateBranch(c.Request().Context(), usecase.UpdateBranchInput{
+	branch, err := h.uc.UpdateBranch(c.Request().Context(), usecase.UpdateBranchParams{
 		ID:             id,
 		Name:           req.Name,
 		Address:        req.Address,
@@ -127,7 +110,7 @@ func (h *BranchHandler) UpdateBranch(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, branch)
 }
 
-func (h *BranchHandler) DeleteBranch(c echo.Context) error {
+func (h *Handler) DeleteBranch(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)

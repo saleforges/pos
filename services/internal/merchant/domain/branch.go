@@ -17,14 +17,14 @@ type OperatingHours struct {
 
 type Branch struct {
 	ID             int64            `json:"id"`
-	MerchantID     int64            `json:"merchant_id"`
+	MerchantID     int64            `json:"merchantId"`
 	Name           string          `json:"name"`
 	Code           string          `json:"code"`
 	Address        string          `json:"address"`
 	Phone          string          `json:"phone"`
 	Status         BranchStatus    `json:"status"`
-	OperatingDays  []string        `json:"operating_days,omitempty"`
-	OperatingHours *OperatingHours `json:"operating_hours,omitempty"`
-	CreatedAt      time.Time        `json:"created_at"`
-	UpdatedAt      time.Time        `json:"updated_at"`
+	OperatingDays  []string        `json:"operatingDays,omitempty"`
+	OperatingHours *OperatingHours `json:"operatingHours,omitempty"`
+	CreatedAt      time.Time        `json:"createdAt"`
+	UpdatedAt      time.Time        `json:"updatedAt"`
 }

@@ -7,20 +7,10 @@ import (
 	"time"
 
 	"github.com/saleforge/pos/services/internal/merchant/domain"
+	"github.com/saleforge/pos/services/pkg/pagination"
 )
 
-type StaffUsecase interface {
-	AssignStaff(ctx context.Context, input AssignStaffInput) (*domain.StaffMember, error)
-	GetStaff(ctx context.Context, id int64) (*domain.StaffMember, error)
-	ListStaffByBranch(ctx context.Context, branchID int64) ([]domain.StaffMember, error)
-	ListStaffByMerchant(ctx context.Context, merchantID int64) ([]domain.StaffMember, error)
-	GetMyStaffAssignments(ctx context.Context, userID, merchantID int64) ([]domain.StaffMember, error)
-	SetMyDefaultBranch(ctx context.Context, userID, branchID int64) error
-	UpdateStaff(ctx context.Context, input UpdateStaffInput) (*domain.StaffMember, error)
-	RemoveStaff(ctx context.Context, id int64) error
-}
-
-type AssignStaffInput struct {
+type AssignStaffParams struct {
 	MerchantID int64
 	BranchID   int64
 	UserID     int64
@@ -28,13 +18,13 @@ type AssignStaffInput struct {
 	IsDefault  bool
 }
 
-type UpdateStaffInput struct {
+type UpdateStaffParams struct {
 	ID     int64
 	Role   *domain.StaffRole
 	Status *domain.StaffStatus
 }
 
-func (uc *merchantUsecase) AssignStaff(ctx context.Context, input AssignStaffInput) (*domain.StaffMember, error) {
+func (uc *merchantUsecase) AssignStaff(ctx context.Context, input AssignStaffParams) (*domain.StaffMember, error) {
 	if input.BranchID == 0 || input.UserID == 0 || input.Role == "" {
 		return nil, domain.ErrInvalidStaff
 	}
@@ -88,15 +78,35 @@ func (uc *merchantUsecase) GetStaff(ctx context.Context, id int64) (*domain.Staf
 	return uc.staffRepo.GetByID(ctx, id)
 }
 
-func (uc *merchantUsecase) ListStaffByBranch(ctx context.Context, branchID int64) ([]domain.StaffMember, error) {
-	return uc.staffRepo.ListByBranch(ctx, branchID)
+func (uc *merchantUsecase) ListStaffByBranch(ctx context.Context, branchID int64, p pagination.Params) ([]domain.StaffMember, *pagination.Metadata, error) {
+	data, total, err := uc.staffRepo.ListByBranch(ctx, branchID, p.Offset, p.Limit)
+	if err != nil {
+		return nil, nil, err
+	}
+	meta := &pagination.Metadata{
+		Total:       total,
+		Offset:      p.Offset,
+		Limit:       p.Limit,
+		ReturnCount: len(data),
+	}
+	return data, meta, nil
 }
 
-func (uc *merchantUsecase) ListStaffByMerchant(ctx context.Context, merchantID int64) ([]domain.StaffMember, error) {
-	return uc.staffRepo.ListByMerchant(ctx, merchantID)
+func (uc *merchantUsecase) ListStaffByMerchant(ctx context.Context, merchantID int64, p pagination.Params) ([]domain.StaffMember, *pagination.Metadata, error) {
+	data, total, err := uc.staffRepo.ListByMerchant(ctx, merchantID, p.Offset, p.Limit)
+	if err != nil {
+		return nil, nil, err
+	}
+	meta := &pagination.Metadata{
+		Total:       total,
+		Offset:      p.Offset,
+		Limit:       p.Limit,
+		ReturnCount: len(data),
+	}
+	return data, meta, nil
 }
 
-func (uc *merchantUsecase) UpdateStaff(ctx context.Context, input UpdateStaffInput) (*domain.StaffMember, error) {
+func (uc *merchantUsecase) UpdateStaff(ctx context.Context, input UpdateStaffParams) (*domain.StaffMember, error) {
 	staff, err := uc.staffRepo.GetByID(ctx, input.ID)
 	if err != nil {
 		return nil, err

@@ -5,8 +5,10 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/merchant/port/repository"
-	"github.com/saleforge/pos/services/internal/merchant/transport/http/handler"
+	"github.com/saleforge/pos/services/internal/merchant/transport/http/branch"
+	"github.com/saleforge/pos/services/internal/merchant/transport/http/merchant"
 	"github.com/saleforge/pos/services/internal/merchant/transport/http/middleware"
+	"github.com/saleforge/pos/services/internal/merchant/transport/http/staff"
 	"github.com/saleforge/pos/services/pkg/httputil"
 	"github.com/saleforge/pos/services/pkg/jwks"
 	"github.com/saleforge/pos/services/pkg/otel"
@@ -35,7 +37,7 @@ func (a *staffAssignmentAdapter) ListByUserAndMerchant(ctx context.Context, user
 	return result, nil
 }
 
-func NewRouter(merchantHandler *handler.MerchantHandler, branchHandler *handler.BranchHandler, staffHandler *handler.StaffHandler, verifier *jwks.Verifier, staffRepo repository.StaffRepository) *echo.Echo {
+func NewRouter(merchantHandler *merchant.Handler, branchHandler *branch.Handler, staffHandler *staff.Handler, verifier *jwks.Verifier, staffRepo repository.StaffRepository) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
 

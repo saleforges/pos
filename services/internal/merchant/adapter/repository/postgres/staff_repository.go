@@ -54,12 +54,23 @@ func (r *StaffRepository) GetByID(ctx context.Context, id int64) (*domain.StaffM
 	return s, nil
 }
 
-func (r *StaffRepository) ListByBranch(ctx context.Context, branchID int64) ([]domain.StaffMember, error) {
+func (r *StaffRepository) ListByBranch(ctx context.Context, branchID int64, offset, limit int) ([]domain.StaffMember, int64, error) {
+	var total int64
+	if err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM staff WHERE branch_id = $1`, branchID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count staff by branch: %w", err)
+	}
+
+	if limit == -1 {
+		limit = int(total)
+		if limit == 0 { limit = 1 }
+		offset = 0
+	}
+
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, merchant_id, branch_id, user_id, role, status, is_default, created_at, updated_at
-		FROM staff WHERE branch_id = $1 ORDER BY created_at`, branchID)
+		FROM staff WHERE branch_id = $1 ORDER BY created_at OFFSET $2 LIMIT $3`, branchID, offset, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list staff by branch: %w", err)
+		return nil, 0, fmt.Errorf("failed to list staff by branch: %w", err)
 	}
 	defer rows.Close()
 
@@ -68,22 +79,33 @@ func (r *StaffRepository) ListByBranch(ctx context.Context, branchID int64) ([]d
 		var s domain.StaffMember
 		if err := rows.Scan(&s.ID, &s.MerchantID, &s.BranchID, &s.UserID,
 			&s.Role, &s.Status, &s.IsDefault, &s.CreatedAt, &s.UpdatedAt); err != nil {
-			return nil, fmt.Errorf("failed to scan staff: %w", err)
+			return nil, 0, fmt.Errorf("failed to scan staff: %w", err)
 		}
 		result = append(result, s)
 	}
 	if result == nil {
-		return []domain.StaffMember{}, nil
+		return []domain.StaffMember{}, total, nil
 	}
-	return result, nil
+	return result, total, nil
 }
 
-func (r *StaffRepository) ListByMerchant(ctx context.Context, merchantID int64) ([]domain.StaffMember, error) {
+func (r *StaffRepository) ListByMerchant(ctx context.Context, merchantID int64, offset, limit int) ([]domain.StaffMember, int64, error) {
+	var total int64
+	if err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM staff WHERE merchant_id = $1`, merchantID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("failed to count staff by merchant: %w", err)
+	}
+
+	if limit == -1 {
+		limit = int(total)
+		if limit == 0 { limit = 1 }
+		offset = 0
+	}
+
 	rows, err := r.pool.Query(ctx, `
 		SELECT id, merchant_id, branch_id, user_id, role, status, is_default, created_at, updated_at
-		FROM staff WHERE merchant_id = $1 ORDER BY created_at`, merchantID)
+		FROM staff WHERE merchant_id = $1 ORDER BY created_at OFFSET $2 LIMIT $3`, merchantID, offset, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list staff by merchant: %w", err)
+		return nil, 0, fmt.Errorf("failed to list staff by merchant: %w", err)
 	}
 	defer rows.Close()
 
@@ -92,14 +114,14 @@ func (r *StaffRepository) ListByMerchant(ctx context.Context, merchantID int64) 
 		var s domain.StaffMember
 		if err := rows.Scan(&s.ID, &s.MerchantID, &s.BranchID, &s.UserID,
 			&s.Role, &s.Status, &s.IsDefault, &s.CreatedAt, &s.UpdatedAt); err != nil {
-			return nil, fmt.Errorf("failed to scan staff: %w", err)
+			return nil, 0, fmt.Errorf("failed to scan staff: %w", err)
 		}
 		result = append(result, s)
 	}
 	if result == nil {
-		return []domain.StaffMember{}, nil
+		return []domain.StaffMember{}, total, nil
 	}
-	return result, nil
+	return result, total, nil
 }
 
 func (r *StaffRepository) GetByUserAndBranch(ctx context.Context, userID, branchID int64) (*domain.StaffMember, error) {

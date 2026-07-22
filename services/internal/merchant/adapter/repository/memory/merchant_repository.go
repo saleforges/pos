@@ -36,21 +36,29 @@ func (r *MerchantRepository) GetByID(_ context.Context, id int64) (*domain.Merch
 	return m, nil
 }
 
-func (r *MerchantRepository) List(_ context.Context, offset, limit int) ([]domain.Merchant, error) {
+func (r *MerchantRepository) List(_ context.Context, offset, limit int) ([]domain.Merchant, int64, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+
+	total := int64(len(r.merchants))
+
+	if limit == -1 {
+		limit = len(r.merchants)
+		offset = 0
+	}
+
 	all := make([]domain.Merchant, 0, len(r.merchants))
 	for _, m := range r.merchants {
 		all = append(all, *m)
 	}
 	if offset >= len(all) {
-		return []domain.Merchant{}, nil
+		return []domain.Merchant{}, total, nil
 	}
 	end := offset + limit
 	if end > len(all) {
 		end = len(all)
 	}
-	return all[offset:end], nil
+	return all[offset:end], total, nil
 }
 
 func (r *MerchantRepository) Update(_ context.Context, merchant *domain.Merchant) error {

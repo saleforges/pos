@@ -54,7 +54,7 @@ func TestStaffRepository_ListByBranch(t *testing.T) {
 	repo.Create(context.Background(), &domain.StaffMember{BranchID: 1})
 	repo.Create(context.Background(), &domain.StaffMember{BranchID: 2})
 
-	staff, err := repo.ListByBranch(context.Background(), 1)
+	staff, _, err := repo.ListByBranch(context.Background(), 1, 0, 10)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestStaffRepository_ListByBranch(t *testing.T) {
 		t.Errorf("expected 2 staff, got %d", len(staff))
 	}
 
-	empty, err := repo.ListByBranch(context.Background(), 999)
+	empty, _, err := repo.ListByBranch(context.Background(), 999, 0, 10)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestStaffRepository_ListByMerchant(t *testing.T) {
 	repo.Create(context.Background(), &domain.StaffMember{MerchantID: 1})
 	repo.Create(context.Background(), &domain.StaffMember{MerchantID: 2})
 
-	staff, err := repo.ListByMerchant(context.Background(), 1)
+	staff, _, err := repo.ListByMerchant(context.Background(), 1, 0, 10)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
