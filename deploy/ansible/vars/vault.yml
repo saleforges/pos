@@ -7,4 +7,4 @@ vault_jwt_private_key_pem: |
   ...
   -----END PRIVATE KEY-----
 vault_jwt_key_id: "iam-key-1"
-vault_api_proxy_target: "https://caddy:443"
+vault_api_proxy_target: "https://api-dev.saleforges.com"

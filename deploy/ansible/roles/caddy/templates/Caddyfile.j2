@@ -31,7 +31,14 @@
 }
 
 {{ caddy_backoffice_domain }} {
-    reverse_proxy backoffice:80
+    @backend path /api/*
+    handle @backend {
+        reverse_proxy iam-service:8080
+    }
+
+    handle {
+        reverse_proxy backoffice:80
+    }
 }
 
 {{ caddy_hermes_domain }} {
