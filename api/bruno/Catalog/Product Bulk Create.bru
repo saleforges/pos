@@ -1,0 +1,38 @@
+meta {
+  name: Product Bulk Create
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/v1/products/bulk
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Merchant-Id: {{merchant_id}}
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "categoryId": 2,
+    "name": "Marning",
+    "description": "Marning original",
+    "items": [
+      {"name": "Marning Curah", "unitId": 3, "price": 15000, "trackInventory": true},
+      {"name": "Marning Pack", "unitId": 2, "price": 20000, "trackInventory": true}
+    ]
+  }
+}
+
+script:post-response {
+  if (res.body.data && res.body.data.product && res.body.data.product.id) {
+    bru.setVar("product_id", res.body.data.product.id);
+  }
+}

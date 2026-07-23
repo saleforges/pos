@@ -1,0 +1,19 @@
+meta {
+  name: Sellable Item Delete
+  type: http
+  seq: 14
+}
+
+delete {
+  url: {{base_url}}/v1/items/{{item_id}}
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Merchant-Id: {{merchant_id}}
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

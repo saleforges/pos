@@ -9,8 +9,12 @@ import (
 	"github.com/saleforge/pos/services/internal/catalog/adapter/repository/postgres"
 	minioadapter "github.com/saleforge/pos/services/internal/catalog/adapter/storage/minio"
 	"github.com/saleforge/pos/services/internal/catalog/port/repository"
-	httptransport "github.com/saleforge/pos/services/internal/catalog/transport/http"
-	"github.com/saleforge/pos/services/internal/catalog/transport/http/handler"
+	h "github.com/saleforge/pos/services/internal/catalog/transport/http"
+	"github.com/saleforge/pos/services/internal/catalog/transport/http/category"
+	"github.com/saleforge/pos/services/internal/catalog/transport/http/image"
+	"github.com/saleforge/pos/services/internal/catalog/transport/http/product"
+	"github.com/saleforge/pos/services/internal/catalog/transport/http/sellable_item"
+	"github.com/saleforge/pos/services/internal/catalog/transport/http/unit"
 	"github.com/saleforge/pos/services/internal/catalog/usecase"
 	"github.com/saleforge/pos/services/pkg/jwks"
 	"github.com/saleforge/pos/services/pkg/logger"
@@ -42,9 +46,10 @@ func New(cfg Config) (*App, error) {
 	}
 
 	var (
-		catRepo  repository.CategoryRepository
-		prodRepo repository.ProductRepository
-		varRepo  repository.VariantRepository
+		prodRepo  repository.ProductRepository
+		itemRepo  repository.SellableItemRepository
+		catRepo   repository.CategoryRepository
+		unitRepo  repository.UnitRepository
 	)
 
 	if cfg.DatabaseURL != "" {
@@ -56,32 +61,36 @@ func New(cfg Config) (*App, error) {
 		if err := postgres.RunMigrations(cfg.DatabaseURL); err != nil {
 			return nil, err
 		}
-		catRepo = postgres.NewCategoryRepository(pool)
 		prodRepo = postgres.NewProductRepository(pool)
-		varRepo = postgres.NewVariantRepository(pool)
+		itemRepo = postgres.NewSellableItemRepository(pool)
+		catRepo = postgres.NewCategoryRepository(pool)
+		unitRepo = postgres.NewUnitRepository(pool)
 		logger.Info("using postgres storage")
 	} else {
-		catRepo = memory.NewCategoryRepository()
 		prodRepo = memory.NewProductRepository()
-		varRepo = memory.NewVariantRepository()
+		itemRepo = memory.NewSellableItemRepository()
+		catRepo = memory.NewCategoryRepository()
+		unitRepo = memory.NewUnitRepository()
 		logger.Info("using in-memory storage")
 	}
 
+	prodUC := usecase.NewProductUsecase(prodRepo, catRepo, unitRepo)
+	itemUC := usecase.NewSellableItemUsecase(itemRepo, prodRepo, unitRepo)
 	catUC := usecase.NewCategoryUsecase(catRepo)
-	prodUC := usecase.NewProductUsecase(prodRepo, catRepo)
-	varUC := usecase.NewVariantUsecase(varRepo, prodRepo)
+	unitUC := usecase.NewUnitUsecase(unitRepo)
 
-	catHandler := handler.NewCategoryHandler(catUC)
-	prodHandler := handler.NewProductHandler(prodUC)
-	varHandler := handler.NewVariantHandler(varUC)
+	prodHandler := product.NewHandler(prodUC, catRepo, itemRepo, unitRepo)
+	itemHandler := sellableitem.NewHandler(itemUC)
+	catHandler := category.NewHandler(catUC)
+	unitHandler := unit.NewHandler(unitUC)
 
-	var imgHandler *handler.ImageHandler
+	var imgHandler *image.Handler
 	if cfg.Minio.Endpoint != "" {
 		store, err := minioadapter.New(cfg.Minio)
 		if err != nil {
 			return nil, err
 		}
-		imgHandler = handler.NewImageHandler(store)
+		imgHandler = image.NewHandler(store)
 		logger.Info("minio storage enabled")
 	} else {
 		logger.Warn("minio not configured, image upload disabled")
@@ -94,7 +103,7 @@ func New(cfg Config) (*App, error) {
 	jwksURL = fmt.Sprintf("%s/.well-known/jwks.json", jwksURL)
 	verifier := jwks.New(jwksURL)
 
-	router := httptransport.NewRouter(catHandler, prodHandler, varHandler, imgHandler, verifier)
+	router := h.NewRouter(prodHandler, itemHandler, catHandler, unitHandler, imgHandler, verifier)
 
 	return &App{router: router, otelShutdown: otelShutdown}, nil
 }

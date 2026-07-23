@@ -3,13 +3,13 @@ package domain
 import "errors"
 
 var (
-	ErrProductNotFound    = errors.New("CAT001: product not found")
-	ErrProductExists      = errors.New("product already exists")
-	ErrCategoryNotFound   = errors.New("CAT002: category not found")
-	ErrCategoryExists     = errors.New("category already exists")
-	ErrCategoryHasProduct = errors.New("category has associated products")
-	ErrVariantNotFound    = errors.New("CAT003: variant not found")
-	ErrSkuExists          = errors.New("CAT004: sku already exists")
-	ErrBarcodeExists      = errors.New("CAT005: barcode already exists")
-	ErrInternal           = errors.New("internal server error")
+	ErrProductNotFound      = errors.New("CAT001: product not found")
+	ErrCategoryNotFound     = errors.New("CAT002: category not found")
+	ErrSellableItemNotFound = errors.New("CAT003: sellable item not found")
+	ErrUnitNotFound         = errors.New("CAT004: unit not found")
+	ErrBarcodeExists        = errors.New("CAT005: barcode already exists")
+	ErrInvalidProduct       = errors.New("CAT006: invalid product data")
+	ErrInvalidCategory      = errors.New("CAT007: invalid category data")
+	ErrInvalidSellableItem  = errors.New("CAT008: invalid sellable item data")
+	ErrInternal             = errors.New("CAT500: internal error")
 )
