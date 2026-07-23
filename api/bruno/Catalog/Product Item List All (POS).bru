@@ -1,0 +1,19 @@
+meta {
+  name: Product Item List All (POS)
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{base_url}}/v1/product-items
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Merchant-Id: {{merchant_id}}
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

@@ -55,7 +55,8 @@ func (h *Handler) Get(c echo.Context) error {
 	if err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
-	result, err := h.uc.GetByID(c.Request().Context(), id)
+	merchantID := httputil.GetMerchantID(c)
+	result, err := h.uc.GetByID(c.Request().Context(), id, merchantID)
 	if err != nil {
 		return mapError(c, err)
 	}
@@ -67,14 +68,17 @@ func (h *Handler) Update(c echo.Context) error {
 	if err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
+	merchantID := httputil.GetMerchantID(c)
+
 	var req updateCategoryReq
 	if err := c.Bind(&req); err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
 	result, err := h.uc.Update(c.Request().Context(), usecase.UpdateCategoryParams{
-		ID:       id,
-		Name:     req.Name,
-		ParentID: req.ParentID,
+		ID:         id,
+		MerchantID: merchantID,
+		Name:       req.Name,
+		ParentID:   req.ParentID,
 	})
 	if err != nil {
 		return mapError(c, err)
@@ -87,7 +91,8 @@ func (h *Handler) Delete(c echo.Context) error {
 	if err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
-	if err := h.uc.Delete(c.Request().Context(), id); err != nil {
+	merchantID := httputil.GetMerchantID(c)
+	if err := h.uc.Delete(c.Request().Context(), id, merchantID); err != nil {
 		return mapError(c, err)
 	}
 	return httputil.WriteJSON(c, http.StatusOK, map[string]string{"message": "category deleted"})
@@ -98,7 +103,8 @@ func (h *Handler) Restore(c echo.Context) error {
 	if err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
-	result, err := h.uc.Restore(c.Request().Context(), id)
+	merchantID := httputil.GetMerchantID(c)
+	result, err := h.uc.Restore(c.Request().Context(), id, merchantID)
 	if err != nil {
 		return mapError(c, err)
 	}

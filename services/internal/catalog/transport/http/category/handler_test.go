@@ -16,10 +16,11 @@ import (
 
 type mockCategorySvc struct {
 	createFn func(context.Context, usecase.CreateCategoryParams) (*domain.Category, error)
-	getFn    func(context.Context, int64) (*domain.Category, error)
+	getFn    func(context.Context, int64, int64) (*domain.Category, error)
 	listFn   func(context.Context, int64) ([]domain.Category, error)
 	updateFn func(context.Context, usecase.UpdateCategoryParams) (*domain.Category, error)
-	deleteFn func(context.Context, int64) error
+	deleteFn func(context.Context, int64, int64) error
+	restoreFn func(context.Context, int64, int64) (*domain.Category, error)
 }
 
 func (m *mockCategorySvc) Create(ctx context.Context, p usecase.CreateCategoryParams) (*domain.Category, error) {
@@ -29,11 +30,11 @@ func (m *mockCategorySvc) Create(ctx context.Context, p usecase.CreateCategoryPa
 	return &domain.Category{ID: 1, MerchantID: p.MerchantID, Name: p.Name}, nil
 }
 
-func (m *mockCategorySvc) GetByID(ctx context.Context, id int64) (*domain.Category, error) {
+func (m *mockCategorySvc) GetByID(ctx context.Context, id int64, merchantID int64) (*domain.Category, error) {
 	if m.getFn != nil {
-		return m.getFn(ctx, id)
+		return m.getFn(ctx, id, merchantID)
 	}
-	return &domain.Category{ID: id, MerchantID: 1, Name: "Test"}, nil
+	return &domain.Category{ID: id, MerchantID: merchantID, Name: "Test"}, nil
 }
 
 func (m *mockCategorySvc) ListByMerchant(ctx context.Context, merchantID int64) ([]domain.Category, error) {
@@ -50,14 +51,17 @@ func (m *mockCategorySvc) Update(ctx context.Context, p usecase.UpdateCategoryPa
 	return &domain.Category{ID: p.ID, Name: "Updated"}, nil
 }
 
-func (m *mockCategorySvc) Delete(ctx context.Context, id int64) error {
+func (m *mockCategorySvc) Delete(ctx context.Context, id int64, merchantID int64) error {
 	if m.deleteFn != nil {
-		return m.deleteFn(ctx, id)
+		return m.deleteFn(ctx, id, merchantID)
 	}
 	return nil
 }
 
-func (m *mockCategorySvc) Restore(ctx context.Context, id int64) (*domain.Category, error) {
+func (m *mockCategorySvc) Restore(ctx context.Context, id int64, merchantID int64) (*domain.Category, error) {
+	if m.restoreFn != nil {
+		return m.restoreFn(ctx, id, merchantID)
+	}
 	return &domain.Category{ID: id, Name: "Restored"}, nil
 }
 
@@ -141,6 +145,7 @@ func TestCategoryUpdate(t *testing.T) {
 		c := e.NewContext(req, rec)
 		c.SetParamNames("id")
 		c.SetParamValues("1")
+		c = withMerchant(c)
 
 		h := NewHandler(&mockCategorySvc{})
 		if err := h.Update(c); err != nil {
@@ -160,6 +165,7 @@ func TestCategoryUpdate(t *testing.T) {
 		c := e.NewContext(req, rec)
 		c.SetParamNames("id")
 		c.SetParamValues("999")
+		c = withMerchant(c)
 
 		h := NewHandler(&mockCategorySvc{
 			updateFn: func(_ context.Context, p usecase.UpdateCategoryParams) (*domain.Category, error) {

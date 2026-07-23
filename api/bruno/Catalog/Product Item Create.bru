@@ -1,5 +1,5 @@
 meta {
-  name: Sellable Item Create
+  name: Product Item Create
   type: http
   seq: 11
 }
@@ -22,10 +22,11 @@ auth:bearer {
 body:json {
   {
     "name": "Es Teh Manis - Large",
+    "sku": "ES-TEH-L-001",
     "unitId": 1,
     "price": 15000,
-    "trackInventory": true,
-    "imageUrl": ""
+    "currency": "IDR",
+    "trackInventory": true
   }
 }
 

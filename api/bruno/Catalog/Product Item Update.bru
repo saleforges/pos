@@ -1,11 +1,11 @@
 meta {
-  name: Sellable Item Update
+  name: Product Item Update
   type: http
   seq: 13
 }
 
 patch {
-  url: {{base_url}}/v1/items/{{item_id}}
+  url: {{base_url}}/v1/product-items/{{item_id}}
   body: json
   auth: bearer
 }
@@ -22,6 +22,7 @@ auth:bearer {
 body:json {
   {
     "name": "Updated Item Name",
+    "sku": "NEW-SKU-001",
     "price": 18000,
     "trackInventory": false
   }

@@ -13,7 +13,7 @@ func TestProductUsecase_Create(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success", func(t *testing.T) {
-		mockCat := &mockCategoryRepo{categories: map[int64]*domain.Category{1: {ID: 1, Name: "Snack"}}}
+		mockCat := &mockCategoryRepo{categories: map[int64]*domain.Category{1: {ID: 1, MerchantID: 1, Name: "Snack"}}}
 		uc := NewProductUsecase(&mockProductRepo{}, mockCat, newMockUnitRepo())
 
 		p, err := uc.Create(ctx, CreateProductParams{
@@ -53,6 +53,19 @@ func TestProductUsecase_Create(t *testing.T) {
 			t.Errorf("expected ErrCategoryNotFound, got %v", err)
 		}
 	})
+
+	t.Run("merchant cannot use another merchant's category", func(t *testing.T) {
+		mockCat := &mockCategoryRepo{categories: map[int64]*domain.Category{
+			1: {ID: 1, MerchantID: 1, Name: "Snack"},
+		}}
+		uc := NewProductUsecase(&mockProductRepo{}, mockCat, newMockUnitRepo())
+		_, err := uc.Create(ctx, CreateProductParams{
+			MerchantID: 2, CategoryID: 1, Name: "Test",
+		})
+		if err != domain.ErrCategoryNotFound {
+			t.Errorf("expected ErrCategoryNotFound for cross-merchant category, got %v", err)
+		}
+	})
 }
 
 func TestProductUsecase_GetByID(t *testing.T) {
@@ -64,7 +77,7 @@ func TestProductUsecase_GetByID(t *testing.T) {
 		mockProd.Create(ctx, &domain.Product{MerchantID: 1, CategoryID: 1, Name: "P1"})
 		uc := NewProductUsecase(mockProd, &mockCategoryRepo{}, newMockUnitRepo())
 
-		p, err := uc.GetByID(ctx, 1)
+		p, err := uc.GetByID(ctx, 1, 1)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -75,9 +88,20 @@ func TestProductUsecase_GetByID(t *testing.T) {
 
 	t.Run("not found", func(t *testing.T) {
 		uc := NewProductUsecase(&mockProductRepo{}, &mockCategoryRepo{}, newMockUnitRepo())
-		_, err := uc.GetByID(ctx, 999)
+		_, err := uc.GetByID(ctx, 999, 1)
 		if err != domain.ErrProductNotFound {
 			t.Errorf("expected ErrProductNotFound, got %v", err)
+		}
+	})
+
+	t.Run("merchant cannot access another merchant's product", func(t *testing.T) {
+		mockProd := &mockProductRepo{}
+		mockProd.Create(ctx, &domain.Product{MerchantID: 1, CategoryID: 1, Name: "P1"})
+		uc := NewProductUsecase(mockProd, &mockCategoryRepo{}, newMockUnitRepo())
+
+		_, err := uc.GetByID(ctx, 1, 2)
+		if err != domain.ErrProductNotFound {
+			t.Errorf("expected ErrProductNotFound for cross-merchant access, got %v", err)
 		}
 	})
 }
@@ -104,6 +128,20 @@ func TestProductUsecase_List(t *testing.T) {
 			t.Errorf("expected total 2, got %d", meta.Total)
 		}
 	})
+
+	t.Run("merchant isolation on list", func(t *testing.T) {
+		mockProd := &mockProductRepo{}
+		mockProd.Create(ctx, &domain.Product{MerchantID: 1, CategoryID: 1, Name: "P1"})
+		uc := NewProductUsecase(mockProd, &mockCategoryRepo{}, newMockUnitRepo())
+
+		items, _, err := uc.List(ctx, 2, "", pagination.Params{Offset: 0, Limit: 10})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(items) != 0 {
+			t.Errorf("expected 0 items for merchant 2, got %d", len(items))
+		}
+	})
 }
 
 func TestProductUsecase_Update(t *testing.T) {
@@ -116,7 +154,7 @@ func TestProductUsecase_Update(t *testing.T) {
 		uc := NewProductUsecase(mockProd, &mockCategoryRepo{}, newMockUnitRepo())
 
 		name := "Updated"
-		p, err := uc.Update(ctx, UpdateProductParams{ID: 1, Name: &name})
+		p, err := uc.Update(ctx, UpdateProductParams{ID: 1, MerchantID: 1, Name: &name})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -124,23 +162,43 @@ func TestProductUsecase_Update(t *testing.T) {
 			t.Errorf("expected 'Updated', got '%s'", p.Name)
 		}
 	})
-}
 
-func TestProductUsecase_MerchantIsolation(t *testing.T) {
-	t.Parallel()
-	ctx := context.Background()
-
-	t.Run("merchant cannot access another merchant's product", func(t *testing.T) {
+	t.Run("merchant cannot update another merchant's product", func(t *testing.T) {
 		mockProd := &mockProductRepo{}
 		mockProd.Create(ctx, &domain.Product{MerchantID: 1, CategoryID: 1, Name: "P1"})
 		uc := NewProductUsecase(mockProd, &mockCategoryRepo{}, newMockUnitRepo())
 
-		items, _, err := uc.List(ctx, 2, "", pagination.Params{Offset: 0, Limit: 10})
+		name := "Hacked"
+		_, err := uc.Update(ctx, UpdateProductParams{ID: 1, MerchantID: 2, Name: &name})
+		if err != domain.ErrProductNotFound {
+			t.Errorf("expected ErrProductNotFound for cross-merchant update, got %v", err)
+		}
+	})
+}
+
+func TestProductUsecase_Delete(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("merchant cannot delete another merchant's product", func(t *testing.T) {
+		mockProd := &mockProductRepo{}
+		mockProd.Create(ctx, &domain.Product{MerchantID: 1, CategoryID: 1, Name: "P1"})
+		uc := NewProductUsecase(mockProd, &mockCategoryRepo{}, newMockUnitRepo())
+
+		err := uc.Delete(ctx, 1, 2)
+		if err != domain.ErrProductNotFound {
+			t.Errorf("expected ErrProductNotFound for cross-merchant delete, got %v", err)
+		}
+	})
+
+	t.Run("own product delete succeeds", func(t *testing.T) {
+		mockProd := &mockProductRepo{}
+		mockProd.Create(ctx, &domain.Product{MerchantID: 1, CategoryID: 1, Name: "P1"})
+		uc := NewProductUsecase(mockProd, &mockCategoryRepo{}, newMockUnitRepo())
+
+		err := uc.Delete(ctx, 1, 1)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
-		}
-		if len(items) != 0 {
-			t.Errorf("expected 0 items for merchant 2, got %d", len(items))
 		}
 	})
 }

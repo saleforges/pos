@@ -32,11 +32,11 @@ func (r *ProductRepository) Create(_ context.Context, product *domain.Product) e
 	return nil
 }
 
-func (r *ProductRepository) GetByID(_ context.Context, id int64) (*domain.Product, error) {
+func (r *ProductRepository) GetByID(_ context.Context, id int64, merchantID int64) (*domain.Product, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	p, ok := r.products[id]
-	if !ok || p.DeletedAt != nil {
+	if !ok || p.DeletedAt != nil || p.MerchantID != merchantID {
 		return nil, domain.ErrProductNotFound
 	}
 	return p, nil
@@ -70,25 +70,29 @@ func (r *ProductRepository) List(_ context.Context, merchantID int64, search str
 func (r *ProductRepository) Update(_ context.Context, product *domain.Product) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	existing, ok := r.products[product.ID]
+	if !ok || existing.MerchantID != product.MerchantID {
+		return domain.ErrProductNotFound
+	}
 	r.products[product.ID] = product
 	return nil
 }
 
-func (r *ProductRepository) Delete(_ context.Context, id int64) error {
+func (r *ProductRepository) Delete(_ context.Context, id int64, merchantID int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if p, ok := r.products[id]; ok {
+	if p, ok := r.products[id]; ok && p.MerchantID == merchantID {
 		now := time.Now().UTC()
 		p.DeletedAt = &now
 	}
 	return nil
 }
 
-func (r *ProductRepository) Restore(_ context.Context, id int64) (*domain.Product, error) {
+func (r *ProductRepository) Restore(_ context.Context, id int64, merchantID int64) (*domain.Product, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	p, ok := r.products[id]
-	if !ok {
+	if !ok || p.MerchantID != merchantID {
 		return nil, domain.ErrProductNotFound
 	}
 	p.DeletedAt = nil

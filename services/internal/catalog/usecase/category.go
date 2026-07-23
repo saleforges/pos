@@ -21,7 +21,7 @@ func (uc *categoryUsecase) Create(ctx context.Context, params CreateCategoryPara
 		return nil, domain.ErrInvalidCategory
 	}
 	if params.ParentID != nil {
-		if _, err := uc.catRepo.GetByID(ctx, *params.ParentID); err != nil {
+		if _, err := uc.catRepo.GetByID(ctx, *params.ParentID, params.MerchantID); err != nil {
 			return nil, err
 		}
 	}
@@ -41,8 +41,8 @@ func (uc *categoryUsecase) Create(ctx context.Context, params CreateCategoryPara
 	return category, nil
 }
 
-func (uc *categoryUsecase) GetByID(ctx context.Context, id int64) (*domain.Category, error) {
-	return uc.catRepo.GetByID(ctx, id)
+func (uc *categoryUsecase) GetByID(ctx context.Context, id int64, merchantID int64) (*domain.Category, error) {
+	return uc.catRepo.GetByID(ctx, id, merchantID)
 }
 
 func (uc *categoryUsecase) ListByMerchant(ctx context.Context, merchantID int64) ([]domain.Category, error) {
@@ -50,7 +50,7 @@ func (uc *categoryUsecase) ListByMerchant(ctx context.Context, merchantID int64)
 }
 
 func (uc *categoryUsecase) Update(ctx context.Context, params UpdateCategoryParams) (*domain.Category, error) {
-	category, err := uc.catRepo.GetByID(ctx, params.ID)
+	category, err := uc.catRepo.GetByID(ctx, params.ID, params.MerchantID)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +62,7 @@ func (uc *categoryUsecase) Update(ctx context.Context, params UpdateCategoryPara
 		category.Name = *params.Name
 	}
 	if params.ParentID != nil {
-		if _, err := uc.catRepo.GetByID(ctx, *params.ParentID); err != nil {
+		if _, err := uc.catRepo.GetByID(ctx, *params.ParentID, params.MerchantID); err != nil {
 			return nil, err
 		}
 		category.ParentID = params.ParentID
@@ -75,15 +75,15 @@ func (uc *categoryUsecase) Update(ctx context.Context, params UpdateCategoryPara
 	return category, nil
 }
 
-func (uc *categoryUsecase) Delete(ctx context.Context, id int64) error {
-	if _, err := uc.catRepo.GetByID(ctx, id); err != nil {
+func (uc *categoryUsecase) Delete(ctx context.Context, id int64, merchantID int64) error {
+	if _, err := uc.catRepo.GetByID(ctx, id, merchantID); err != nil {
 		return err
 	}
-	return uc.catRepo.Delete(ctx, id)
+	return uc.catRepo.Delete(ctx, id, merchantID)
 }
 
-func (uc *categoryUsecase) Restore(ctx context.Context, id int64) (*domain.Category, error) {
-	return uc.catRepo.Restore(ctx, id)
+func (uc *categoryUsecase) Restore(ctx context.Context, id int64, merchantID int64) (*domain.Category, error) {
+	return uc.catRepo.Restore(ctx, id, merchantID)
 }
 
 var _ CategoryUsecase = (*categoryUsecase)(nil)

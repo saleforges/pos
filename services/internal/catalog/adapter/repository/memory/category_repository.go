@@ -32,11 +32,11 @@ func (r *CategoryRepository) Create(_ context.Context, category *domain.Category
 	return nil
 }
 
-func (r *CategoryRepository) GetByID(_ context.Context, id int64) (*domain.Category, error) {
+func (r *CategoryRepository) GetByID(_ context.Context, id int64, merchantID int64) (*domain.Category, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	c, ok := r.categories[id]
-	if !ok || c.DeletedAt != nil {
+	if !ok || c.DeletedAt != nil || c.MerchantID != merchantID {
 		return nil, domain.ErrCategoryNotFound
 	}
 	return c, nil
@@ -60,25 +60,29 @@ func (r *CategoryRepository) ListByMerchant(_ context.Context, merchantID int64)
 func (r *CategoryRepository) Update(_ context.Context, category *domain.Category) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	existing, ok := r.categories[category.ID]
+	if !ok || existing.MerchantID != category.MerchantID {
+		return domain.ErrCategoryNotFound
+	}
 	r.categories[category.ID] = category
 	return nil
 }
 
-func (r *CategoryRepository) Delete(_ context.Context, id int64) error {
+func (r *CategoryRepository) Delete(_ context.Context, id int64, merchantID int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if c, ok := r.categories[id]; ok {
+	if c, ok := r.categories[id]; ok && c.MerchantID == merchantID {
 		now := time.Now().UTC()
 		c.DeletedAt = &now
 	}
 	return nil
 }
 
-func (r *CategoryRepository) Restore(_ context.Context, id int64) (*domain.Category, error) {
+func (r *CategoryRepository) Restore(_ context.Context, id int64, merchantID int64) (*domain.Category, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	c, ok := r.categories[id]
-	if !ok {
+	if !ok || c.MerchantID != merchantID {
 		return nil, domain.ErrCategoryNotFound
 	}
 	c.DeletedAt = nil

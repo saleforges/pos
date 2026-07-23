@@ -14,13 +14,13 @@ import (
 )
 
 type Handler struct {
-	uc      usecase.ProductUsecase
-	catRepo repository.CategoryRepository
-	itemRepo repository.SellableItemRepository
+	uc       usecase.ProductUsecase
+	catRepo  repository.CategoryRepository
+	itemRepo repository.ProductItemRepository
 	unitRepo repository.UnitRepository
 }
 
-func NewHandler(uc usecase.ProductUsecase, catRepo repository.CategoryRepository, itemRepo repository.SellableItemRepository, unitRepo repository.UnitRepository) *Handler {
+func NewHandler(uc usecase.ProductUsecase, catRepo repository.CategoryRepository, itemRepo repository.ProductItemRepository, unitRepo repository.UnitRepository) *Handler {
 	return &Handler{uc: uc, catRepo: catRepo, itemRepo: itemRepo, unitRepo: unitRepo}
 }
 
@@ -44,6 +44,25 @@ func (h *Handler) Create(c echo.Context) error {
 	if err != nil {
 		return mapError(c, err)
 	}
+
+	// CASE 1: Simple product — auto-create a ProductItem if no items provided
+	if len(req.Items) == 0 {
+		now := time.Now().UTC()
+		item := &domain.ProductItem{
+			ProductID:      result.ID,
+			MerchantID:     merchantID,
+			Name:           result.Name,
+			Price:          domain.Price{Amount: req.Price, Currency: "IDR"},
+			TrackInventory: false,
+			Status:         domain.ProductItemStatusActive,
+			CreatedAt:      now,
+			UpdatedAt:      now,
+		}
+		if err := h.itemRepo.Create(c.Request().Context(), item); err != nil {
+			logger.Error("product.Create: failed to create default item", "error", err.Error())
+		}
+	}
+
 	return httputil.WriteJSON(c, http.StatusCreated, result)
 }
 
@@ -73,35 +92,36 @@ func (h *Handler) BulkCreate(c echo.Context) error {
 		return mapError(c, err)
 	}
 
-	// Create each sellable item
+	// Create each product item
 	type itemResult struct {
 		ID    int64   `json:"id"`
 		Name  string  `json:"name"`
 		Price float64 `json:"price"`
 	}
 	created := make([]itemResult, 0, len(req.Items))
+	now := time.Now().UTC()
 	for _, item := range req.Items {
-		if item.Name == "" || item.UnitID == 0 {
+		if item.Name == "" {
 			continue
 		}
-		// We use the sellable item usecase via the handler's itemRepo directly
-		si := &domain.SellableItem{
+		pi := &domain.ProductItem{
 			ProductID:      product.ID,
+			MerchantID:     merchantID,
 			Name:           item.Name,
+			SKU:            item.SKU,
 			UnitID:         item.UnitID,
-			Price:          item.Price,
+			Price:          domain.Price{Amount: item.Price, Currency: "IDR"},
 			TrackInventory: item.TrackInventory,
 			ImageURL:       item.ImageURL,
-			Status:         domain.SellableItemStatusActive,
+			Status:         domain.ProductItemStatusActive,
+			CreatedAt:      now,
+			UpdatedAt:      now,
 		}
-		now := time.Now().UTC()
-		si.CreatedAt = now
-		si.UpdatedAt = now
-		if err := h.itemRepo.Create(c.Request().Context(), si); err != nil {
+		if err := h.itemRepo.Create(c.Request().Context(), pi); err != nil {
 			logger.Error("product.BulkCreate: failed to create item", "error", err.Error())
 			continue
 		}
-		created = append(created, itemResult{ID: si.ID, Name: si.Name, Price: si.Price})
+		created = append(created, itemResult{ID: pi.ID, Name: pi.Name, Price: pi.Price.Amount})
 	}
 
 	return httputil.WriteJSON(c, http.StatusCreated, map[string]interface{}{
@@ -121,6 +141,8 @@ func (h *Handler) BulkUpdate(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
 
+	merchantID := httputil.GetMerchantID(c)
+
 	// Update product
 	var status *domain.ProductStatus
 	if req.Status != nil {
@@ -129,6 +151,7 @@ func (h *Handler) BulkUpdate(c echo.Context) error {
 	}
 	product, err := h.uc.Update(c.Request().Context(), usecase.UpdateProductParams{
 		ID:          id,
+		MerchantID:  merchantID,
 		CategoryID:  req.CategoryID,
 		Name:        req.Name,
 		Description: req.Description,
@@ -149,34 +172,36 @@ func (h *Handler) BulkUpdate(c echo.Context) error {
 	if req.Items != nil {
 		items := *req.Items
 		// Delete existing items
-		existing, err := h.itemRepo.ListByProduct(c.Request().Context(), id)
+		existing, err := h.itemRepo.ListByProduct(c.Request().Context(), id, merchantID)
 		if err == nil {
 			for _, it := range existing {
-				h.itemRepo.Delete(c.Request().Context(), it.ID)
+				h.itemRepo.Delete(c.Request().Context(), it.ID, merchantID)
 			}
 		}
 		// Create new items
 		now := time.Now().UTC()
 		for _, item := range items {
-			if item.Name == "" || item.UnitID == 0 {
+			if item.Name == "" {
 				continue
 			}
-			si := &domain.SellableItem{
+			pi := &domain.ProductItem{
 				ProductID:      product.ID,
+				MerchantID:     merchantID,
 				Name:           item.Name,
+				SKU:            item.SKU,
 				UnitID:         item.UnitID,
-				Price:          item.Price,
+				Price:          domain.Price{Amount: item.Price, Currency: "IDR"},
 				TrackInventory: item.TrackInventory,
 				ImageURL:       item.ImageURL,
-				Status:         domain.SellableItemStatusActive,
+				Status:         domain.ProductItemStatusActive,
 				CreatedAt:      now,
 				UpdatedAt:      now,
 			}
-			if err := h.itemRepo.Create(c.Request().Context(), si); err != nil {
+			if err := h.itemRepo.Create(c.Request().Context(), pi); err != nil {
 				logger.Error("product.BulkUpdate: failed to create item", "error", err.Error())
 				continue
 			}
-			created = append(created, itemResult{ID: si.ID, Name: si.Name, Price: si.Price})
+			created = append(created, itemResult{ID: pi.ID, Name: pi.Name, Price: pi.Price.Amount})
 		}
 	}
 
@@ -191,7 +216,8 @@ func (h *Handler) Get(c echo.Context) error {
 	if err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
-	result, err := h.uc.GetByID(c.Request().Context(), id)
+	merchantID := httputil.GetMerchantID(c)
+	result, err := h.uc.GetByID(c.Request().Context(), id, merchantID)
 	if err != nil {
 		return mapError(c, err)
 	}
@@ -209,20 +235,25 @@ func (h *Handler) List(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusInternalServerError, domain.ErrInternal)
 	}
 
-	// Enrich: category name, price range, sellable items with units
 	type unitResp struct {
 		ID   int64  `json:"id"`
 		Code string `json:"code"`
 		Name string `json:"name"`
 	}
 
+	type priceResp struct {
+		Amount   float64 `json:"amount"`
+		Currency string  `json:"currency"`
+	}
+
 	type itemResp struct {
-		ID             int64    `json:"id"`
-		Name           string   `json:"name"`
-		Unit           unitResp `json:"unit"`
-		Price          float64  `json:"price"`
-		TrackInventory bool     `json:"trackInventory"`
-		Status         string   `json:"status"`
+		ID             int64      `json:"id"`
+		Name           string     `json:"name"`
+		SKU            string     `json:"sku,omitempty"`
+		Unit           *unitResp  `json:"unit,omitempty"`
+		Price          priceResp  `json:"price"`
+		TrackInventory bool       `json:"trackInventory"`
+		Status         string     `json:"status"`
 	}
 
 	type categoryResp struct {
@@ -268,28 +299,36 @@ func (h *Handler) List(c echo.Context) error {
 	// Fetch all items + units for these products
 	itemMap := make(map[int64][]itemResp)
 	for _, pid := range prodIDs {
-		items, err := h.itemRepo.ListByProduct(c.Request().Context(), pid)
+		items, err := h.itemRepo.ListByProduct(c.Request().Context(), pid, merchantID)
 		if err != nil {
 			logger.Error("product.List: failed to load items", "error", err.Error())
 			continue
 		}
-		// Fetch units for items in this product
 		unitCache := make(map[int64]unitResp)
 		for _, it := range items {
-			if _, ok := unitCache[it.UnitID]; !ok {
-				u, err := h.unitRepo.GetByID(c.Request().Context(), it.UnitID)
-				if err == nil {
-					unitCache[it.UnitID] = unitResp{ID: u.ID, Code: u.Code, Name: u.Name}
+			if it.UnitID != nil {
+				if _, ok := unitCache[*it.UnitID]; !ok {
+					u, err := h.unitRepo.GetByID(c.Request().Context(), *it.UnitID)
+					if err == nil {
+						unitCache[*it.UnitID] = unitResp{ID: u.ID, Code: u.Code, Name: u.Name}
+					}
 				}
 			}
 		}
 		var respItems []itemResp
 		for _, it := range items {
+			var u *unitResp
+			if it.UnitID != nil {
+				if cached, ok := unitCache[*it.UnitID]; ok {
+					u = &cached
+				}
+			}
 			respItems = append(respItems, itemResp{
 				ID:             it.ID,
 				Name:           it.Name,
-				Unit:           unitCache[it.UnitID],
-				Price:          it.Price,
+				SKU:            it.SKU,
+				Unit:           u,
+				Price:          priceResp{Amount: it.Price.Amount, Currency: it.Price.Currency},
 				TrackInventory: it.TrackInventory,
 				Status:         string(it.Status),
 			})
@@ -305,11 +344,11 @@ func (h *Handler) List(c echo.Context) error {
 		}
 		minP, maxP := 0.0, 0.0
 		for i, it := range items {
-			if i == 0 || it.Price < minP {
-				minP = it.Price
+			if i == 0 || it.Price.Amount < minP {
+				minP = it.Price.Amount
 			}
-			if i == 0 || it.Price > maxP {
-				maxP = it.Price
+			if i == 0 || it.Price.Amount > maxP {
+				maxP = it.Price.Amount
 			}
 		}
 		catName := catMap[p.CategoryID]
@@ -337,6 +376,8 @@ func (h *Handler) Update(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
 
+	merchantID := httputil.GetMerchantID(c)
+
 	var req updateProductReq
 	if err := c.Bind(&req); err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
@@ -344,6 +385,7 @@ func (h *Handler) Update(c echo.Context) error {
 
 	result, err := h.uc.Update(c.Request().Context(), usecase.UpdateProductParams{
 		ID:          id,
+		MerchantID:  merchantID,
 		CategoryID:  req.CategoryID,
 		Name:        req.Name,
 		Description: req.Description,
@@ -361,7 +403,8 @@ func (h *Handler) Delete(c echo.Context) error {
 	if err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
-	if err := h.uc.Delete(c.Request().Context(), id); err != nil {
+	merchantID := httputil.GetMerchantID(c)
+	if err := h.uc.Delete(c.Request().Context(), id, merchantID); err != nil {
 		return mapError(c, err)
 	}
 	return httputil.WriteJSON(c, http.StatusOK, map[string]string{"message": "product deleted"})
@@ -372,7 +415,8 @@ func (h *Handler) Restore(c echo.Context) error {
 	if err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
-	result, err := h.itemRepo.Restore(c.Request().Context(), id)
+	merchantID := httputil.GetMerchantID(c)
+	result, err := h.itemRepo.Restore(c.Request().Context(), id, merchantID)
 	if err != nil {
 		return mapError(c, err)
 	}

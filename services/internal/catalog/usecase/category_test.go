@@ -44,6 +44,18 @@ func TestCategoryUsecase_Create(t *testing.T) {
 			t.Errorf("expected ErrCategoryNotFound, got %v", err)
 		}
 	})
+
+	t.Run("merchant cannot use another merchant's category as parent", func(t *testing.T) {
+		mockCat := &mockCategoryRepo{categories: map[int64]*domain.Category{
+			1: {ID: 1, MerchantID: 1, Name: "Food"},
+		}}
+		uc := NewCategoryUsecase(mockCat)
+		parentID := int64(1)
+		_, err := uc.Create(ctx, CreateCategoryParams{MerchantID: 2, Name: "Sub", ParentID: &parentID})
+		if err != domain.ErrCategoryNotFound {
+			t.Errorf("expected ErrCategoryNotFound for cross-merchant parent, got %v", err)
+		}
+	})
 }
 
 func TestCategoryUsecase_ListByMerchant(t *testing.T) {
@@ -77,12 +89,51 @@ func TestCategoryUsecase_Update(t *testing.T) {
 		uc := NewCategoryUsecase(mockCat)
 
 		name := "Renamed"
-		c, err := uc.Update(ctx, UpdateCategoryParams{ID: 1, Name: &name})
+		c, err := uc.Update(ctx, UpdateCategoryParams{ID: 1, MerchantID: 1, Name: &name})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if c.Name != "Renamed" {
 			t.Errorf("expected 'Renamed', got '%s'", c.Name)
+		}
+	})
+
+	t.Run("merchant cannot update another merchant's category", func(t *testing.T) {
+		mockCat := &mockCategoryRepo{}
+		mockCat.Create(ctx, &domain.Category{MerchantID: 1, Name: "Snack"})
+		uc := NewCategoryUsecase(mockCat)
+
+		name := "Hacked"
+		_, err := uc.Update(ctx, UpdateCategoryParams{ID: 1, MerchantID: 2, Name: &name})
+		if err != domain.ErrCategoryNotFound {
+			t.Errorf("expected ErrCategoryNotFound for cross-merchant update, got %v", err)
+		}
+	})
+}
+
+func TestCategoryUsecase_Delete(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("merchant cannot delete another merchant's category", func(t *testing.T) {
+		mockCat := &mockCategoryRepo{}
+		mockCat.Create(ctx, &domain.Category{MerchantID: 1, Name: "Snack"})
+		uc := NewCategoryUsecase(mockCat)
+
+		err := uc.Delete(ctx, 1, 2)
+		if err != domain.ErrCategoryNotFound {
+			t.Errorf("expected ErrCategoryNotFound for cross-merchant delete, got %v", err)
+		}
+	})
+
+	t.Run("own category delete succeeds", func(t *testing.T) {
+		mockCat := &mockCategoryRepo{}
+		mockCat.Create(ctx, &domain.Category{MerchantID: 1, Name: "Snack"})
+		uc := NewCategoryUsecase(mockCat)
+
+		err := uc.Delete(ctx, 1, 1)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
 		}
 	})
 }
