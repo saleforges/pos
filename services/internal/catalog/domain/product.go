@@ -12,18 +12,13 @@ const (
 
 type Product struct {
 	ID          int64         `json:"id"`
-	MerchantID  int64         `json:"merchant_id"`
-	CategoryID  int64         `json:"category_id"`
+	MerchantID  int64         `json:"merchantId"`
+	CategoryID  int64         `json:"categoryId,omitempty"`
 	Name        string        `json:"name"`
-	SKU         string        `json:"sku"`
-	Barcode     string        `json:"barcode,omitempty"`
 	Description string        `json:"description,omitempty"`
-	Price       float64       `json:"price"`
-	Cost        float64       `json:"cost,omitempty"`
-	TaxRate     float64       `json:"tax_rate"`
-	Unit        string        `json:"unit"`
-	ImageURL    string        `json:"image_url,omitempty"`
+	ImageURL    string        `json:"imageUrl,omitempty"`
 	Status      ProductStatus `json:"status"`
-	CreatedAt   time.Time     `json:"created_at"`
-	UpdatedAt   time.Time     `json:"updated_at"`
+	CreatedAt   time.Time     `json:"createdAt"`
+	UpdatedAt   time.Time     `json:"updatedAt"`
+	DeletedAt   *time.Time    `json:"deletedAt,omitempty"`
 }

@@ -4,7 +4,7 @@ meta {
   seq: 9
 }
 
-put {
+patch {
   url: {{base_url}}/v1/products/{{product_id}}
   body: json
   auth: bearer
@@ -21,7 +21,7 @@ auth:bearer {
 
 body:json {
   {
-    "price": 5500,
-    "description": "Teh manis dengan es batu segar"
+    "name": "Es Teh Manis Updated",
+    "description": "Updated description"
   }
 }

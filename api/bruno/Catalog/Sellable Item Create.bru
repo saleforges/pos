@@ -1,0 +1,36 @@
+meta {
+  name: Sellable Item Create
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{base_url}}/v1/products/{{product_id}}/items
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Merchant-Id: {{merchant_id}}
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "name": "Es Teh Manis - Large",
+    "unitId": 1,
+    "price": 15000,
+    "trackInventory": true,
+    "imageUrl": ""
+  }
+}
+
+script:post-response {
+  if (res.body.data && res.body.data.id) {
+    bru.setVar("item_id", res.body.data.id);
+  }
+}

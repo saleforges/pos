@@ -6,138 +6,105 @@ import (
 
 	"github.com/saleforge/pos/services/internal/catalog/domain"
 	"github.com/saleforge/pos/services/internal/catalog/port/repository"
-	"github.com/saleforge/pos/services/pkg/logger"
-	"github.com/saleforge/pos/services/pkg/otel"
+	"github.com/saleforge/pos/services/pkg/pagination"
 )
 
 type productUsecase struct {
 	prodRepo repository.ProductRepository
 	catRepo  repository.CategoryRepository
+	unitRepo repository.UnitRepository
 }
 
-func NewProductUsecase(prodRepo repository.ProductRepository, catRepo repository.CategoryRepository) ProductUsecase {
-	return &productUsecase{prodRepo: prodRepo, catRepo: catRepo}
+func NewProductUsecase(prodRepo repository.ProductRepository, catRepo repository.CategoryRepository, unitRepo repository.UnitRepository) ProductUsecase {
+	return &productUsecase{prodRepo: prodRepo, catRepo: catRepo, unitRepo: unitRepo}
 }
 
-func (uc *productUsecase) Create(ctx context.Context, input CreateProductInput) (*domain.Product, error) {
-	ctx, span := otel.StartSpan(ctx, "product.Create")
-	defer span.End()
+func (uc *productUsecase) Create(ctx context.Context, params CreateProductParams) (*domain.Product, error) {
+	if params.Name == "" {
+		return nil, domain.ErrInvalidProduct
+	}
 
-	if _, err := uc.catRepo.GetByID(ctx, input.CategoryID); err != nil {
+	if _, err := uc.catRepo.GetByID(ctx, params.CategoryID); err != nil {
 		return nil, err
 	}
-	if existing, _ := uc.prodRepo.GetBySKU(ctx, input.SKU, input.MerchantID); existing != nil {
-		return nil, domain.ErrSkuExists
+
+	now := time.Now().UTC()
+	product := &domain.Product{
+		MerchantID:  params.MerchantID,
+		CategoryID:  params.CategoryID,
+		Name:        params.Name,
+		Description: params.Description,
+		ImageURL:    params.ImageURL,
+		Status:      domain.ProductStatusActive,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 	}
 
-	prod := &domain.Product{
-		MerchantID:  input.MerchantID,
-		CategoryID:  input.CategoryID,
-		Name:        input.Name,
-		SKU:         input.SKU,
-		Barcode:     input.Barcode,
-		Description: input.Description,
-		Price:       input.Price,
-		Cost:        input.Cost,
-		TaxRate:     input.TaxRate,
-		Unit:        input.Unit,
-		ImageURL:    input.ImageURL,
-		Status:      domain.ProductStatusActive,
-		CreatedAt:   time.Now().UTC(),
-		UpdatedAt:   time.Now().UTC(),
-	}
-	if err := uc.prodRepo.Create(ctx, prod); err != nil {
-		logger.Error("product.Create: create failed", "error", err.Error())
+	if err := uc.prodRepo.Create(ctx, product); err != nil {
 		return nil, domain.ErrInternal
 	}
-	return prod, nil
+	return product, nil
 }
 
 func (uc *productUsecase) GetByID(ctx context.Context, id int64) (*domain.Product, error) {
-	ctx, span := otel.StartSpan(ctx, "product.GetByID")
-	defer span.End()
-
 	return uc.prodRepo.GetByID(ctx, id)
 }
 
-func (uc *productUsecase) List(ctx context.Context, merchantID int64, search string, offset, limit int) (*PaginatedResult[domain.Product], error) {
-	ctx, span := otel.StartSpan(ctx, "product.List")
-	defer span.End()
-
-	items, err := uc.prodRepo.List(ctx, merchantID, search, offset, limit)
+func (uc *productUsecase) List(ctx context.Context, merchantID int64, search string, p pagination.Params) ([]domain.Product, *pagination.Metadata, error) {
+	data, total, err := uc.prodRepo.List(ctx, merchantID, search, p.Offset, p.Limit)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	total, err := uc.prodRepo.Count(ctx, merchantID, search)
-	if err != nil {
-		return nil, err
+	meta := &pagination.Metadata{
+		Total:       int64(total),
+		Offset:      p.Offset,
+		Limit:       p.Limit,
+		ReturnCount: len(data),
 	}
-	return &PaginatedResult[domain.Product]{
-		Items: items,
-		Meta:  PaginationMeta{Total: total, Offset: offset, Limit: limit},
-	}, nil
+	return data, meta, nil
 }
 
-func (uc *productUsecase) Update(ctx context.Context, input UpdateProductInput) (*domain.Product, error) {
-	ctx, span := otel.StartSpan(ctx, "product.Update")
-	defer span.End()
-
-	prod, err := uc.prodRepo.GetByID(ctx, input.ID)
+func (uc *productUsecase) Update(ctx context.Context, params UpdateProductParams) (*domain.Product, error) {
+	product, err := uc.prodRepo.GetByID(ctx, params.ID)
 	if err != nil {
 		return nil, err
 	}
-	if input.CategoryID != nil {
-		if _, err := uc.catRepo.GetByID(ctx, *input.CategoryID); err != nil {
+
+	if params.CategoryID != nil {
+		if _, err := uc.catRepo.GetByID(ctx, *params.CategoryID); err != nil {
 			return nil, err
 		}
-		prod.CategoryID = *input.CategoryID
+		product.CategoryID = *params.CategoryID
 	}
-	if input.Name != nil {
-		prod.Name = *input.Name
+	if params.Name != nil {
+		if *params.Name == "" {
+			return nil, domain.ErrInvalidProduct
+		}
+		product.Name = *params.Name
 	}
-	if input.SKU != nil {
-		prod.SKU = *input.SKU
+	if params.Description != nil {
+		product.Description = *params.Description
 	}
-	if input.Barcode != nil {
-		prod.Barcode = *input.Barcode
+	if params.ImageURL != nil {
+		product.ImageURL = *params.ImageURL
 	}
-	if input.Description != nil {
-		prod.Description = *input.Description
+	if params.Status != nil {
+		product.Status = *params.Status
 	}
-	if input.Price != nil {
-		prod.Price = *input.Price
-	}
-	if input.Cost != nil {
-		prod.Cost = *input.Cost
-	}
-	if input.TaxRate != nil {
-		prod.TaxRate = *input.TaxRate
-	}
-	if input.Unit != nil {
-		prod.Unit = *input.Unit
-	}
-	if input.ImageURL != nil {
-		prod.ImageURL = *input.ImageURL
-	}
-	if input.Status != nil {
-		prod.Status = *input.Status
-	}
-	prod.UpdatedAt = time.Now().UTC()
+	product.UpdatedAt = time.Now().UTC()
 
-	if err := uc.prodRepo.Update(ctx, prod); err != nil {
-		logger.Error("product.Update: update failed", "error", err.Error())
+	if err := uc.prodRepo.Update(ctx, product); err != nil {
 		return nil, domain.ErrInternal
 	}
-	return prod, nil
+	return product, nil
 }
 
 func (uc *productUsecase) Delete(ctx context.Context, id int64) error {
-	ctx, span := otel.StartSpan(ctx, "product.Delete")
-	defer span.End()
-
-	_, err := uc.prodRepo.GetByID(ctx, id)
-	if err != nil {
+	if _, err := uc.prodRepo.GetByID(ctx, id); err != nil {
 		return err
 	}
 	return uc.prodRepo.Delete(ctx, id)
 }
+
+// compile-time check
+var _ ProductUsecase = (*productUsecase)(nil)

@@ -1,11 +1,11 @@
 meta {
-  name: Variant Update
+  name: Sellable Item Update
   type: http
   seq: 13
 }
 
-put {
-  url: {{base_url}}/v1/products/variants/{{variant_id}}
+patch {
+  url: {{base_url}}/v1/items/{{item_id}}
   body: json
   auth: bearer
 }
@@ -21,7 +21,8 @@ auth:bearer {
 
 body:json {
   {
-    "price": 7500,
-    "name": "Es Teh Manis - Large"
+    "name": "Updated Item Name",
+    "price": 18000,
+    "trackInventory": false
   }
 }

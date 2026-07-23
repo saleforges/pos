@@ -1,11 +1,11 @@
 meta {
-  name: Variant Delete
+  name: Unit List
   type: http
-  seq: 14
+  seq: 15
 }
 
-delete {
-  url: {{base_url}}/v1/products/variants/{{variant_id}}
+get {
+  url: {{base_url}}/v1/units
   body: none
   auth: bearer
 }
