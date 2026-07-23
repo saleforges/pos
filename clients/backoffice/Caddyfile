@@ -1,7 +1,7 @@
 :80 {
     root * /usr/share/caddy/html
 
-    handle_path /api/* {
+    handle /api/* {
         reverse_proxy {env.API_PROXY_TARGET}
     }
 
