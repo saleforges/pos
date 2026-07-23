@@ -87,7 +87,7 @@ func (uc *merchantUsecase) ListStaffByBranch(ctx context.Context, branchID int64
 		Total:       total,
 		Offset:      p.Offset,
 		Limit:       p.Limit,
-		ReturnCount: len(data),
+		Count: len(data),
 	}
 	return data, meta, nil
 }
@@ -101,7 +101,7 @@ func (uc *merchantUsecase) ListStaffByMerchant(ctx context.Context, merchantID i
 		Total:       total,
 		Offset:      p.Offset,
 		Limit:       p.Limit,
-		ReturnCount: len(data),
+		Count: len(data),
 	}
 	return data, meta, nil
 }

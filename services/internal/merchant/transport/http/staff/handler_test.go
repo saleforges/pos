@@ -110,7 +110,7 @@ func TestStaffHandler_ListStaffByMerchant(t *testing.T) {
 
 	h := NewHandler(&mockStaffSvc{
 		listMerchantFn: func(_ context.Context, merchantID int64, p pagination.Params) ([]domain.StaffMember, *pagination.Metadata, error) {
-			return []domain.StaffMember{{ID: 1, Role: domain.StaffRoleCashier}}, &pagination.Metadata{Total: 1, Offset: 0, Limit: 10, ReturnCount: 1}, nil
+			return []domain.StaffMember{{ID: 1, Role: domain.StaffRoleCashier}}, &pagination.Metadata{Total: 1, Offset: 0, Limit: 10, Count: 1}, nil
 		},
 	})
 

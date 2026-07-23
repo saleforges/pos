@@ -105,7 +105,7 @@ func TestBranchHandler_ListBranches(t *testing.T) {
 
 	h := NewHandler(&mockBranchSvc{
 		listFn: func(_ context.Context, merchantID int64, p pagination.Params) ([]domain.Branch, *pagination.Metadata, error) {
-			return []domain.Branch{{ID: 1, Name: "B1"}}, &pagination.Metadata{Total: 1, Offset: 0, Limit: 10, ReturnCount: 1}, nil
+			return []domain.Branch{{ID: 1, Name: "B1"}}, &pagination.Metadata{Total: 1, Offset: 0, Limit: 10, Count: 1}, nil
 		},
 	})
 

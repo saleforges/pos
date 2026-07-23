@@ -23,8 +23,8 @@ headers {
 
 script:post-response {
   if (res.body.data) {
-    bru.setVar("access_token", res.body.data.access_token);
-    bru.setVar("refresh_token", res.body.data.refresh_token);
+    bru.setVar("access_token", res.body.data.accessToken);
+    bru.setVar("refresh_token", res.body.data.refreshToken);
   }
 }
 

@@ -59,7 +59,7 @@ func (uc *productUsecase) List(ctx context.Context, merchantID int64, search str
 		Total:       int64(total),
 		Offset:      p.Offset,
 		Limit:       p.Limit,
-		ReturnCount: len(data),
+		Count:       len(data),
 	}
 	return data, meta, nil
 }

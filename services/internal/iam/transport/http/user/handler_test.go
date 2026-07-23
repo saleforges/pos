@@ -51,7 +51,7 @@ type mockUserSvc struct {
 
 func (m *mockUserSvc) ListUsers(ctx context.Context, p pagination.Params) ([]domain.User, *pagination.Metadata, error) {
 	if m.listUsersFn != nil { return m.listUsersFn(ctx, p) }
-	return []domain.User{{ID: 1, Username: "u1"}, {ID: 2, Username: "u2"}}, &pagination.Metadata{Total: 2, Offset: 0, Limit: 20, ReturnCount: 2}, nil
+	return []domain.User{{ID: 1, Username: "u1"}, {ID: 2, Username: "u2"}}, &pagination.Metadata{Total: 2, Offset: 0, Limit: 20, Count: 2}, nil
 }
 func (m *mockUserSvc) GetUser(ctx context.Context, id int64) (*domain.User, error) {
 	if m.getUserFn != nil { return m.getUserFn(ctx, id) }

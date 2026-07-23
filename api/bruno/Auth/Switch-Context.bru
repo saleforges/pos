@@ -30,6 +30,6 @@ vars:pre-request {
 
 script:post-response {
   if (res.body.data) {
-    bru.setVar("access_token", res.body.data.access_token);
+    bru.setVar("access_token", res.body.data.accessToken);
   }
 }

@@ -51,7 +51,7 @@ func (uc *userUsecase) ListUsers(ctx context.Context, p pagination.Params) ([]do
 		Total:       total,
 		Offset:      p.Offset,
 		Limit:       p.Limit,
-		ReturnCount: len(data),
+		Count: len(data),
 	}
 	return data, meta, nil
 }
