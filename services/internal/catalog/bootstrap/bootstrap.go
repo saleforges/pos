@@ -13,7 +13,7 @@ import (
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/category"
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/image"
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/product"
-	"github.com/saleforge/pos/services/internal/catalog/transport/http/sellable_item"
+	"github.com/saleforge/pos/services/internal/catalog/transport/http/product_item"
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/unit"
 	"github.com/saleforge/pos/services/internal/catalog/usecase"
 	"github.com/saleforge/pos/services/pkg/jwks"
@@ -47,7 +47,7 @@ func New(cfg Config) (*App, error) {
 
 	var (
 		prodRepo  repository.ProductRepository
-		itemRepo  repository.SellableItemRepository
+		itemRepo  repository.ProductItemRepository
 		catRepo   repository.CategoryRepository
 		unitRepo  repository.UnitRepository
 	)
@@ -62,25 +62,30 @@ func New(cfg Config) (*App, error) {
 			return nil, err
 		}
 		prodRepo = postgres.NewProductRepository(pool)
-		itemRepo = postgres.NewSellableItemRepository(pool)
+		itemRepo = postgres.NewProductItemRepository(pool)
 		catRepo = postgres.NewCategoryRepository(pool)
 		unitRepo = postgres.NewUnitRepository(pool)
+
+		if err := postgres.SeedData(ctx, pool); err != nil {
+			logger.Warn("seed failed", "error", err.Error())
+		}
+
 		logger.Info("using postgres storage")
 	} else {
 		prodRepo = memory.NewProductRepository()
-		itemRepo = memory.NewSellableItemRepository()
+		itemRepo = memory.NewProductItemRepository()
 		catRepo = memory.NewCategoryRepository()
 		unitRepo = memory.NewUnitRepository()
 		logger.Info("using in-memory storage")
 	}
 
 	prodUC := usecase.NewProductUsecase(prodRepo, catRepo, unitRepo)
-	itemUC := usecase.NewSellableItemUsecase(itemRepo, prodRepo, unitRepo)
+	itemUC := usecase.NewProductItemUsecase(itemRepo, prodRepo, unitRepo)
 	catUC := usecase.NewCategoryUsecase(catRepo)
 	unitUC := usecase.NewUnitUsecase(unitRepo)
 
 	prodHandler := product.NewHandler(prodUC, catRepo, itemRepo, unitRepo)
-	itemHandler := sellableitem.NewHandler(itemUC)
+	itemHandler := productitem.NewHandler(itemUC)
 	catHandler := category.NewHandler(catUC)
 	unitHandler := unit.NewHandler(unitUC)
 

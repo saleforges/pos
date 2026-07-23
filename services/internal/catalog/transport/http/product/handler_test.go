@@ -18,20 +18,21 @@ import (
 type mockCategoryRepo struct{}
 
 func (m *mockCategoryRepo) Create(_ context.Context, _ *domain.Category) error { return nil }
-func (m *mockCategoryRepo) GetByID(_ context.Context, id int64) (*domain.Category, error) { return nil, domain.ErrCategoryNotFound }
+func (m *mockCategoryRepo) GetByID(_ context.Context, id int64, _ int64) (*domain.Category, error) { return nil, domain.ErrCategoryNotFound }
 func (m *mockCategoryRepo) ListByMerchant(_ context.Context, _ int64) ([]domain.Category, error) { return nil, nil }
 func (m *mockCategoryRepo) Update(_ context.Context, _ *domain.Category) error { return nil }
-func (m *mockCategoryRepo) Delete(_ context.Context, _ int64) error { return nil }
-func (m *mockCategoryRepo) Restore(_ context.Context, _ int64) (*domain.Category, error) { return nil, nil }
+func (m *mockCategoryRepo) Delete(_ context.Context, _ int64, _ int64) error { return nil }
+func (m *mockCategoryRepo) Restore(_ context.Context, _ int64, _ int64) (*domain.Category, error) { return nil, nil }
 
-type mockSellableItemRepo struct{}
+type mockProductItemRepo struct{}
 
-func (m *mockSellableItemRepo) Create(_ context.Context, _ *domain.SellableItem) error { return nil }
-func (m *mockSellableItemRepo) GetByID(_ context.Context, _ int64) (*domain.SellableItem, error) { return nil, domain.ErrSellableItemNotFound }
-func (m *mockSellableItemRepo) ListByProduct(_ context.Context, _ int64) ([]domain.SellableItem, error) { return nil, nil }
-func (m *mockSellableItemRepo) Update(_ context.Context, _ *domain.SellableItem) error { return nil }
-func (m *mockSellableItemRepo) Delete(_ context.Context, _ int64) error { return nil }
-func (m *mockSellableItemRepo) Restore(_ context.Context, _ int64) (*domain.SellableItem, error) { return nil, nil }
+func (m *mockProductItemRepo) Create(_ context.Context, _ *domain.ProductItem) error { return nil }
+func (m *mockProductItemRepo) GetByID(_ context.Context, _ int64, _ int64) (*domain.ProductItem, error) { return nil, domain.ErrProductItemNotFound }
+func (m *mockProductItemRepo) ListByProduct(_ context.Context, _ int64, _ int64) ([]domain.ProductItem, error) { return nil, nil }
+func (m *mockProductItemRepo) ListByMerchant(_ context.Context, _ int64) ([]domain.ProductItem, error) { return nil, nil }
+func (m *mockProductItemRepo) Update(_ context.Context, _ *domain.ProductItem) error { return nil }
+func (m *mockProductItemRepo) Delete(_ context.Context, _ int64, _ int64) error { return nil }
+func (m *mockProductItemRepo) Restore(_ context.Context, _ int64, _ int64) (*domain.ProductItem, error) { return nil, nil }
 
 type mockUnitRepo struct{}
 
@@ -41,10 +42,10 @@ func (m *mockUnitRepo) GetByCode(_ context.Context, _ string) (*domain.Unit, err
 
 type mockProductSvc struct {
 	createFn func(context.Context, usecase.CreateProductParams) (*domain.Product, error)
-	getFn    func(context.Context, int64) (*domain.Product, error)
+	getFn    func(context.Context, int64, int64) (*domain.Product, error)
 	listFn   func(context.Context, int64, string, pagination.Params) ([]domain.Product, *pagination.Metadata, error)
 	updateFn func(context.Context, usecase.UpdateProductParams) (*domain.Product, error)
-	deleteFn func(context.Context, int64) error
+	deleteFn func(context.Context, int64, int64) error
 }
 
 func (m *mockProductSvc) Create(ctx context.Context, p usecase.CreateProductParams) (*domain.Product, error) {
@@ -54,11 +55,11 @@ func (m *mockProductSvc) Create(ctx context.Context, p usecase.CreateProductPara
 	return &domain.Product{ID: 1, MerchantID: p.MerchantID, CategoryID: p.CategoryID, Name: p.Name, Status: domain.ProductStatusActive}, nil
 }
 
-func (m *mockProductSvc) GetByID(ctx context.Context, id int64) (*domain.Product, error) {
+func (m *mockProductSvc) GetByID(ctx context.Context, id int64, merchantID int64) (*domain.Product, error) {
 	if m.getFn != nil {
-		return m.getFn(ctx, id)
+		return m.getFn(ctx, id, merchantID)
 	}
-	return &domain.Product{ID: id, MerchantID: 1, CategoryID: 1, Name: "Test", Status: domain.ProductStatusActive}, nil
+	return &domain.Product{ID: id, MerchantID: merchantID, CategoryID: 1, Name: "Test", Status: domain.ProductStatusActive}, nil
 }
 
 func (m *mockProductSvc) List(ctx context.Context, merchantID int64, search string, p pagination.Params) ([]domain.Product, *pagination.Metadata, error) {
@@ -75,9 +76,9 @@ func (m *mockProductSvc) Update(ctx context.Context, p usecase.UpdateProductPara
 	return &domain.Product{ID: p.ID, Name: "Updated"}, nil
 }
 
-func (m *mockProductSvc) Delete(ctx context.Context, id int64) error {
+func (m *mockProductSvc) Delete(ctx context.Context, id int64, merchantID int64) error {
 	if m.deleteFn != nil {
-		return m.deleteFn(ctx, id)
+		return m.deleteFn(ctx, id, merchantID)
 	}
 	return nil
 }
@@ -98,7 +99,7 @@ func TestCreate(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := withMerchant(e.NewContext(req, rec))
 
-		h := NewHandler(&mockProductSvc{}, &mockCategoryRepo{}, &mockSellableItemRepo{}, &mockUnitRepo{})
+		h := NewHandler(&mockProductSvc{}, &mockCategoryRepo{}, &mockProductItemRepo{}, &mockUnitRepo{})
 		if err := h.Create(c); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -121,7 +122,7 @@ func TestCreate(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := withMerchant(e.NewContext(req, rec))
 
-		h := NewHandler(&mockProductSvc{}, &mockCategoryRepo{}, &mockSellableItemRepo{}, &mockUnitRepo{})
+		h := NewHandler(&mockProductSvc{}, &mockCategoryRepo{}, &mockProductItemRepo{}, &mockUnitRepo{})
 		if err := h.Create(c); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -138,7 +139,7 @@ func TestCreate(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := withMerchant(e.NewContext(req, rec))
 
-		h := NewHandler(&mockProductSvc{}, &mockCategoryRepo{}, &mockSellableItemRepo{}, &mockUnitRepo{})
+		h := NewHandler(&mockProductSvc{}, &mockCategoryRepo{}, &mockProductItemRepo{}, &mockUnitRepo{})
 		if err := h.Create(c); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -158,8 +159,9 @@ func TestGet(t *testing.T) {
 		c := e.NewContext(req, rec)
 		c.SetParamNames("id")
 		c.SetParamValues("1")
+		c = withMerchant(c)
 
-		h := NewHandler(&mockProductSvc{}, &mockCategoryRepo{}, &mockSellableItemRepo{}, &mockUnitRepo{})
+		h := NewHandler(&mockProductSvc{}, &mockCategoryRepo{}, &mockProductItemRepo{}, &mockUnitRepo{})
 		if err := h.Get(c); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -175,13 +177,14 @@ func TestGet(t *testing.T) {
 		c := e.NewContext(req, rec)
 		c.SetParamNames("id")
 		c.SetParamValues("999")
+		c = withMerchant(c)
 
 		mock := &mockProductSvc{
-			getFn: func(_ context.Context, id int64) (*domain.Product, error) {
+			getFn: func(_ context.Context, id int64, merchantID int64) (*domain.Product, error) {
 				return nil, domain.ErrProductNotFound
 			},
 		}
-		h := NewHandler(mock, &mockCategoryRepo{}, &mockSellableItemRepo{}, &mockUnitRepo{})
+		h := NewHandler(mock, &mockCategoryRepo{}, &mockProductItemRepo{}, &mockUnitRepo{})
 		if err := h.Get(c); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -200,7 +203,7 @@ func TestList(t *testing.T) {
 		rec := httptest.NewRecorder()
 		c := withMerchant(e.NewContext(req, rec))
 
-		h := NewHandler(&mockProductSvc{}, &mockCategoryRepo{}, &mockSellableItemRepo{}, &mockUnitRepo{})
+		h := NewHandler(&mockProductSvc{}, &mockCategoryRepo{}, &mockProductItemRepo{}, &mockUnitRepo{})
 		if err := h.List(c); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -228,8 +231,9 @@ func TestUpdate(t *testing.T) {
 		c := e.NewContext(req, rec)
 		c.SetParamNames("id")
 		c.SetParamValues("1")
+		c = withMerchant(c)
 
-		h := NewHandler(&mockProductSvc{}, &mockCategoryRepo{}, &mockSellableItemRepo{}, &mockUnitRepo{})
+		h := NewHandler(&mockProductSvc{}, &mockCategoryRepo{}, &mockProductItemRepo{}, &mockUnitRepo{})
 		if err := h.Update(c); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -247,13 +251,14 @@ func TestUpdate(t *testing.T) {
 		c := e.NewContext(req, rec)
 		c.SetParamNames("id")
 		c.SetParamValues("999")
+		c = withMerchant(c)
 
 		mock := &mockProductSvc{
 			updateFn: func(_ context.Context, p usecase.UpdateProductParams) (*domain.Product, error) {
 				return nil, domain.ErrProductNotFound
 			},
 		}
-		h := NewHandler(mock, &mockCategoryRepo{}, &mockSellableItemRepo{}, &mockUnitRepo{})
+		h := NewHandler(mock, &mockCategoryRepo{}, &mockProductItemRepo{}, &mockUnitRepo{})
 		if err := h.Update(c); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -273,8 +278,9 @@ func TestDelete(t *testing.T) {
 		c := e.NewContext(req, rec)
 		c.SetParamNames("id")
 		c.SetParamValues("1")
+		c = withMerchant(c)
 
-		h := NewHandler(&mockProductSvc{}, &mockCategoryRepo{}, &mockSellableItemRepo{}, &mockUnitRepo{})
+		h := NewHandler(&mockProductSvc{}, &mockCategoryRepo{}, &mockProductItemRepo{}, &mockUnitRepo{})
 		if err := h.Delete(c); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -290,13 +296,14 @@ func TestDelete(t *testing.T) {
 		c := e.NewContext(req, rec)
 		c.SetParamNames("id")
 		c.SetParamValues("999")
+		c = withMerchant(c)
 
 		mock := &mockProductSvc{
-			deleteFn: func(_ context.Context, id int64) error {
+			deleteFn: func(_ context.Context, id int64, merchantID int64) error {
 				return domain.ErrProductNotFound
 			},
 		}
-		h := NewHandler(mock, &mockCategoryRepo{}, &mockSellableItemRepo{}, &mockUnitRepo{})
+		h := NewHandler(mock, &mockCategoryRepo{}, &mockProductItemRepo{}, &mockUnitRepo{})
 		if err := h.Delete(c); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

@@ -23,12 +23,12 @@ func (m *mockProductRepo) Create(_ context.Context, p *domain.Product) error {
 	return nil
 }
 
-func (m *mockProductRepo) GetByID(_ context.Context, id int64) (*domain.Product, error) {
+func (m *mockProductRepo) GetByID(_ context.Context, id int64, merchantID int64) (*domain.Product, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	p, ok := m.products[id]
-	if !ok {
+	if !ok || p.MerchantID != merchantID {
 		return nil, domain.ErrProductNotFound
 	}
 	return p, nil
@@ -59,24 +59,32 @@ func (m *mockProductRepo) Update(_ context.Context, p *domain.Product) error {
 	if m.err != nil {
 		return m.err
 	}
+	existing, ok := m.products[p.ID]
+	if !ok || existing.MerchantID != p.MerchantID {
+		return domain.ErrProductNotFound
+	}
 	m.products[p.ID] = p
 	return nil
 }
 
-func (m *mockProductRepo) Delete(_ context.Context, id int64) error {
+func (m *mockProductRepo) Delete(_ context.Context, id int64, merchantID int64) error {
 	if m.err != nil {
 		return m.err
+	}
+	p, ok := m.products[id]
+	if !ok || p.MerchantID != merchantID {
+		return domain.ErrProductNotFound
 	}
 	delete(m.products, id)
 	return nil
 }
 
-func (m *mockProductRepo) Restore(_ context.Context, id int64) (*domain.Product, error) {
+func (m *mockProductRepo) Restore(_ context.Context, id int64, merchantID int64) (*domain.Product, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	p, ok := m.products[id]
-	if !ok {
+	if !ok || p.MerchantID != merchantID {
 		return nil, domain.ErrProductNotFound
 	}
 	return p, nil
@@ -99,12 +107,12 @@ func (m *mockCategoryRepo) Create(_ context.Context, c *domain.Category) error {
 	return nil
 }
 
-func (m *mockCategoryRepo) GetByID(_ context.Context, id int64) (*domain.Category, error) {
+func (m *mockCategoryRepo) GetByID(_ context.Context, id int64, merchantID int64) (*domain.Category, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	c, ok := m.categories[id]
-	if !ok {
+	if !ok || c.MerchantID != merchantID {
 		return nil, domain.ErrCategoryNotFound
 	}
 	return c, nil
@@ -127,93 +135,142 @@ func (m *mockCategoryRepo) Update(_ context.Context, c *domain.Category) error {
 	if m.err != nil {
 		return m.err
 	}
+	existing, ok := m.categories[c.ID]
+	if !ok || existing.MerchantID != c.MerchantID {
+		return domain.ErrCategoryNotFound
+	}
 	m.categories[c.ID] = c
 	return nil
 }
 
-func (m *mockCategoryRepo) Delete(_ context.Context, id int64) error {
+func (m *mockCategoryRepo) Delete(_ context.Context, id int64, merchantID int64) error {
 	if m.err != nil {
 		return m.err
+	}
+	c, ok := m.categories[id]
+	if !ok || c.MerchantID != merchantID {
+		return domain.ErrCategoryNotFound
 	}
 	delete(m.categories, id)
 	return nil
 }
 
-func (m *mockCategoryRepo) Restore(_ context.Context, id int64) (*domain.Category, error) {
+func (m *mockCategoryRepo) Restore(_ context.Context, id int64, merchantID int64) (*domain.Category, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	c, ok := m.categories[id]
-	if !ok {
+	if !ok || c.MerchantID != merchantID {
 		return nil, domain.ErrCategoryNotFound
 	}
 	return c, nil
 }
 
-type mockSellableItemRepo struct {
-	items map[int64]*domain.SellableItem
+type mockProductItemRepo struct {
+	items map[int64]*domain.ProductItem
 	err   error
 }
 
-func (m *mockSellableItemRepo) Create(_ context.Context, item *domain.SellableItem) error {
+func (m *mockProductItemRepo) Create(_ context.Context, item *domain.ProductItem) error {
 	if m.err != nil {
 		return m.err
 	}
 	if m.items == nil {
-		m.items = make(map[int64]*domain.SellableItem)
+		m.items = make(map[int64]*domain.ProductItem)
 	}
+
+	// Check SKU uniqueness within merchant scope
+	if item.SKU != "" {
+		for _, existing := range m.items {
+			if existing.SKU == item.SKU && existing.MerchantID == item.MerchantID && existing.DeletedAt == nil {
+				return domain.ErrSKUDuplicate
+			}
+		}
+	}
+
 	item.ID = int64(len(m.items) + 1)
 	m.items[item.ID] = item
 	return nil
 }
 
-func (m *mockSellableItemRepo) GetByID(_ context.Context, id int64) (*domain.SellableItem, error) {
+func (m *mockProductItemRepo) GetByID(_ context.Context, id int64, merchantID int64) (*domain.ProductItem, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	item, ok := m.items[id]
-	if !ok {
-		return nil, domain.ErrSellableItemNotFound
+	if !ok || item.MerchantID != merchantID {
+		return nil, domain.ErrProductItemNotFound
 	}
 	return item, nil
 }
 
-func (m *mockSellableItemRepo) ListByProduct(_ context.Context, productID int64) ([]domain.SellableItem, error) {
+func (m *mockProductItemRepo) ListByProduct(_ context.Context, productID int64, merchantID int64) ([]domain.ProductItem, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
-	var result []domain.SellableItem
+	var result []domain.ProductItem
 	for _, item := range m.items {
-		if item.ProductID == productID {
+		if item.ProductID == productID && item.MerchantID == merchantID {
 			result = append(result, *item)
 		}
 	}
 	return result, nil
 }
 
-func (m *mockSellableItemRepo) Update(_ context.Context, item *domain.SellableItem) error {
+func (m *mockProductItemRepo) ListByMerchant(_ context.Context, merchantID int64) ([]domain.ProductItem, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	var result []domain.ProductItem
+	for _, item := range m.items {
+		if item.MerchantID == merchantID {
+			result = append(result, *item)
+		}
+	}
+	return result, nil
+}
+
+func (m *mockProductItemRepo) Update(_ context.Context, item *domain.ProductItem) error {
 	if m.err != nil {
 		return m.err
 	}
+	existing, ok := m.items[item.ID]
+	if !ok || existing.MerchantID != item.MerchantID {
+		return domain.ErrProductItemNotFound
+	}
+
+	// Check SKU uniqueness within merchant scope (skip if same item)
+	if item.SKU != "" {
+		for _, other := range m.items {
+			if other.ID != item.ID && other.SKU == item.SKU && other.MerchantID == item.MerchantID && other.DeletedAt == nil {
+				return domain.ErrSKUDuplicate
+			}
+		}
+	}
+
 	m.items[item.ID] = item
 	return nil
 }
 
-func (m *mockSellableItemRepo) Delete(_ context.Context, id int64) error {
+func (m *mockProductItemRepo) Delete(_ context.Context, id int64, merchantID int64) error {
 	if m.err != nil {
 		return m.err
+	}
+	item, ok := m.items[id]
+	if !ok || item.MerchantID != merchantID {
+		return domain.ErrProductItemNotFound
 	}
 	delete(m.items, id)
 	return nil
 }
 
-func (m *mockSellableItemRepo) Restore(_ context.Context, id int64) (*domain.SellableItem, error) {
+func (m *mockProductItemRepo) Restore(_ context.Context, id int64, merchantID int64) (*domain.ProductItem, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	item, ok := m.items[id]
-	if !ok {
-		return nil, domain.ErrSellableItemNotFound
+	if !ok || item.MerchantID != merchantID {
+		return nil, domain.ErrProductItemNotFound
 	}
 	return item, nil
 }

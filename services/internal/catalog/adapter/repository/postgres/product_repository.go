@@ -32,9 +32,9 @@ func (r *ProductRepository) Create(ctx context.Context, product *domain.Product)
 	return err
 }
 
-func (r *ProductRepository) GetByID(ctx context.Context, id int64) (*domain.Product, error) {
+func (r *ProductRepository) GetByID(ctx context.Context, id int64, merchantID int64) (*domain.Product, error) {
 	row := r.pool.QueryRow(ctx,
-		`SELECT `+productCols+` FROM products p WHERE p.id = $1`+productNotDeleted, id)
+		`SELECT `+productCols+` FROM products p WHERE p.id = $1 AND p.merchant_id = $2`+productNotDeleted, id, merchantID)
 	return scanProduct(row)
 }
 
@@ -71,22 +71,22 @@ func (r *ProductRepository) List(ctx context.Context, merchantID int64, search s
 
 func (r *ProductRepository) Update(ctx context.Context, product *domain.Product) error {
 	_, err := r.pool.Exec(ctx,
-		`UPDATE products SET category_id=$1, name=$2, description=$3, image_url=$4, status=$5, updated_at=$6 WHERE id=$7 AND deleted_at IS NULL`,
-		product.CategoryID, product.Name, product.Description, product.ImageURL, product.Status, product.UpdatedAt, product.ID)
+		`UPDATE products SET category_id=$1, name=$2, description=$3, image_url=$4, status=$5, updated_at=$6 WHERE id=$7 AND merchant_id=$8 AND deleted_at IS NULL`,
+		product.CategoryID, product.Name, product.Description, product.ImageURL, product.Status, product.UpdatedAt, product.ID, product.MerchantID)
 	return err
 }
 
-func (r *ProductRepository) Delete(ctx context.Context, id int64) error {
-	_, err := r.pool.Exec(ctx, `UPDATE products SET deleted_at=NOW() WHERE id=$1 AND deleted_at IS NULL`, id)
+func (r *ProductRepository) Delete(ctx context.Context, id int64, merchantID int64) error {
+	_, err := r.pool.Exec(ctx, `UPDATE products SET deleted_at=NOW() WHERE id=$1 AND merchant_id=$2 AND deleted_at IS NULL`, id, merchantID)
 	return err
 }
 
-func (r *ProductRepository) Restore(ctx context.Context, id int64) (*domain.Product, error) {
-	_, err := r.pool.Exec(ctx, `UPDATE products SET deleted_at=NULL WHERE id=$1`, id)
+func (r *ProductRepository) Restore(ctx context.Context, id int64, merchantID int64) (*domain.Product, error) {
+	_, err := r.pool.Exec(ctx, `UPDATE products SET deleted_at=NULL WHERE id=$1 AND merchant_id=$2`, id, merchantID)
 	if err != nil {
 		return nil, err
 	}
-	return r.GetByID(ctx, id)
+	return r.GetByID(ctx, id, merchantID)
 }
 
 func scanProduct(row pgx.Row) (*domain.Product, error) {
@@ -109,3 +109,5 @@ func scanProducts(rows pgx.Rows) ([]domain.Product, error) {
 	}
 	return result, rows.Err()
 }
+
+

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	catalog "github.com/saleforge/pos/services/internal/catalog/adapter/repository/postgres"
 	iam "github.com/saleforge/pos/services/internal/iam/adapter/repository/postgres"
 	merchant "github.com/saleforge/pos/services/internal/merchant/adapter/repository/postgres"
 )
@@ -12,7 +13,7 @@ import (
 func main() {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		dsn = "postgres://devuser:devpassword@localhost:5432/devdb?sslmode=disable"
+		dsn = "postgres://devuser:***@localhost:5432/devdb?sslmode=disable"
 	}
 
 	fmt.Println("Running IAM migrations...")
@@ -29,6 +30,13 @@ func main() {
 	}
 	fmt.Println("Merchant migrations done")
 
+	fmt.Println("Running Catalog migrations...")
+	if err := catalog.RunMigrations(dsn); err != nil {
+		fmt.Fprintf(os.Stderr, "Catalog migration failed: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println("Catalog migrations done")
+
 	fmt.Println("Seeding IAM data...")
 	pool, err := iam.Connect(context.Background(), dsn)
 	if err != nil {
@@ -40,5 +48,18 @@ func main() {
 		os.Exit(1)
 	}
 	pool.Close()
-	fmt.Println("Seed done")
+	fmt.Println("IAM seed done")
+
+	fmt.Println("Seeding Catalog data...")
+	catPool, err := catalog.Connect(context.Background(), dsn)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "catalog connect failed: %v\n", err)
+		os.Exit(1)
+	}
+	if err := catalog.SeedData(context.Background(), catPool); err != nil {
+		fmt.Fprintf(os.Stderr, "catalog seed failed: %v\n", err)
+		os.Exit(1)
+	}
+	catPool.Close()
+	fmt.Println("Catalog seed done")
 }

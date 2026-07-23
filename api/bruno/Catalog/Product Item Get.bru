@@ -1,11 +1,11 @@
 meta {
-  name: Sellable Item Delete
+  name: Product Item Get
   type: http
-  seq: 14
+  seq: 15
 }
 
-delete {
-  url: {{base_url}}/v1/items/{{item_id}}
+get {
+  url: {{base_url}}/v1/product-items/{{item_id}}
   body: none
   auth: bearer
 }

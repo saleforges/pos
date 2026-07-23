@@ -3,10 +3,12 @@ package product
 import "github.com/saleforge/pos/services/internal/catalog/domain"
 
 type createProductReq struct {
-	CategoryID  int64  `json:"categoryId"`
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	ImageURL    string `json:"imageUrl,omitempty"`
+	CategoryID  int64   `json:"categoryId"`
+	Name        string  `json:"name"`
+	Description string  `json:"description,omitempty"`
+	ImageURL    string  `json:"imageUrl,omitempty"`
+	Price       float64 `json:"price,omitempty"`
+	Items       []bulkItemReq `json:"items,omitempty"`
 }
 
 type updateProductReq struct {
@@ -18,26 +20,27 @@ type updateProductReq struct {
 }
 
 type createBulkReq struct {
-	CategoryID  int64              `json:"categoryId"`
-	Name        string             `json:"name"`
-	Description string             `json:"description,omitempty"`
-	ImageURL    string             `json:"imageUrl,omitempty"`
-	Items       []bulkItemReq      `json:"items"`
+	CategoryID  int64         `json:"categoryId"`
+	Name        string        `json:"name"`
+	Description string        `json:"description,omitempty"`
+	ImageURL    string        `json:"imageUrl,omitempty"`
+	Items       []bulkItemReq `json:"items"`
 }
 
 type bulkItemReq struct {
 	Name           string  `json:"name"`
-	UnitID         int64   `json:"unitId"`
+	SKU            string  `json:"sku,omitempty"`
+	UnitID         *int64  `json:"unitId,omitempty"`
 	Price          float64 `json:"price"`
 	TrackInventory bool    `json:"trackInventory"`
 	ImageURL       string  `json:"imageUrl,omitempty"`
 }
 
 type updateBulkReq struct {
-	CategoryID  *int64        `json:"categoryId,omitempty"`
-	Name        *string       `json:"name,omitempty"`
-	Description *string       `json:"description,omitempty"`
-	ImageURL    *string       `json:"imageUrl,omitempty"`
-	Status      *string       `json:"status,omitempty"`
+	CategoryID  *int64         `json:"categoryId,omitempty"`
+	Name        *string        `json:"name,omitempty"`
+	Description *string        `json:"description,omitempty"`
+	ImageURL    *string        `json:"imageUrl,omitempty"`
+	Status      *string        `json:"status,omitempty"`
 	Items       *[]bulkItemReq `json:"items,omitempty"`
 }

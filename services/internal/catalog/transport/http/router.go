@@ -6,7 +6,7 @@ import (
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/image"
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/middleware"
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/product"
-	sellableitem "github.com/saleforge/pos/services/internal/catalog/transport/http/sellable_item"
+	productitem "github.com/saleforge/pos/services/internal/catalog/transport/http/product_item"
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/unit"
 	"github.com/saleforge/pos/services/pkg/httputil"
 	"github.com/saleforge/pos/services/pkg/jwks"
@@ -16,7 +16,7 @@ import (
 
 func NewRouter(
 	productHandler *product.Handler,
-	itemHandler *sellableitem.Handler,
+	itemHandler *productitem.Handler,
 	catHandler *category.Handler,
 	unitHandler *unit.Handler,
 	imgHandler *image.Handler,
@@ -58,14 +58,16 @@ func NewRouter(
 	prod.PATCH("/:id", productHandler.Update)
 	prod.DELETE("/:id", productHandler.Delete)
 
-	// Sellable items nested under product
+	// Product items nested under product
 	prod.POST("/:productId/items", itemHandler.Create)
 	prod.GET("/:productId/items", itemHandler.ListByProduct)
 
-	// Standalone item endpoints (no product context needed)
-	api.PATCH("/items/:id", itemHandler.Update)
-	api.PATCH("/items/:id/restore", itemHandler.Restore)
-	api.DELETE("/items/:id", itemHandler.Delete)
+	// Standalone product-item endpoints
+	api.GET("/product-items", itemHandler.ListByMerchant)
+	api.GET("/product-items/:id", itemHandler.GetByID)
+	api.PATCH("/product-items/:id", itemHandler.Update)
+	api.PATCH("/product-items/:id/restore", itemHandler.Restore)
+	api.DELETE("/product-items/:id", itemHandler.Delete)
 
 	// Image upload
 	if imgHandler != nil {

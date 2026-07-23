@@ -24,7 +24,7 @@ func (uc *productUsecase) Create(ctx context.Context, params CreateProductParams
 		return nil, domain.ErrInvalidProduct
 	}
 
-	if _, err := uc.catRepo.GetByID(ctx, params.CategoryID); err != nil {
+	if _, err := uc.catRepo.GetByID(ctx, params.CategoryID, params.MerchantID); err != nil {
 		return nil, err
 	}
 
@@ -46,8 +46,8 @@ func (uc *productUsecase) Create(ctx context.Context, params CreateProductParams
 	return product, nil
 }
 
-func (uc *productUsecase) GetByID(ctx context.Context, id int64) (*domain.Product, error) {
-	return uc.prodRepo.GetByID(ctx, id)
+func (uc *productUsecase) GetByID(ctx context.Context, id int64, merchantID int64) (*domain.Product, error) {
+	return uc.prodRepo.GetByID(ctx, id, merchantID)
 }
 
 func (uc *productUsecase) List(ctx context.Context, merchantID int64, search string, p pagination.Params) ([]domain.Product, *pagination.Metadata, error) {
@@ -65,13 +65,13 @@ func (uc *productUsecase) List(ctx context.Context, merchantID int64, search str
 }
 
 func (uc *productUsecase) Update(ctx context.Context, params UpdateProductParams) (*domain.Product, error) {
-	product, err := uc.prodRepo.GetByID(ctx, params.ID)
+	product, err := uc.prodRepo.GetByID(ctx, params.ID, params.MerchantID)
 	if err != nil {
 		return nil, err
 	}
 
 	if params.CategoryID != nil {
-		if _, err := uc.catRepo.GetByID(ctx, *params.CategoryID); err != nil {
+		if _, err := uc.catRepo.GetByID(ctx, *params.CategoryID, params.MerchantID); err != nil {
 			return nil, err
 		}
 		product.CategoryID = *params.CategoryID
@@ -99,11 +99,11 @@ func (uc *productUsecase) Update(ctx context.Context, params UpdateProductParams
 	return product, nil
 }
 
-func (uc *productUsecase) Delete(ctx context.Context, id int64) error {
-	if _, err := uc.prodRepo.GetByID(ctx, id); err != nil {
+func (uc *productUsecase) Delete(ctx context.Context, id int64, merchantID int64) error {
+	if _, err := uc.prodRepo.GetByID(ctx, id, merchantID); err != nil {
 		return err
 	}
-	return uc.prodRepo.Delete(ctx, id)
+	return uc.prodRepo.Delete(ctx, id, merchantID)
 }
 
 // compile-time check
