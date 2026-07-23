@@ -99,7 +99,7 @@ func (uc *merchantUsecase) ListMerchants(ctx context.Context, p pagination.Param
 		Total:       total,
 		Offset:      p.Offset,
 		Limit:       p.Limit,
-		ReturnCount: len(data),
+		Count: len(data),
 	}
 	return data, meta, nil
 }

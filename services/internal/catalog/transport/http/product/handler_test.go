@@ -65,7 +65,7 @@ func (m *mockProductSvc) List(ctx context.Context, merchantID int64, search stri
 	if m.listFn != nil {
 		return m.listFn(ctx, merchantID, search, p)
 	}
-	return []domain.Product{{ID: 1, MerchantID: merchantID, Name: "Test"}}, &pagination.Metadata{Total: 1, Offset: 0, Limit: 20, ReturnCount: 1}, nil
+	return []domain.Product{{ID: 1, MerchantID: merchantID, Name: "Test"}}, &pagination.Metadata{Total: 1, Offset: 0, Limit: 20, Count: 1}, nil
 }
 
 func (m *mockProductSvc) Update(ctx context.Context, p usecase.UpdateProductParams) (*domain.Product, error) {

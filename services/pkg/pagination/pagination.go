@@ -18,7 +18,7 @@ type Metadata struct {
 	Total       int64 `json:"total"`
 	Offset      int   `json:"offset"`
 	Limit       int   `json:"limit"`
-	ReturnCount int   `json:"return_count"`
+	Count       int   `json:"count"`
 }
 
 // Parse extracts pagination params from query string.

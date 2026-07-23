@@ -146,7 +146,7 @@ func TestMerchantHandler_List(t *testing.T) {
 
 	h := NewHandler(&mockMerchantSvc{
 		listFn: func(_ context.Context, p pagination.Params) ([]domain.Merchant, *pagination.Metadata, error) {
-			return []domain.Merchant{{ID: 1, Name: "M1"}}, &pagination.Metadata{Total: 1, Offset: 0, Limit: 10, ReturnCount: 1}, nil
+			return []domain.Merchant{{ID: 1, Name: "M1"}}, &pagination.Metadata{Total: 1, Offset: 0, Limit: 10, Count: 1}, nil
 		},
 	})
 
