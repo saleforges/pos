@@ -9,7 +9,7 @@
     jwt_private_key: "{{ vault_jwt_private_key_pem }}"
     jwt_key_id: "{{ vault_jwt_key_id | default('iam-key-1') }}"
     token_hasher_secret: "{{ vault_token_hasher_secret | default('9b3747114e7407c821a8b6b1ab4f00cb7ded7ff912b8d3e7a646196c5763b521') }}"
-    db_url: "postgres://pos:{{ vault_postgres_password }}@postgres:5432/pos?sslmode=disable"
+    db_url: "postgres://pos:devpas%2Bsaleforgepos@postgres:5432/pos?sslmode=disable"
   tasks:
     - name: Login to GHCR (fresh)
       shell: |

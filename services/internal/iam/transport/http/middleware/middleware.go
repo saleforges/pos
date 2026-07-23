@@ -19,14 +19,22 @@ func CORSMiddleware(allowedOrigins []string) echo.MiddlewareFunc {
 	for _, o := range allowedOrigins {
 		originSet[o] = struct{}{}
 	}
+	allowAll := len(originSet) == 0
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			origin := c.Request().Header.Get("Origin")
 
-			// If no origin header, it's a same-origin request — allow but don't reflect
-			if origin == "" {
-				c.Response().Header().Set("Access-Control-Allow-Origin", "")
+			if origin == "" || allowAll {
+				if origin != "" {
+					c.Response().Header().Set("Access-Control-Allow-Origin", origin)
+				}
+				c.Response().Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+				c.Response().Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+				c.Response().Header().Set("Access-Control-Allow-Credentials", "true")
+				if c.Request().Method == http.MethodOptions {
+					return c.NoContent(http.StatusNoContent)
+				}
 				return next(c)
 			}
 
