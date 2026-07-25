@@ -5,9 +5,10 @@ import LoginPage from '@/pages/LoginPage';
 import DashboardPage from '@/pages/DashboardPage';
 import OrdersPage from '@/pages/OrdersPage';
 import ProductsPage from '@/pages/ProductsPage';
-import StaffPage from '@/pages/StaffPage';
 import MerchantsPage from '@/pages/MerchantsPage';
+import MerchantDetailPage from '@/pages/MerchantDetailPage';
 import RolesPage from '@/pages/RolesPage';
+import UsersPage from '@/pages/UsersPage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <Navigate to="/login" replace /> },
@@ -21,7 +22,6 @@ export const router = createBrowserRouter([
           { path: '/dashboard', element: <DashboardPage /> },
           { path: '/orders', element: <OrdersPage /> },
           { path: '/products', element: <ProductsPage /> },
-          { path: '/staff', element: <StaffPage /> },
         ],
       },
     ],
@@ -34,7 +34,19 @@ export const router = createBrowserRouter([
         children: [
           { path: '/roles', element: <RolesPage /> },
           { path: '/merchants', element: <MerchantsPage /> },
+          { path: '/merchants/:merchantId', element: <MerchantDetailPage /> },
           { path: '/settings', element: <div>Admin Settings</div> },
+        ],
+      },
+    ],
+  },
+  {
+    element: <ProtectedRoute allowedRoles={['superadmin']} />,
+    children: [
+      {
+        element: <DashboardLayout />,
+        children: [
+          { path: '/users', element: <UsersPage /> },
         ],
       },
     ],
