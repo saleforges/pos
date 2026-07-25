@@ -6,7 +6,7 @@
   vars:
     ghcr_username: "{{ vault_ghcr_username | default('') }}"
     ghcr_token: "{{ vault_ghcr_token | default('') }}"
-    api_proxy_target: "{{ vault_api_proxy_target | default('http://iam-service:8080') }}"
+    api_proxy_target: "{{ vault_api_proxy_target | default('https://api-dev.saleforges.com') }}"
   tasks:
     - name: Login to GHCR (fresh)
       shell: |
