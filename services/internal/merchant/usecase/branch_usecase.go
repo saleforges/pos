@@ -52,6 +52,9 @@ func (uc *merchantUsecase) CreateBranch(ctx context.Context, input CreateBranchP
 		CreatedAt:      now,
 		UpdatedAt:      now,
 	}
+	if branch.OperatingDays == nil {
+		branch.OperatingDays = []string{}
+	}
 	if branch.OperatingHours == nil {
 		branch.OperatingHours = &domain.OperatingHours{}
 	}
