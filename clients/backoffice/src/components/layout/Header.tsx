@@ -10,6 +10,7 @@ const PAGE_TITLES: Record<string, string> = {
   roles: 'Roles',
   merchants: 'Merchants',
   settings: 'Settings',
+  admin: 'Platform Admin',
 };
 
 export function Header() {

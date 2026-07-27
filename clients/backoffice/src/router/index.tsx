@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import LoginPage from '@/pages/LoginPage';
@@ -9,6 +10,9 @@ import MerchantsPage from '@/pages/MerchantsPage';
 import MerchantDetailPage from '@/pages/MerchantDetailPage';
 import RolesPage from '@/pages/RolesPage';
 import UsersPage from '@/pages/UsersPage';
+
+const AdminMerchantsPage = lazy(() => import('@/features/platform-admin/pages/MerchantsPage'));
+const AdminAccountsPage = lazy(() => import('@/features/platform-admin/pages/AccountsPage'));
 
 export const router = createBrowserRouter([
   { path: '/', element: <Navigate to="/login" replace /> },
@@ -47,6 +51,8 @@ export const router = createBrowserRouter([
         element: <DashboardLayout />,
         children: [
           { path: '/users', element: <UsersPage /> },
+          { path: '/admin/merchants', element: <Suspense fallback={<div>Loading...</div>}><AdminMerchantsPage /></Suspense> },
+          { path: '/admin/accounts', element: <Suspense fallback={<div>Loading...</div>}><AdminAccountsPage /></Suspense> },
         ],
       },
     ],
