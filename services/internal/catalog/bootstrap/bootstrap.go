@@ -14,6 +14,7 @@ import (
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/image"
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/product"
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/product_item"
+	"github.com/saleforge/pos/services/internal/catalog/transport/http/sync"
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/unit"
 	"github.com/saleforge/pos/services/internal/catalog/usecase"
 	"github.com/saleforge/pos/services/pkg/jwks"
@@ -46,10 +47,11 @@ func New(cfg Config) (*App, error) {
 	}
 
 	var (
-		prodRepo  repository.ProductRepository
-		itemRepo  repository.ProductItemRepository
-		catRepo   repository.CategoryRepository
-		unitRepo  repository.UnitRepository
+		prodRepo   repository.ProductRepository
+		itemRepo   repository.ProductItemRepository
+		catRepo    repository.CategoryRepository
+		unitRepo   repository.UnitRepository
+		barcodeRepo repository.ProductItemBarcodeRepository
 	)
 
 	if cfg.DatabaseURL != "" {
@@ -65,6 +67,7 @@ func New(cfg Config) (*App, error) {
 		itemRepo = postgres.NewProductItemRepository(pool)
 		catRepo = postgres.NewCategoryRepository(pool)
 		unitRepo = postgres.NewUnitRepository(pool)
+		barcodeRepo = postgres.NewProductItemBarcodeRepository(pool)
 
 		if err := postgres.SeedData(ctx, pool); err != nil {
 			logger.Warn("seed failed", "error", err.Error())
@@ -76,6 +79,7 @@ func New(cfg Config) (*App, error) {
 		itemRepo = memory.NewProductItemRepository()
 		catRepo = memory.NewCategoryRepository()
 		unitRepo = memory.NewUnitRepository()
+		barcodeRepo = memory.NewProductItemBarcodeRepository()
 		logger.Info("using in-memory storage")
 	}
 
@@ -83,11 +87,13 @@ func New(cfg Config) (*App, error) {
 	itemUC := usecase.NewProductItemUsecase(itemRepo, prodRepo, unitRepo)
 	catUC := usecase.NewCategoryUsecase(catRepo)
 	unitUC := usecase.NewUnitUsecase(unitRepo)
+	syncUC := usecase.NewSyncUsecase(prodRepo, itemRepo, catRepo, unitRepo, barcodeRepo)
 
 	prodHandler := product.NewHandler(prodUC, catRepo, itemRepo, unitRepo)
 	itemHandler := productitem.NewHandler(itemUC)
 	catHandler := category.NewHandler(catUC)
 	unitHandler := unit.NewHandler(unitUC)
+	syncHandler := sync.NewHandler(syncUC)
 
 	var imgHandler *image.Handler
 	if cfg.Minio.Endpoint != "" {
@@ -108,7 +114,7 @@ func New(cfg Config) (*App, error) {
 	jwksURL = fmt.Sprintf("%s/.well-known/jwks.json", jwksURL)
 	verifier := jwks.New(jwksURL)
 
-	router := h.NewRouter(prodHandler, itemHandler, catHandler, unitHandler, imgHandler, verifier)
+	router := h.NewRouter(prodHandler, itemHandler, catHandler, unitHandler, imgHandler, syncHandler, verifier)
 
 	return &App{router: router, otelShutdown: otelShutdown}, nil
 }

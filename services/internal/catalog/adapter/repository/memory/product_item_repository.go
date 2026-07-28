@@ -126,6 +126,24 @@ func (r *ProductItemRepository) Restore(_ context.Context, id int64, merchantID 
 	return item, nil
 }
 
+func (r *ProductItemRepository) ListUpdatedAfter(_ context.Context, merchantID int64, after time.Time) ([]domain.ProductItem, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var result []domain.ProductItem
+	for _, item := range r.items {
+		if item.MerchantID != merchantID {
+			continue
+		}
+		if item.UpdatedAt.After(after) || (item.DeletedAt != nil && item.DeletedAt.After(after)) {
+			result = append(result, *item)
+		}
+	}
+	if result == nil {
+		return []domain.ProductItem{}, nil
+	}
+	return result, nil
+}
+
 type ProductItemBarcodeRepository struct {
 	mu        sync.RWMutex
 	barcodes  map[int64]*domain.ProductItemBarcode
@@ -183,4 +201,17 @@ func (r *ProductItemBarcodeRepository) Delete(_ context.Context, id int64) error
 	defer r.mu.Unlock()
 	delete(r.barcodes, id)
 	return nil
+}
+
+func (r *ProductItemBarcodeRepository) ListByMerchant(_ context.Context, merchantID int64) ([]domain.ProductItemBarcode, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var result []domain.ProductItemBarcode
+	for _, b := range r.barcodes {
+		result = append(result, *b)
+	}
+	if result == nil {
+		return []domain.ProductItemBarcode{}, nil
+	}
+	return result, nil
 }

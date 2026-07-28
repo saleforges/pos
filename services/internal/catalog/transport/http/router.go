@@ -7,6 +7,7 @@ import (
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/middleware"
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/product"
 	productitem "github.com/saleforge/pos/services/internal/catalog/transport/http/product_item"
+	"github.com/saleforge/pos/services/internal/catalog/transport/http/sync"
 	"github.com/saleforge/pos/services/internal/catalog/transport/http/unit"
 	"github.com/saleforge/pos/services/pkg/httputil"
 	"github.com/saleforge/pos/services/pkg/jwks"
@@ -20,6 +21,7 @@ func NewRouter(
 	catHandler *category.Handler,
 	unitHandler *unit.Handler,
 	imgHandler *image.Handler,
+	syncHandler *sync.Handler,
 	verifier *jwks.Verifier,
 ) *echo.Echo {
 	e := echo.New()
@@ -74,6 +76,9 @@ func NewRouter(
 		img := api.Group("/images", httputil.MerchantMiddleware())
 		img.POST("", imgHandler.Upload)
 	}
+
+	// Mobile sync endpoint
+	api.POST("/sync", syncHandler.Sync, httputil.MerchantMiddleware())
 
 	return e
 }
