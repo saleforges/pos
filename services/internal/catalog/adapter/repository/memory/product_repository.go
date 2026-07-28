@@ -99,6 +99,24 @@ func (r *ProductRepository) Restore(_ context.Context, id int64, merchantID int6
 	return p, nil
 }
 
+func (r *ProductRepository) ListUpdatedAfter(_ context.Context, merchantID int64, after time.Time) ([]domain.Product, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var result []domain.Product
+	for _, p := range r.products {
+		if p.MerchantID != merchantID {
+			continue
+		}
+		if p.UpdatedAt.After(after) || (p.DeletedAt != nil && p.DeletedAt.After(after)) {
+			result = append(result, *p)
+		}
+	}
+	if result == nil {
+		return []domain.Product{}, nil
+	}
+	return result, nil
+}
+
 func contains(s, substr string) bool {
 	return len(substr) == 0 || s != "" && containsSubstring(s, substr)
 }

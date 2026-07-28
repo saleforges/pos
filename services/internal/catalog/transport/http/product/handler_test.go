@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/catalog/domain"
@@ -23,6 +24,7 @@ func (m *mockCategoryRepo) ListByMerchant(_ context.Context, _ int64) ([]domain.
 func (m *mockCategoryRepo) Update(_ context.Context, _ *domain.Category) error { return nil }
 func (m *mockCategoryRepo) Delete(_ context.Context, _ int64, _ int64) error { return nil }
 func (m *mockCategoryRepo) Restore(_ context.Context, _ int64, _ int64) (*domain.Category, error) { return nil, nil }
+func (m *mockCategoryRepo) ListUpdatedAfter(_ context.Context, _ int64, _ time.Time) ([]domain.Category, error) { return nil, nil }
 
 type mockProductItemRepo struct{}
 
@@ -33,6 +35,7 @@ func (m *mockProductItemRepo) ListByMerchant(_ context.Context, _ int64) ([]doma
 func (m *mockProductItemRepo) Update(_ context.Context, _ *domain.ProductItem) error { return nil }
 func (m *mockProductItemRepo) Delete(_ context.Context, _ int64, _ int64) error { return nil }
 func (m *mockProductItemRepo) Restore(_ context.Context, _ int64, _ int64) (*domain.ProductItem, error) { return nil, nil }
+func (m *mockProductItemRepo) ListUpdatedAfter(_ context.Context, _ int64, _ time.Time) ([]domain.ProductItem, error) { return nil, nil }
 
 type mockUnitRepo struct{}
 

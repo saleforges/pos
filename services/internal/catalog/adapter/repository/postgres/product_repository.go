@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/saleforge/pos/services/internal/catalog/domain"
@@ -89,6 +90,17 @@ func (r *ProductRepository) Restore(ctx context.Context, id int64, merchantID in
 	return r.GetByID(ctx, id, merchantID)
 }
 
+func (r *ProductRepository) ListUpdatedAfter(ctx context.Context, merchantID int64, after time.Time) ([]domain.Product, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT `+productCols+` FROM products p WHERE p.merchant_id = $1 AND (p.updated_at > $2 OR p.deleted_at > $2) ORDER BY p.updated_at`,
+		merchantID, after)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanProducts(rows)
+}
+
 func scanProduct(row pgx.Row) (*domain.Product, error) {
 	var p domain.Product
 	err := row.Scan(&p.ID, &p.MerchantID, &p.CategoryID, &p.Name, &p.Description, &p.ImageURL, &p.Status, &p.CreatedAt, &p.UpdatedAt, &p.DeletedAt)
@@ -109,5 +121,3 @@ func scanProducts(rows pgx.Rows) ([]domain.Product, error) {
 	}
 	return result, rows.Err()
 }
-
-

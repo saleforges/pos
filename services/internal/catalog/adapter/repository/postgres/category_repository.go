@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/saleforge/pos/services/internal/catalog/domain"
@@ -64,6 +65,17 @@ func (r *CategoryRepository) Restore(ctx context.Context, id int64, merchantID i
 		return nil, err
 	}
 	return r.GetByID(ctx, id, merchantID)
+}
+
+func (r *CategoryRepository) ListUpdatedAfter(ctx context.Context, merchantID int64, after time.Time) ([]domain.Category, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT `+catCols+` FROM categories WHERE merchant_id = $1 AND (updated_at > $2 OR deleted_at > $2) ORDER BY updated_at`,
+		merchantID, after)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanCategories(rows)
 }
 
 func scanCategory(row pgx.Row) (*domain.Category, error) {

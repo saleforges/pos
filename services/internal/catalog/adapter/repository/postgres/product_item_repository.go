@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/saleforge/pos/services/internal/catalog/domain"
@@ -109,6 +110,22 @@ func (r *ProductItemRepository) Update(ctx context.Context, item *domain.Product
 		 ON CONFLICT (product_item_id) DO UPDATE SET amount=$2, currency=$3, updated_at=NOW()`,
 		item.ID, item.Price.Amount, item.Price.Currency)
 	return err
+}
+
+func (r *ProductItemRepository) ListUpdatedAfter(ctx context.Context, merchantID int64, after time.Time) ([]domain.ProductItem, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT pi.`+piCols+` FROM product_items pi
+		 WHERE pi.merchant_id = $1 AND (pi.updated_at > $2 OR pi.deleted_at > $2)
+		 ORDER BY pi.updated_at`, merchantID, after)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items, err := scanProductItems(rows)
+	if err != nil {
+		return nil, err
+	}
+	return r.loadPrices(ctx, items)
 }
 
 func (r *ProductItemRepository) Delete(ctx context.Context, id int64, merchantID int64) error {
@@ -242,6 +259,27 @@ func (r *ProductItemBarcodeRepository) ListByProductItem(ctx context.Context, pr
 func (r *ProductItemBarcodeRepository) Delete(ctx context.Context, id int64) error {
 	_, err := r.pool.Exec(ctx, `DELETE FROM product_item_barcodes WHERE id = $1`, id)
 	return err
+}
+
+func (r *ProductItemBarcodeRepository) ListByMerchant(ctx context.Context, merchantID int64) ([]domain.ProductItemBarcode, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT b.id, b.product_item_id, b.barcode
+		 FROM product_item_barcodes b
+		 JOIN product_items pi ON pi.id = b.product_item_id
+		 WHERE pi.merchant_id = $1`, merchantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var result []domain.ProductItemBarcode
+	for rows.Next() {
+		var b domain.ProductItemBarcode
+		if err := rows.Scan(&b.ID, &b.ProductItemID, &b.Barcode); err != nil {
+			return nil, err
+		}
+		result = append(result, b)
+	}
+	return result, rows.Err()
 }
 
 func nullIfEmpty(s string) *string {

@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"time"
 
 	"github.com/saleforge/pos/services/internal/catalog/domain"
 )
@@ -90,6 +91,19 @@ func (m *mockProductRepo) Restore(_ context.Context, id int64, merchantID int64)
 	return p, nil
 }
 
+func (m *mockProductRepo) ListUpdatedAfter(_ context.Context, merchantID int64, _ time.Time) ([]domain.Product, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	var result []domain.Product
+	for _, p := range m.products {
+		if p.MerchantID == merchantID {
+			result = append(result, *p)
+		}
+	}
+	return result, nil
+}
+
 type mockCategoryRepo struct {
 	categories map[int64]*domain.Category
 	err        error
@@ -164,6 +178,19 @@ func (m *mockCategoryRepo) Restore(_ context.Context, id int64, merchantID int64
 		return nil, domain.ErrCategoryNotFound
 	}
 	return c, nil
+}
+
+func (m *mockCategoryRepo) ListUpdatedAfter(_ context.Context, merchantID int64, _ time.Time) ([]domain.Category, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	var result []domain.Category
+	for _, c := range m.categories {
+		if c.MerchantID == merchantID {
+			result = append(result, *c)
+		}
+	}
+	return result, nil
 }
 
 type mockProductItemRepo struct {
@@ -273,6 +300,19 @@ func (m *mockProductItemRepo) Restore(_ context.Context, id int64, merchantID in
 		return nil, domain.ErrProductItemNotFound
 	}
 	return item, nil
+}
+
+func (m *mockProductItemRepo) ListUpdatedAfter(_ context.Context, merchantID int64, _ time.Time) ([]domain.ProductItem, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	var result []domain.ProductItem
+	for _, item := range m.items {
+		if item.MerchantID == merchantID {
+			result = append(result, *item)
+		}
+	}
+	return result, nil
 }
 
 type mockUnitRepo struct {

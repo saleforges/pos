@@ -88,3 +88,21 @@ func (r *CategoryRepository) Restore(_ context.Context, id int64, merchantID int
 	c.DeletedAt = nil
 	return c, nil
 }
+
+func (r *CategoryRepository) ListUpdatedAfter(_ context.Context, merchantID int64, after time.Time) ([]domain.Category, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var result []domain.Category
+	for _, c := range r.categories {
+		if c.MerchantID != merchantID {
+			continue
+		}
+		if c.UpdatedAt.After(after) || (c.DeletedAt != nil && c.DeletedAt.After(after)) {
+			result = append(result, *c)
+		}
+	}
+	if result == nil {
+		return []domain.Category{}, nil
+	}
+	return result, nil
+}
