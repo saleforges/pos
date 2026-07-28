@@ -1,0 +1,35 @@
+- name: Deploy Intools
+  hosts: all
+  become: true
+  vars_files:
+    - ../vars/vault.yml
+  vars:
+    ghcr_username: "{{ vault_ghcr_username | default('') }}"
+    ghcr_token: "{{ vault_ghcr_token | default('') }}"
+    api_proxy_target: "{{ vault_api_proxy_target | default('https://api-dev.saleforges.com') }}"
+  tasks:
+    - name: Login to GHCR (fresh)
+      shell: |
+        docker logout ghcr.io 2>/dev/null || true
+        echo "{{ ghcr_token }}" | docker login ghcr.io -u "{{ ghcr_username }}" --password-stdin
+      when: ghcr_username != '' and ghcr_token != ''
+      no_log: true
+
+    - name: Pull Intools image via CLI
+      shell: docker pull ghcr.io/saleforges/pos/intools:{{ image_tag }}
+      when: ghcr_username != '' and ghcr_token != ''
+      changed_when: false
+
+    - name: Run Intools container
+      community.docker.docker_container:
+        name: intools
+        image: ghcr.io/saleforges/pos/intools:{{ image_tag }}
+        state: started
+        restart_policy: always
+        pull: false
+        networks:
+          - name: pos
+        etc_hosts:
+          "api-dev.saleforges.com": "host-gateway"
+        env:
+          API_PROXY_TARGET: "{{ api_proxy_target }}"
