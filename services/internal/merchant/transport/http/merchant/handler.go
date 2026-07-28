@@ -28,14 +28,7 @@ func (h *Handler) Create(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrMissingFields)
 	}
 
-	result, err := h.uc.CreateMerchant(c.Request().Context(), usecase.CreateMerchantParams{
-		Name:      req.Name,
-		LegalName: req.LegalName,
-		Address:   req.Address,
-		Phone:     req.Phone,
-		Email:     req.Email,
-		TaxID:     req.TaxID,
-	})
+	result, err := h.uc.CreateMerchant(c.Request().Context(), createReqToInput(req))
 	if err != nil {
 		switch err {
 		case domain.ErrMerchantExists:
