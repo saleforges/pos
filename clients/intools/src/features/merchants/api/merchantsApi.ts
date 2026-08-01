@@ -1,32 +1,49 @@
 import { api } from '@/lib/api';
 
+export interface MerchantSettings {
+  taxRate: number;
+  currency: string;
+  timezone: string;
+  receiptFooter?: string;
+  receiptLogo?: string;
+  orderPrefix?: string;
+  lowStockThreshold: number;
+}
+
 export interface Merchant {
   id: number;
   name: string;
-  ownerName?: string | null;
-  ownerId?: number | null;
-  branchCount: number;
-  inventoryScoping: boolean;
-  status: string;
+  legalName: string;
+  address: string;
+  phone: string;
   email: string;
+  logoUrl?: string;
+  taxId?: string;
+  status: string;
+  settings: MerchantSettings;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface CreateMerchantRequest {
   name: string;
+  legalName?: string;
+  address?: string;
+  phone?: string;
   email: string;
-  ownerUsername?: string;
-  ownerEmail?: string;
-  ownerPassword?: string;
-  inventoryScoping?: boolean;
+  taxId?: string;
+  settings?: Partial<MerchantSettings>;
 }
 
-/*
- * TEMPORARY MOCK — swap for real API calls once /v1/merchants is available on the backend.
- *
- * Mock stores merchants in localStorage keyed by 'intools_mock_merchants'.
- */
+export interface UpdateMerchantRequest {
+  name?: string;
+  legalName?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  taxId?: string;
+}
+
 const STORAGE_KEY = 'intools_mock_merchants';
 
 function getStored(): Merchant[] {
@@ -45,15 +62,21 @@ function seed() {
   const existing = getStored();
   if (existing.length === 0) {
     setStored([
-      { id: 1, name: 'Acme Corp', ownerName: 'owner', ownerId: 2, branchCount: 3, inventoryScoping: false, status: 'active', email: 'acme@example.com', createdAt: '2026-02-01T00:00:00Z', updatedAt: '2026-02-01T00:00:00Z' },
-      { id: 2, name: 'Globex Inc', ownerName: null, ownerId: null, branchCount: 1, inventoryScoping: true, status: 'active', email: 'globex@example.com', createdAt: '2026-03-10T00:00:00Z', updatedAt: '2026-03-10T00:00:00Z' },
+      {
+        id: 1, name: 'Acme Corp', legalName: 'PT Acme Corporation', address: 'Jl. Sudirman No. 1', phone: '021-1234567', email: 'acme@example.com', logoUrl: '', taxId: '1234567890', status: 'active',
+        settings: { taxRate: 11, currency: 'IDR', timezone: 'Asia/Jakarta', receiptFooter: 'Terima kasih', receiptLogo: '', orderPrefix: 'ACM', lowStockThreshold: 10 },
+        createdAt: '2026-02-01T00:00:00Z', updatedAt: '2026-02-01T00:00:00Z',
+      },
+      {
+        id: 2, name: 'Globex Inc', legalName: 'PT Globex Indonesia', address: 'Jl. Thamrin No. 5', phone: '021-7654321', email: 'globex@example.com', logoUrl: '', taxId: '0987654321', status: 'active',
+        settings: { taxRate: 11, currency: 'IDR', timezone: 'Asia/Jakarta', receiptFooter: '', receiptLogo: '', orderPrefix: 'GLX', lowStockThreshold: 5 },
+        createdAt: '2026-03-10T00:00:00Z', updatedAt: '2026-03-10T00:00:00Z',
+      },
     ]);
   }
 }
 
 seed();
-
-let nextId = (getStored().length > 0 ? Math.max(...getStored().map((m) => m.id)) : 0) + 1;
 
 export const merchantsApi = {
   list: async (): Promise<Merchant[]> => {
@@ -61,6 +84,32 @@ export const merchantsApi = {
       return await api<Merchant[]>('/merchants');
     } catch {
       return getStored();
+    }
+  },
+
+  get: async (id: number): Promise<Merchant> => {
+    try {
+      return await api<Merchant>(`/merchants/${id}`);
+    } catch {
+      const merchant = getStored().find((m) => m.id === id);
+      if (!merchant) throw new Error('Merchant not found');
+      return merchant;
+    }
+  },
+
+  update: async (id: number, data: UpdateMerchantRequest): Promise<Merchant> => {
+    try {
+      return await api<Merchant>(`/merchants/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      });
+    } catch {
+      const merchants = getStored();
+      const idx = merchants.findIndex((m) => m.id === id);
+      if (idx === -1) throw new Error('Merchant not found');
+      merchants[idx] = { ...merchants[idx], ...data, updatedAt: new Date().toISOString() };
+      setStored(merchants);
+      return merchants[idx];
     }
   },
 
@@ -73,14 +122,24 @@ export const merchantsApi = {
     } catch {
       const merchants = getStored();
       const merchant: Merchant = {
-        id: nextId++,
+        id: merchants.length > 0 ? Math.max(...merchants.map((m) => m.id)) + 1 : 1,
         name: data.name,
-        ownerName: data.ownerUsername ?? null,
-        ownerId: null,
-        branchCount: 0,
-        inventoryScoping: data.inventoryScoping ?? false,
-        status: 'active',
+        legalName: data.legalName ?? '',
+        address: data.address ?? '',
+        phone: data.phone ?? '',
         email: data.email,
+        logoUrl: '',
+        taxId: data.taxId ?? '',
+        status: 'active',
+        settings: {
+          taxRate: data.settings?.taxRate ?? 11,
+          currency: data.settings?.currency ?? 'IDR',
+          timezone: data.settings?.timezone ?? 'Asia/Jakarta',
+          receiptFooter: data.settings?.receiptFooter ?? '',
+          receiptLogo: data.settings?.receiptLogo ?? '',
+          orderPrefix: data.settings?.orderPrefix ?? '',
+          lowStockThreshold: data.settings?.lowStockThreshold ?? 10,
+        },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };

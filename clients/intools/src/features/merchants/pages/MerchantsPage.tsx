@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Search, Plus } from 'lucide-react';
 import { merchantsApi, type Merchant } from '../api/merchantsApi';
 import { CreateMerchantForm } from '../components/CreateMerchantForm';
@@ -52,9 +53,10 @@ export default function MerchantsPage() {
               <thead>
                 <tr className="border-b border-neutral-100 text-left text-xs text-neutral-500">
                   <th className="px-4 py-3 font-medium">Name</th>
-                  <th className="px-4 py-3 font-medium">Owner</th>
-                  <th className="px-4 py-3 font-medium">Branches</th>
-                  <th className="px-4 py-3 font-medium">Inventory Scoping</th>
+                  <th className="px-4 py-3 font-medium">Email</th>
+                  <th className="px-4 py-3 font-medium">Legal Name</th>
+                  <th className="px-4 py-3 font-medium">Phone</th>
+                  <th className="px-4 py-3 font-medium">Currency</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium">Created</th>
                 </tr>
@@ -62,18 +64,15 @@ export default function MerchantsPage() {
               <tbody>
                 {filtered.map((merchant) => (
                   <tr key={merchant.id} className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50">
-                    <td className="px-4 py-3 font-medium text-neutral-900">{merchant.name}</td>
-                    <td className="px-4 py-3 text-neutral-600">{merchant.ownerName ?? '—'}</td>
-                    <td className="px-4 py-3 text-neutral-600">{merchant.branchCount}</td>
                     <td className="px-4 py-3">
-                      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                        merchant.inventoryScoping
-                          ? 'bg-secondary/10 text-secondary'
-                          : 'bg-neutral-100 text-neutral-500'
-                      }`}>
-                        {merchant.inventoryScoping ? 'Enabled' : 'Disabled'}
-                      </span>
+                      <Link to={`/merchants/${merchant.id}`} className="font-medium text-info hover:underline hover:underline-offset-2">
+                        {merchant.name}
+                      </Link>
                     </td>
+                    <td className="px-4 py-3 text-neutral-600">{merchant.email}</td>
+                    <td className="px-4 py-3 text-neutral-600">{merchant.legalName || '—'}</td>
+                    <td className="px-4 py-3 text-neutral-600">{merchant.phone || '—'}</td>
+                    <td className="px-4 py-3 text-neutral-600">{merchant.settings.currency}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
                         merchant.status === 'active' ? 'bg-secondary/10 text-secondary' : 'bg-neutral-100 text-neutral-500'
