@@ -1,26 +1,27 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Search, Plus } from 'lucide-react';
-import { accountsApi, type Account } from '../api/accountsApi';
+import { accountsApi, type UserResponse } from '../api/accountsApi';
 import { CreateAccountForm } from '../components/CreateAccountForm';
 import { PageLoader } from '@/components/ui/PageLoader';
 
 export default function AccountsPage() {
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [users, setUsers] = useState<UserResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
 
-  const fetchAccounts = () => {
+  const fetchUsers = () => {
     setIsLoading(true);
-    accountsApi.list().then(setAccounts).finally(() => setIsLoading(false));
+    accountsApi.list().then(setUsers).finally(() => setIsLoading(false));
   };
 
-  useEffect(() => { fetchAccounts() }, []);
+  useEffect(() => { fetchUsers() }, []);
 
-  const filtered = accounts.filter(
-    (a) =>
-      a.username.toLowerCase().includes(search.toLowerCase()) ||
-      a.email.toLowerCase().includes(search.toLowerCase()),
+  const filtered = users.filter(
+    (u) =>
+      u.username.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase()),
   );
 
   if (isLoading) return <PageLoader />;
@@ -33,7 +34,7 @@ export default function AccountsPage() {
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
             <input
               type="text"
-              placeholder="Search accounts…"
+              placeholder="Search users…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full rounded-lg border border-neutral-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-neutral-400"
@@ -55,32 +56,42 @@ export default function AccountsPage() {
                 <tr className="border-b border-neutral-100 text-left text-xs text-neutral-500">
                   <th className="px-4 py-3 font-medium">Username</th>
                   <th className="px-4 py-3 font-medium">Email</th>
+                  <th className="px-4 py-3 font-medium">Type</th>
                   <th className="px-4 py-3 font-medium">Role</th>
                   <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Merchant</th>
                   <th className="px-4 py-3 font-medium">Created</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((account) => (
-                  <tr key={account.id} className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50">
-                    <td className="px-4 py-3 font-medium text-neutral-900">{account.username}</td>
-                    <td className="px-4 py-3 text-neutral-600">{account.email}</td>
+                {filtered.map((user) => (
+                  <tr key={user.id} className="border-b border-neutral-100 last:border-0 hover:bg-neutral-50">
                     <td className="px-4 py-3">
-                      <span className="inline-block rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                        {account.role}
+                      <Link to={`/accounts/${user.id}`} className="font-medium text-info hover:underline hover:underline-offset-2">
+                        {user.username}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-neutral-600">{user.email}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                        user.type === 'platform' ? 'bg-primary/10 text-primary' : 'bg-neutral-100 text-neutral-600'
+                      }`}>
+                        {user.type}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="inline-block rounded-full bg-secondary/10 px-2 py-0.5 text-xs font-medium text-secondary">
+                        {user.role}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                        account.status === 'active' ? 'bg-secondary/10 text-secondary' : 'bg-neutral-100 text-neutral-500'
+                        user.status === 'active' ? 'bg-secondary/10 text-secondary' : 'bg-neutral-100 text-neutral-500'
                       }`}>
-                        {account.status}
+                        {user.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-neutral-500">{account.merchantName ?? '—'}</td>
                     <td className="px-4 py-3 text-xs text-neutral-400">
-                      {new Date(account.createdAt).toLocaleDateString()}
+                      {new Date(user.createdAt).toLocaleDateString()}
                     </td>
                   </tr>
                 ))}
@@ -93,7 +104,7 @@ export default function AccountsPage() {
       {showForm && (
         <CreateAccountForm
           onClose={() => setShowForm(false)}
-          onCreated={() => { setShowForm(false); fetchAccounts() }}
+          onCreated={() => { setShowForm(false); fetchUsers() }}
         />
       )}
     </>
