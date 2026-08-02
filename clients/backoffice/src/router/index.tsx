@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import LoginPage from '@/pages/LoginPage';
+import BranchSelectPage from '@/pages/BranchSelectPage';
 import DashboardPage from '@/pages/DashboardPage';
 import OrdersPage from '@/pages/OrdersPage';
 import ProductsPage from '@/pages/ProductsPage';
@@ -13,6 +14,10 @@ import UsersPage from '@/pages/UsersPage';
 export const router = createBrowserRouter([
   { path: '/', element: <Navigate to="/login" replace /> },
   { path: '/login', element: <LoginPage /> },
+  {
+    element: <ProtectedRoute />,
+    children: [{ path: '/select-branch', element: <BranchSelectPage /> }],
+  },
   {
     element: <ProtectedRoute />,
     children: [

@@ -1,8 +1,16 @@
-import { Outlet } from 'react-router-dom';
+import { Navigate, Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 
 export function DashboardLayout() {
+  const { contexts, activeContext } = useAuth();
+
+  // If the user has selectable contexts but hasn't picked one, ask first.
+  if (contexts.length > 1 && !activeContext) {
+    return <Navigate to="/select-branch" replace />;
+  }
+
   return (
     <div className="flex h-screen bg-neutral-50">
       <Sidebar />

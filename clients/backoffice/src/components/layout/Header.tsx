@@ -1,5 +1,5 @@
-import { LogOut, User } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { LogOut, User, Store, ChevronDown } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 
 const PAGE_TITLES: Record<string, string> = {
@@ -13,10 +13,13 @@ const PAGE_TITLES: Record<string, string> = {
 };
 
 export function Header() {
-  const { user, logout } = useAuth();
+  const { user, contexts, activeContext, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname.split('/')[1];
   const title = PAGE_TITLES[currentPath] ?? 'Dashboard';
+
+  const showContextSwitch = contexts.length > 1;
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-neutral-200 bg-white px-6">
@@ -27,6 +30,23 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-4">
+        {activeContext && (
+          <div className="hidden items-center gap-2 text-sm text-neutral-600 md:flex">
+            <Store size={15} className="text-neutral-400" />
+            <span className="font-medium text-neutral-900">{activeContext.branch.name}</span>
+            <span className="text-neutral-400">·</span>
+            <span>{activeContext.merchant.name}</span>
+          </div>
+        )}
+        {showContextSwitch && (
+          <button
+            onClick={() => navigate('/select-branch')}
+            className="flex items-center gap-1 rounded-md border border-neutral-200 px-3 py-1.5 text-sm text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
+          >
+            Switch branch
+            <ChevronDown size={14} />
+          </button>
+        )}
         <div className="flex items-center gap-2 text-sm text-neutral-600">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-neutral-100">
             <User size={16} />

@@ -1,11 +1,22 @@
 import { api } from '@/lib/api';
 import { rolesApi } from '@/features/roles/api/rolesApi';
+import { branchesApi } from '@/features/branches/api/branchesApi';
+
+export interface MerchantRef {
+  id: number;
+  name: string;
+}
+
+export interface BranchRef {
+  id: number;
+  name: string;
+}
 
 export interface Role {
   id: number;
   name: string;
-  merchant?: string | null;
-  branch?: string | null;
+  merchant?: MerchantRef | null;
+  branch?: BranchRef | null;
   branchScope?: string;
   isDefault?: boolean;
 }
@@ -22,12 +33,63 @@ export interface User {
   updatedAt: string;
 }
 
+/** A merchant+branch combination the user can actively work in. */
+export interface BranchContext {
+  userRoleId: number;
+  merchant: MerchantRef;
+  branch: BranchRef;
+}
+
 export interface RoleDefinition {
   id: number;
   name: string;
   description: string;
   permissions: string[];
   is_system: boolean;
+}
+
+/** Build the list of merchant/branch contexts the user can select from.
+ *  Branch-scoped roles expose their branch directly; merchant-wide roles
+ *  (branchScope === 'all') expose every branch of that merchant. */
+export async function resolveBranchContexts(user: User): Promise<BranchContext[]> {
+  const contexts: BranchContext[] = [];
+  const seen = new Set<string>();
+
+  for (const role of user.roles) {
+    if (!role.merchant) continue;
+
+    if (role.branch) {
+      const key = `${role.merchant.id}:${role.branch.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      contexts.push({
+        userRoleId: role.id,
+        merchant: role.merchant,
+        branch: role.branch,
+      });
+      continue;
+    }
+
+    if (role.branchScope === 'all') {
+      try {
+        const branches = await branchesApi.list(role.merchant.id);
+        for (const b of branches) {
+          const key = `${role.merchant.id}:${b.id}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          contexts.push({
+            userRoleId: role.id,
+            merchant: role.merchant,
+            branch: { id: b.id, name: b.name },
+          });
+        }
+      } catch {
+        // branch fetch failed — skip; the user can still pick from their roles
+      }
+    }
+  }
+
+  return contexts;
 }
 
 export async function resolveUserPermissions(user: User): Promise<string[]> {
@@ -81,6 +143,15 @@ export const authApi = {
       await api('/auth/logout', { method: 'POST' });
     } catch { /* ignore — cookies cleared either way */ }
   },
+
+  /** Switch the active role/context. The backend derives the branch from the
+   *  selected role assignment and re-issues the access token with the new
+   *  mid/bid claims. */
+  switchContext: (userRoleId: number) =>
+    api<{ accessToken: string; expiresIn: number }>('/auth/switch-context', {
+      method: 'POST',
+      body: JSON.stringify({ userRoleId }),
+    }),
 
   /** Attempt to restore session on page load.
    *  If the access token cookie is stale, the refresh token cookie is used

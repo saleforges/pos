@@ -19,7 +19,7 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await login(username, password);
-      navigate('/dashboard');
+      navigate('/select-branch');
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError('Invalid username or password');
