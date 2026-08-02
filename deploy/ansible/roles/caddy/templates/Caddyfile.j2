@@ -31,6 +31,11 @@
 }
 
 {{ caddy_backoffice_domain }} {
+    @merchant path /api/v1/merchants* /api/v1/branches* /api/v1/staff* /api/v1/me*
+    handle @merchant {
+        reverse_proxy merchant-service:8081
+    }
+
     @backend path /api/*
     handle @backend {
         reverse_proxy iam-service:8080
@@ -42,6 +47,11 @@
 }
 
 {{ caddy_intools_domain }} {
+    @merchant path /api/v1/merchants* /api/v1/branches* /api/v1/staff* /api/v1/me*
+    handle @merchant {
+        reverse_proxy merchant-service:8081
+    }
+
     @backend path /api/*
     handle @backend {
         reverse_proxy iam-service:8080
