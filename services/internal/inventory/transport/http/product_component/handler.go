@@ -48,16 +48,10 @@ func (h *Handler) CreateOrUpdate(c echo.Context) error {
 
 	items := make([]usecase.CreateProductComponentItemParams, len(req.Items))
 	for i, item := range req.Items {
-		// Default conversion factor is 1 (quantity already in stock unit).
-		factor := item.ConversionFactor
-		if factor <= 0 {
-			factor = 1
-		}
 		items[i] = usecase.CreateProductComponentItemParams{
 			ComponentProductItemID: item.ComponentProductItemID,
 			Quantity:               item.Quantity,
 			UnitID:                 item.UnitID,
-			ConversionFactor:       factor,
 		}
 	}
 

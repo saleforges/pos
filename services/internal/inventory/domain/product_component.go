@@ -32,16 +32,12 @@ func (pc *ProductComponent) Validate() error {
 }
 
 type ProductComponentItem struct {
-	ID                     int64   `json:"id"`
-	ProductComponentID     int64   `json:"productComponentId"`
-	ComponentProductItemID int64   `json:"componentProductItemId"`
-	Quantity               float64 `json:"quantity"`
-	UnitID                 int64   `json:"unitId"`
-	// ConversionFactor converts the component quantity into the raw
-	// material's stock unit. E.g. quantity=0.5 (kg) with factor=1000 means
-	// 500 stock units (grams) are consumed per unit of the parent item.
-	ConversionFactor float64   `json:"conversionFactor"`
-	CreatedAt        time.Time `json:"createdAt"`
+	ID                     int64     `json:"id"`
+	ProductComponentID     int64     `json:"productComponentId"`
+	ComponentProductItemID int64     `json:"componentProductItemId"`
+	Quantity               float64   `json:"quantity"`
+	UnitID                 int64     `json:"unitId"`
+	CreatedAt              time.Time `json:"createdAt"`
 }
 
 func (pci *ProductComponentItem) Validate() error {
@@ -54,8 +50,15 @@ func (pci *ProductComponentItem) Validate() error {
 	if pci.UnitID == 0 {
 		return ErrInvalidProductComponentItem
 	}
-	if pci.ConversionFactor <= 0 {
-		return ErrInvalidProductComponentItem
-	}
 	return nil
+}
+
+// Unit is reference data for unit conversion. FactorToBase converts the
+// unit into its base unit (e.g. kg=1000 → gram), so component quantities
+// expressed in any unit can be normalized to the stock unit.
+type Unit struct {
+	ID           int64   `json:"id"`
+	Name         string  `json:"name"`
+	Symbol       string  `json:"symbol"`
+	FactorToBase float64 `json:"factorToBase"`
 }

@@ -14,10 +14,11 @@ type stockUsecase struct {
 	repo           repository.StockRepository
 	adjustmentRepo repository.StockAdjustmentRepository
 	componentRepo  repository.ProductComponentRepository
+	unitRepo       repository.UnitRepository
 }
 
-func NewStockUsecase(repo repository.StockRepository, adjustmentRepo repository.StockAdjustmentRepository, componentRepo repository.ProductComponentRepository) StockUsecase {
-	return &stockUsecase{repo: repo, adjustmentRepo: adjustmentRepo, componentRepo: componentRepo}
+func NewStockUsecase(repo repository.StockRepository, adjustmentRepo repository.StockAdjustmentRepository, componentRepo repository.ProductComponentRepository, unitRepo repository.UnitRepository) StockUsecase {
+	return &stockUsecase{repo: repo, adjustmentRepo: adjustmentRepo, componentRepo: componentRepo, unitRepo: unitRepo}
 }
 
 func (uc *stockUsecase) Create(ctx context.Context, params CreateStockParams) (*domain.Stock, error) {
@@ -93,10 +94,10 @@ func (uc *stockUsecase) Restore(ctx context.Context, params AdjustStockParams) e
 // expandComponents resolves product components for every sold item and
 // merges component raw-material quantities so the adjustment batch is flat.
 // E.g. selling 2x Es Teh (component: 1x Gula each) produces a batch of
-// [EsTeh:2, Gula:2]. Each component quantity is converted to the raw
-// material's stock unit via its conversion factor BEFORE merging, so items
-// sharing a raw material in different units (0.5 kg + 2 packs) sum
-// correctly. Fractional results are rounded up to never undersell.
+// [EsTeh:2, Gula:2]. Each component quantity is normalized to the raw
+// material's base stock unit via the unit's factor-to-base (e.g. 0.5 kg →
+// 500 g) BEFORE merging, so items sharing a raw material in different units
+// sum correctly. Fractional results are rounded up to never undersell.
 func (uc *stockUsecase) expandComponents(ctx context.Context, merchantID int64, items []AdjustStockItem) ([]repository.StockAdjustmentItem, error) {
 	merged := make(map[int64]float64, len(items))
 	for _, it := range items {
@@ -110,7 +111,13 @@ func (uc *stockUsecase) expandComponents(ctx context.Context, merchantID int64, 
 			return nil, err
 		}
 		for _, ci := range comp.Items {
-			merged[ci.ComponentProductItemID] += ci.Quantity * ci.ConversionFactor * float64(it.Quantity)
+			// Normalize component quantity to base stock unit. Unknown
+			// units fall back to factor 1 (already in base unit).
+			factor := 1.0
+			if u, err := uc.unitRepo.GetByID(ctx, ci.UnitID); err == nil && u != nil {
+				factor = u.FactorToBase
+			}
+			merged[ci.ComponentProductItemID] += ci.Quantity * factor * float64(it.Quantity)
 		}
 	}
 

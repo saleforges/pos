@@ -12,7 +12,7 @@ import (
 var _ repository.ProductComponentRepository = (*ProductComponentRepository)(nil)
 
 const pcCols = `id, merchant_id, product_item_id, created_at, updated_at`
-const pciCols = `id, product_component_id, component_product_item_id, quantity, unit_id, conversion_factor, created_at`
+const pciCols = `id, product_component_id, component_product_item_id, quantity, unit_id, created_at`
 
 type ProductComponentRepository struct {
 	pool *otel.TracedPool
@@ -40,9 +40,9 @@ func (r *ProductComponentRepository) Create(ctx context.Context, component *doma
 
 	for i := range component.Items {
 		err = tx.QueryRow(ctx,
-			`INSERT INTO product_component_items (product_component_id, component_product_item_id, quantity, unit_id, conversion_factor, created_at)
-			 VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-			component.ID, component.Items[i].ComponentProductItemID, component.Items[i].Quantity, component.Items[i].UnitID, component.Items[i].ConversionFactor, component.Items[i].CreatedAt,
+			`INSERT INTO product_component_items (product_component_id, component_product_item_id, quantity, unit_id, created_at)
+			 VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			component.ID, component.Items[i].ComponentProductItemID, component.Items[i].Quantity, component.Items[i].UnitID, component.Items[i].CreatedAt,
 		).Scan(&component.Items[i].ID)
 		if err != nil {
 			return err
@@ -115,9 +115,9 @@ func (r *ProductComponentRepository) Update(ctx context.Context, component *doma
 
 	for i := range component.Items {
 		err = tx.QueryRow(ctx,
-			`INSERT INTO product_component_items (product_component_id, component_product_item_id, quantity, unit_id, conversion_factor, created_at)
-			 VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-			component.ID, component.Items[i].ComponentProductItemID, component.Items[i].Quantity, component.Items[i].UnitID, component.Items[i].ConversionFactor, component.Items[i].CreatedAt,
+			`INSERT INTO product_component_items (product_component_id, component_product_item_id, quantity, unit_id, created_at)
+			 VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+			component.ID, component.Items[i].ComponentProductItemID, component.Items[i].Quantity, component.Items[i].UnitID, component.Items[i].CreatedAt,
 		).Scan(&component.Items[i].ID)
 		if err != nil {
 			return err
@@ -169,7 +169,7 @@ func scanProductComponentItems(rows pgx.Rows) ([]domain.ProductComponentItem, er
 	var result []domain.ProductComponentItem
 	for rows.Next() {
 		var i domain.ProductComponentItem
-		if err := rows.Scan(&i.ID, &i.ProductComponentID, &i.ComponentProductItemID, &i.Quantity, &i.UnitID, &i.ConversionFactor, &i.CreatedAt); err != nil {
+		if err := rows.Scan(&i.ID, &i.ProductComponentID, &i.ComponentProductItemID, &i.Quantity, &i.UnitID, &i.CreatedAt); err != nil {
 			return nil, err
 		}
 		result = append(result, i)

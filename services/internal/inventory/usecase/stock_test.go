@@ -13,7 +13,7 @@ func TestStockUsecase_Create(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{}, newMockUnitRepo())
 
 		stock, err := uc.Create(ctx, CreateStockParams{
 			MerchantID:    1,
@@ -36,7 +36,7 @@ func TestStockUsecase_Create(t *testing.T) {
 	})
 
 	t.Run("missing merchant_id returns error", func(t *testing.T) {
-		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{}, &mockComponentRepo{})
+		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{}, &mockComponentRepo{}, newMockUnitRepo())
 		_, err := uc.Create(ctx, CreateStockParams{
 			BranchID:      1,
 			ProductItemID: 1,
@@ -48,7 +48,7 @@ func TestStockUsecase_Create(t *testing.T) {
 	})
 
 	t.Run("missing branch_id returns error", func(t *testing.T) {
-		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{}, &mockComponentRepo{})
+		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{}, &mockComponentRepo{}, newMockUnitRepo())
 		_, err := uc.Create(ctx, CreateStockParams{
 			MerchantID:    1,
 			ProductItemID: 1,
@@ -60,7 +60,7 @@ func TestStockUsecase_Create(t *testing.T) {
 	})
 
 	t.Run("missing product_item_id returns error", func(t *testing.T) {
-		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{}, &mockComponentRepo{})
+		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{}, &mockComponentRepo{}, newMockUnitRepo())
 		_, err := uc.Create(ctx, CreateStockParams{
 			MerchantID: 1,
 			BranchID:   1,
@@ -72,7 +72,7 @@ func TestStockUsecase_Create(t *testing.T) {
 	})
 
 	t.Run("negative available returns error", func(t *testing.T) {
-		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{}, &mockComponentRepo{})
+		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{}, &mockComponentRepo{}, newMockUnitRepo())
 		_, err := uc.Create(ctx, CreateStockParams{
 			MerchantID:    1,
 			BranchID:      1,
@@ -91,7 +91,7 @@ func TestStockUsecase_GetByID(t *testing.T) {
 
 	t.Run("returns stock", func(t *testing.T) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{}, newMockUnitRepo())
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 50})
 
 		stock, err := uc.GetByID(ctx, 1, 1)
@@ -104,7 +104,7 @@ func TestStockUsecase_GetByID(t *testing.T) {
 	})
 
 	t.Run("not found returns error", func(t *testing.T) {
-		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{}, &mockComponentRepo{})
+		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{}, &mockComponentRepo{}, newMockUnitRepo())
 		_, err := uc.GetByID(ctx, 999, 1)
 		if err != domain.ErrStockNotFound {
 			t.Errorf("expected ErrStockNotFound, got %v", err)
@@ -113,7 +113,7 @@ func TestStockUsecase_GetByID(t *testing.T) {
 
 	t.Run("different merchant returns error", func(t *testing.T) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{}, newMockUnitRepo())
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 50})
 
 		_, err := uc.GetByID(ctx, 1, 2)
@@ -129,7 +129,7 @@ func TestStockUsecase_List(t *testing.T) {
 
 	t.Run("lists stocks for merchant", func(t *testing.T) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{}, newMockUnitRepo())
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 50})
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 2, ProductItemID: 1, Available: 100})
 		uc.Create(ctx, CreateStockParams{MerchantID: 2, BranchID: 1, ProductItemID: 1, Available: 200})
@@ -150,7 +150,7 @@ func TestStockUsecase_Update(t *testing.T) {
 
 	t.Run("updates available", func(t *testing.T) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{}, newMockUnitRepo())
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 50})
 
 		stock, err := uc.Update(ctx, UpdateStockParams{ID: 1, MerchantID: 1, Available: 200})
@@ -164,7 +164,7 @@ func TestStockUsecase_Update(t *testing.T) {
 
 	t.Run("cross-merchant update blocked", func(t *testing.T) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{}, newMockUnitRepo())
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 50})
 
 		_, err := uc.Update(ctx, UpdateStockParams{ID: 1, MerchantID: 2, Available: 200})
@@ -175,7 +175,7 @@ func TestStockUsecase_Update(t *testing.T) {
 
 	t.Run("negative available rejected", func(t *testing.T) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{}, newMockUnitRepo())
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 50})
 
 		_, err := uc.Update(ctx, UpdateStockParams{ID: 1, MerchantID: 1, Available: -5})
@@ -191,7 +191,7 @@ func TestStockUsecase_Deduct(t *testing.T) {
 
 	newUCWithStock := func() (StockUsecase, *mockStockRepo) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{}, newMockUnitRepo())
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 100})
 		return uc, repo
 	}
@@ -248,7 +248,7 @@ func TestStockUsecase_Restore(t *testing.T) {
 
 	t.Run("restores stock", func(t *testing.T) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{}, newMockUnitRepo())
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 50})
 		uc.Deduct(ctx, AdjustStockParams{
 			MerchantID: 1, BranchID: 1, ReferenceType: "order", ReferenceID: 42,
@@ -276,7 +276,7 @@ func TestStockUsecase_ComponentConsumption(t *testing.T) {
 	newUC := func() (StockUsecase, *mockStockRepo, *mockComponentRepo) {
 		repo := &mockStockRepo{}
 		compRepo := &mockComponentRepo{}
-		uc := NewStockUsecase(repo, repo, compRepo)
+		uc := NewStockUsecase(repo, repo, compRepo, newMockUnitRepo())
 		// stock: item 1 (produk jadi) = 10, item 2 (bahan baku) = 20
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 10})
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 2, Available: 20})
@@ -285,7 +285,7 @@ func TestStockUsecase_ComponentConsumption(t *testing.T) {
 			MerchantID:    1,
 			ProductItemID: 1,
 			Items: []domain.ProductComponentItem{
-				{ComponentProductItemID: 2, Quantity: 2, UnitID: 1, ConversionFactor: 1},
+				{ComponentProductItemID: 2, Quantity: 2, UnitID: 1},
 			},
 		})
 		return uc, repo, compRepo
@@ -362,23 +362,23 @@ func TestStockUsecase_ComponentConsumption(t *testing.T) {
 	})
 }
 
-func TestStockUsecase_ConversionFactor(t *testing.T) {
+func TestStockUsecase_UnitConversion(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	t.Run("component quantity converted to stock unit", func(t *testing.T) {
+	t.Run("component quantity normalized via unit factor", func(t *testing.T) {
 		repo := &mockStockRepo{}
 		compRepo := &mockComponentRepo{}
-		uc := NewStockUsecase(repo, repo, compRepo)
+		uc := NewStockUsecase(repo, repo, compRepo, newMockUnitRepo())
 		// stock: item 1 (produk jadi) = 10, item 2 (gula) = 30000 gram
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 10})
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 2, Available: 30000})
-		// 1x item 1 = 0.5 kg gula, factor 1000 → 500 gram per item
+		// 1x item 1 = 0.5 kg gula; kg factor-to-base 1000 → 500 gram per item
 		compRepo.Create(ctx, &domain.ProductComponent{
 			MerchantID:    1,
 			ProductItemID: 1,
 			Items: []domain.ProductComponentItem{
-				{ComponentProductItemID: 2, Quantity: 0.5, UnitID: 3, ConversionFactor: 1000},
+				{ComponentProductItemID: 2, Quantity: 0.5, UnitID: 3},
 			},
 		})
 
@@ -396,24 +396,24 @@ func TestStockUsecase_ConversionFactor(t *testing.T) {
 		}
 	})
 
-	t.Run("shared raw material merged after conversion", func(t *testing.T) {
+	t.Run("shared raw material merged after normalization", func(t *testing.T) {
 		repo := &mockStockRepo{}
 		compRepo := &mockComponentRepo{}
-		uc := NewStockUsecase(repo, repo, compRepo)
+		uc := NewStockUsecase(repo, repo, compRepo, newMockUnitRepo())
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 10})
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 2, Available: 30000})
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 3, Available: 10})
-		// both items 1 and 3 consume item 2: 0.5 kg (factor 1000) each
+		// both items 1 and 3 consume item 2: 0.5 kg each
 		compRepo.Create(ctx, &domain.ProductComponent{
 			MerchantID: 1, ProductItemID: 1,
 			Items: []domain.ProductComponentItem{
-				{ComponentProductItemID: 2, Quantity: 0.5, UnitID: 3, ConversionFactor: 1000},
+				{ComponentProductItemID: 2, Quantity: 0.5, UnitID: 3},
 			},
 		})
 		compRepo.Create(ctx, &domain.ProductComponent{
 			MerchantID: 1, ProductItemID: 3,
 			Items: []domain.ProductComponentItem{
-				{ComponentProductItemID: 2, Quantity: 0.5, UnitID: 3, ConversionFactor: 1000},
+				{ComponentProductItemID: 2, Quantity: 0.5, UnitID: 3},
 			},
 		})
 
@@ -431,6 +431,60 @@ func TestStockUsecase_ConversionFactor(t *testing.T) {
 		// 500 + 500 = 1000 gram, single merged deduction
 		if raw.Available != 29000 {
 			t.Errorf("expected raw stock 29000 (30000-1000), got %d", raw.Available)
+		}
+	})
+
+	t.Run("gram unit keeps quantity as-is", func(t *testing.T) {
+		repo := &mockStockRepo{}
+		compRepo := &mockComponentRepo{}
+		uc := NewStockUsecase(repo, repo, compRepo, newMockUnitRepo())
+		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 10})
+		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 2, Available: 30000})
+		compRepo.Create(ctx, &domain.ProductComponent{
+			MerchantID: 1, ProductItemID: 1,
+			Items: []domain.ProductComponentItem{
+				{ComponentProductItemID: 2, Quantity: 500, UnitID: 4},
+			},
+		})
+
+		err := uc.Deduct(ctx, AdjustStockParams{
+			MerchantID: 1, BranchID: 1, ReferenceType: "order", ReferenceID: 42,
+			Items: []AdjustStockItem{{ProductItemID: 1, Quantity: 2}},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		raw, _ := repo.GetByID(ctx, 2, 1)
+		// 2 x 500 gram x 1 = 1000 gram
+		if raw.Available != 29000 {
+			t.Errorf("expected raw stock 29000, got %d", raw.Available)
+		}
+	})
+
+	t.Run("unknown unit falls back to factor 1", func(t *testing.T) {
+		repo := &mockStockRepo{}
+		compRepo := &mockComponentRepo{}
+		uc := NewStockUsecase(repo, repo, compRepo, newMockUnitRepo())
+		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 10})
+		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 2, Available: 30000})
+		compRepo.Create(ctx, &domain.ProductComponent{
+			MerchantID: 1, ProductItemID: 1,
+			Items: []domain.ProductComponentItem{
+				{ComponentProductItemID: 2, Quantity: 500, UnitID: 999},
+			},
+		})
+
+		err := uc.Deduct(ctx, AdjustStockParams{
+			MerchantID: 1, BranchID: 1, ReferenceType: "order", ReferenceID: 42,
+			Items: []AdjustStockItem{{ProductItemID: 1, Quantity: 2}},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		raw, _ := repo.GetByID(ctx, 2, 1)
+		// unknown unit → factor 1 → 2 x 500 = 1000
+		if raw.Available != 29000 {
+			t.Errorf("expected raw stock 29000, got %d", raw.Available)
 		}
 	})
 }

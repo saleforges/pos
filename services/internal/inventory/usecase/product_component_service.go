@@ -25,7 +25,6 @@ func (uc *productComponentUsecase) Create(ctx context.Context, params CreateProd
 			ComponentProductItemID: p.ComponentProductItemID,
 			Quantity:               p.Quantity,
 			UnitID:                 p.UnitID,
-			ConversionFactor:       defaultFactor(p.ConversionFactor),
 			CreatedAt:              now,
 		}
 	}
@@ -70,7 +69,6 @@ func (uc *productComponentUsecase) Update(ctx context.Context, params UpdateProd
 			ComponentProductItemID: p.ComponentProductItemID,
 			Quantity:               p.Quantity,
 			UnitID:                 p.UnitID,
-			ConversionFactor:       defaultFactor(p.ConversionFactor),
 			CreatedAt:              now,
 		}
 	}
@@ -93,12 +91,3 @@ func (uc *productComponentUsecase) Delete(ctx context.Context, id int64, merchan
 }
 
 var _ ProductComponentUsecase = (*productComponentUsecase)(nil)
-
-// defaultFactor returns the conversion factor, defaulting to 1 when unset
-// (quantity is already expressed in the raw material's stock unit).
-func defaultFactor(f float64) float64 {
-	if f <= 0 {
-		return 1
-	}
-	return f
-}

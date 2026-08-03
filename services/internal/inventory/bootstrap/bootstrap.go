@@ -52,6 +52,7 @@ func New(cfg Config) (*App, error) {
 		stockRepo       por.StockRepository
 		stockAdjustRepo por.StockAdjustmentRepository
 		componentRepo   por.ProductComponentRepository
+		unitRepo        por.UnitRepository
 	)
 
 	if cfg.DatabaseURL != "" {
@@ -66,15 +67,17 @@ func New(cfg Config) (*App, error) {
 		stockRepo = postgres.NewStockRepository(pool)
 		stockAdjustRepo = postgres.NewStockRepository(pool)
 		componentRepo = postgres.NewProductComponentRepository(pool)
+		unitRepo = postgres.NewUnitRepository(pool)
 		logger.Info("using postgres storage")
 	} else {
 		stockRepo = memory.NewStockRepository()
 		stockAdjustRepo = memory.NewStockRepository()
 		componentRepo = memory.NewProductComponentRepository()
+		unitRepo = memory.NewUnitRepository()
 		logger.Info("using in-memory storage")
 	}
 
-	stockUC := usecase.NewStockUsecase(stockRepo, stockAdjustRepo, componentRepo)
+	stockUC := usecase.NewStockUsecase(stockRepo, stockAdjustRepo, componentRepo, unitRepo)
 	componentUC := usecase.NewProductComponentUsecase(componentRepo)
 
 	stockHandler := stock.NewHandler(stockUC)

@@ -115,6 +115,25 @@ type mockComponentRepo struct {
 	err        error
 }
 
+type mockUnitRepo struct {
+	units map[int64]*domain.Unit
+}
+
+func newMockUnitRepo() *mockUnitRepo {
+	return &mockUnitRepo{units: map[int64]*domain.Unit{
+		1: {ID: 1, Name: "Piece", Symbol: "pc", FactorToBase: 1},
+		3: {ID: 3, Name: "Kilogram", Symbol: "kg", FactorToBase: 1000},
+		4: {ID: 4, Name: "Gram", Symbol: "g", FactorToBase: 1},
+	}}
+}
+
+func (m *mockUnitRepo) GetByID(_ context.Context, id int64) (*domain.Unit, error) {
+	if m.units == nil {
+		return nil, nil
+	}
+	return m.units[id], nil
+}
+
 func (m *mockComponentRepo) Create(_ context.Context, component *domain.ProductComponent) error {
 	if m.err != nil {
 		return m.err

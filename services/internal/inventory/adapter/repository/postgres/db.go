@@ -99,10 +99,26 @@ func RunMigrations(databaseURL string) error {
 			component_product_item_id BIGINT       NOT NULL,
 			quantity                  NUMERIC(12,4) NOT NULL,
 			unit_id                   BIGINT       NOT NULL,
-			conversion_factor         NUMERIC(14,4) NOT NULL DEFAULT 1,
 			created_at                TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 		);
 		CREATE INDEX IF NOT EXISTS idx_component_items_component ON product_component_items(product_component_id);
+
+		CREATE TABLE IF NOT EXISTS units (
+			id             BIGINT       PRIMARY KEY,
+			name           VARCHAR(50)  NOT NULL,
+			symbol         VARCHAR(10)  NOT NULL DEFAULT '',
+			factor_to_base NUMERIC(14,4) NOT NULL DEFAULT 1
+		);
+		INSERT INTO units (id, name, symbol, factor_to_base) VALUES
+			(1, 'Piece', 'pc', 1),
+			(2, 'Pack', 'pack', 1),
+			(3, 'Kilogram', 'kg', 1000),
+			(4, 'Gram', 'g', 1),
+			(5, 'Liter', 'L', 1000),
+			(6, 'Milliliter', 'ml', 1),
+			(7, 'Box', 'box', 1),
+			(8, 'Meter', 'm', 1)
+		ON CONFLICT (id) DO NOTHING;
 		`
 		if _, err := pool.Exec(ctx, migration); err != nil {
 			return fmt.Errorf("inventory init migration: %w", err)
@@ -110,9 +126,26 @@ func RunMigrations(databaseURL string) error {
 	}
 
 	// Heal migrations — run on every startup so existing deployments get
-	// new columns without a full re-init. Idempotent by design.
+	// new tables/columns without a full re-init. Idempotent by design.
 	heal := `
-	ALTER TABLE product_component_items ADD COLUMN IF NOT EXISTS conversion_factor NUMERIC(14,4) NOT NULL DEFAULT 1;
+	ALTER TABLE product_component_items DROP COLUMN IF EXISTS conversion_factor;
+
+	CREATE TABLE IF NOT EXISTS units (
+		id             BIGINT       PRIMARY KEY,
+		name           VARCHAR(50)  NOT NULL,
+		symbol         VARCHAR(10)  NOT NULL DEFAULT '',
+		factor_to_base NUMERIC(14,4) NOT NULL DEFAULT 1
+	);
+	INSERT INTO units (id, name, symbol, factor_to_base) VALUES
+		(1, 'Piece', 'pc', 1),
+		(2, 'Pack', 'pack', 1),
+		(3, 'Kilogram', 'kg', 1000),
+		(4, 'Gram', 'g', 1),
+		(5, 'Liter', 'L', 1000),
+		(6, 'Milliliter', 'ml', 1),
+		(7, 'Box', 'box', 1),
+		(8, 'Meter', 'm', 1)
+	ON CONFLICT (id) DO NOTHING;
 	`
 	if _, err := pool.Exec(ctx, heal); err != nil {
 		return fmt.Errorf("inventory heal migration: %w", err)
