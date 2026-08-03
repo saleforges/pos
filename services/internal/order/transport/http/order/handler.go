@@ -213,8 +213,10 @@ func mapError(c echo.Context, err error) error {
 		return httputil.WriteError(c, http.StatusBadRequest, err)
 	case domain.ErrInvalidTransition:
 		return httputil.WriteError(c, http.StatusConflict, err)
-	case domain.ErrPaymentExceedsTotal:
+	case domain.ErrPaymentExceedsTotal, domain.ErrInsufficientStock:
 		return httputil.WriteError(c, http.StatusBadRequest, err)
+	case domain.ErrOrderStockNotFound:
+		return httputil.WriteError(c, http.StatusNotFound, err)
 	default:
 		logger.Error("order handler error", "error", err.Error())
 		return httputil.WriteError(c, http.StatusInternalServerError, domain.ErrInternal)
