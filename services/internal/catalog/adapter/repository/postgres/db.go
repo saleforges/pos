@@ -37,6 +37,7 @@ func RunMigrations(databaseURL string) error {
 	if _, err := pool.Exec(ctx, schema); err != nil {
 		return fmt.Errorf("schema_migrations table: %w", err)
 	}
+
 	// Check if catalog v7 migration is already applied.
 	// NOTE: schema_migrations is shared across services (IAM/merchant use
 	// golang-migrate with version 1), so we check for our own version instead
@@ -125,17 +126,22 @@ func RunMigrations(databaseURL string) error {
 		);
 		CREATE UNIQUE INDEX IF NOT EXISTS idx_product_item_barcodes_unique ON product_item_barcodes(barcode);
 		CREATE INDEX IF NOT EXISTS idx_product_item_barcodes_item ON product_item_barcodes(product_item_id);
-
-		-- Heal pre-existing tables created by older migrations that lack
-		-- soft-delete and image columns.
-		ALTER TABLE categories ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
-		ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;
-		ALTER TABLE products ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
-		ALTER TABLE product_items ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 		`
 		if _, err := pool.Exec(ctx, migration); err != nil {
 			return fmt.Errorf("catalog init migration: %w", err)
 		}
+	}
+
+	// Heal pre-existing tables created by older migrations that lack
+	// soft-delete and image columns. Runs on every startup (idempotent).
+	heal := `
+	ALTER TABLE categories ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+	ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;
+	ALTER TABLE products ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+	ALTER TABLE product_items ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+	`
+	if _, err := pool.Exec(ctx, heal); err != nil {
+		return fmt.Errorf("catalog heal migration: %w", err)
 	}
 
 	return nil
