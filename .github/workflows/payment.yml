@@ -82,7 +82,7 @@ jobs:
       - name: Set up ssh-agent
         uses: webfactory/ssh-agent@v0.10.0
         with:
-          ssh-private-key: ${{ secrets.DEV_SSH_KEY }}
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
 
       - name: Install Ansible
         run: |
