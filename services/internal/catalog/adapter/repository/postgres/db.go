@@ -37,20 +37,24 @@ func RunMigrations(databaseURL string) error {
 	if _, err := pool.Exec(ctx, schema); err != nil {
 		return fmt.Errorf("schema_migrations table: %w", err)
 	}
-	var count int
-	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM schema_migrations`).Scan(&count); err != nil {
-		return fmt.Errorf("check migrations: %w", err)
+	// Check if catalog v7 migration is already applied.
+	// NOTE: schema_migrations is shared across services (IAM/merchant use
+	// golang-migrate with version 1), so we check for our own version instead
+	// of the table being empty.
+	var v7exists bool
+	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = 7)`).Scan(&v7exists); err != nil {
+		return fmt.Errorf("check catalog v7 migration: %w", err)
 	}
-	if count == 0 {
+	if !v7exists {
 		// Fresh install — run full init migration (up to v7)
 		migration := `
-		INSERT INTO schema_migrations (version, dirty) VALUES (1, false);
-		INSERT INTO schema_migrations (version, dirty) VALUES (2, false);
-		INSERT INTO schema_migrations (version, dirty) VALUES (3, false);
-		INSERT INTO schema_migrations (version, dirty) VALUES (4, false);
-		INSERT INTO schema_migrations (version, dirty) VALUES (5, false);
-		INSERT INTO schema_migrations (version, dirty) VALUES (6, false);
-		INSERT INTO schema_migrations (version, dirty) VALUES (7, false);
+		INSERT INTO schema_migrations (version, dirty) VALUES (1, false) ON CONFLICT DO NOTHING;
+		INSERT INTO schema_migrations (version, dirty) VALUES (2, false) ON CONFLICT DO NOTHING;
+		INSERT INTO schema_migrations (version, dirty) VALUES (3, false) ON CONFLICT DO NOTHING;
+		INSERT INTO schema_migrations (version, dirty) VALUES (4, false) ON CONFLICT DO NOTHING;
+		INSERT INTO schema_migrations (version, dirty) VALUES (5, false) ON CONFLICT DO NOTHING;
+		INSERT INTO schema_migrations (version, dirty) VALUES (6, false) ON CONFLICT DO NOTHING;
+		INSERT INTO schema_migrations (version, dirty) VALUES (7, false) ON CONFLICT DO NOTHING;
 
 		CREATE TABLE IF NOT EXISTS units (
 			id   BIGSERIAL PRIMARY KEY,
@@ -124,36 +128,6 @@ func RunMigrations(databaseURL string) error {
 		`
 		if _, err := pool.Exec(ctx, migration); err != nil {
 			return fmt.Errorf("catalog init migration: %w", err)
-		}
-		return nil
-	}
-
-	// Existing database — apply v7 upgrade if not yet applied
-	var v7exists bool
-	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = 7)`).Scan(&v7exists); err != nil {
-		return fmt.Errorf("check v7 migration: %w", err)
-	}
-	if !v7exists {
-		upgrade := `
-		INSERT INTO schema_migrations (version, dirty) VALUES (7, false);
-
-		ALTER TABLE product_items ADD COLUMN IF NOT EXISTS merchant_id BIGINT;
-
-		UPDATE product_items pi
-		SET merchant_id = p.merchant_id
-		FROM products p
-		WHERE p.id = pi.product_id AND pi.merchant_id IS NULL;
-
-		ALTER TABLE product_items ALTER COLUMN merchant_id SET NOT NULL;
-
-		DROP INDEX IF EXISTS idx_product_items_sku;
-
-		CREATE UNIQUE INDEX IF NOT EXISTS idx_product_items_sku_merchant ON product_items(merchant_id, sku) WHERE sku IS NOT NULL;
-
-		CREATE INDEX IF NOT EXISTS idx_product_items_merchant ON product_items(merchant_id);
-		`
-		if _, err := pool.Exec(ctx, upgrade); err != nil {
-			return fmt.Errorf("catalog v7 migration: %w", err)
 		}
 	}
 
