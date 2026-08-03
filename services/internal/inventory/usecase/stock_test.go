@@ -13,7 +13,7 @@ func TestStockUsecase_Create(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo)
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
 
 		stock, err := uc.Create(ctx, CreateStockParams{
 			MerchantID:    1,
@@ -36,7 +36,7 @@ func TestStockUsecase_Create(t *testing.T) {
 	})
 
 	t.Run("missing merchant_id returns error", func(t *testing.T) {
-		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{})
+		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{}, &mockComponentRepo{})
 		_, err := uc.Create(ctx, CreateStockParams{
 			BranchID:      1,
 			ProductItemID: 1,
@@ -48,7 +48,7 @@ func TestStockUsecase_Create(t *testing.T) {
 	})
 
 	t.Run("missing branch_id returns error", func(t *testing.T) {
-		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{})
+		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{}, &mockComponentRepo{})
 		_, err := uc.Create(ctx, CreateStockParams{
 			MerchantID:    1,
 			ProductItemID: 1,
@@ -60,7 +60,7 @@ func TestStockUsecase_Create(t *testing.T) {
 	})
 
 	t.Run("missing product_item_id returns error", func(t *testing.T) {
-		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{})
+		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{}, &mockComponentRepo{})
 		_, err := uc.Create(ctx, CreateStockParams{
 			MerchantID: 1,
 			BranchID:   1,
@@ -72,7 +72,7 @@ func TestStockUsecase_Create(t *testing.T) {
 	})
 
 	t.Run("negative available returns error", func(t *testing.T) {
-		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{})
+		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{}, &mockComponentRepo{})
 		_, err := uc.Create(ctx, CreateStockParams{
 			MerchantID:    1,
 			BranchID:      1,
@@ -91,7 +91,7 @@ func TestStockUsecase_GetByID(t *testing.T) {
 
 	t.Run("returns stock", func(t *testing.T) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo)
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 50})
 
 		stock, err := uc.GetByID(ctx, 1, 1)
@@ -104,7 +104,7 @@ func TestStockUsecase_GetByID(t *testing.T) {
 	})
 
 	t.Run("not found returns error", func(t *testing.T) {
-		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{})
+		uc := NewStockUsecase(&mockStockRepo{}, &mockStockRepo{}, &mockComponentRepo{})
 		_, err := uc.GetByID(ctx, 999, 1)
 		if err != domain.ErrStockNotFound {
 			t.Errorf("expected ErrStockNotFound, got %v", err)
@@ -113,7 +113,7 @@ func TestStockUsecase_GetByID(t *testing.T) {
 
 	t.Run("different merchant returns error", func(t *testing.T) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo)
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 50})
 
 		_, err := uc.GetByID(ctx, 1, 2)
@@ -129,7 +129,7 @@ func TestStockUsecase_List(t *testing.T) {
 
 	t.Run("lists stocks for merchant", func(t *testing.T) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo)
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 50})
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 2, ProductItemID: 1, Available: 100})
 		uc.Create(ctx, CreateStockParams{MerchantID: 2, BranchID: 1, ProductItemID: 1, Available: 200})
@@ -150,7 +150,7 @@ func TestStockUsecase_Update(t *testing.T) {
 
 	t.Run("updates available", func(t *testing.T) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo)
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 50})
 
 		stock, err := uc.Update(ctx, UpdateStockParams{ID: 1, MerchantID: 1, Available: 200})
@@ -164,7 +164,7 @@ func TestStockUsecase_Update(t *testing.T) {
 
 	t.Run("cross-merchant update blocked", func(t *testing.T) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo)
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 50})
 
 		_, err := uc.Update(ctx, UpdateStockParams{ID: 1, MerchantID: 2, Available: 200})
@@ -175,7 +175,7 @@ func TestStockUsecase_Update(t *testing.T) {
 
 	t.Run("negative available rejected", func(t *testing.T) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo)
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 50})
 
 		_, err := uc.Update(ctx, UpdateStockParams{ID: 1, MerchantID: 1, Available: -5})
@@ -191,7 +191,7 @@ func TestStockUsecase_Deduct(t *testing.T) {
 
 	newUCWithStock := func() (StockUsecase, *mockStockRepo) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo)
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 100})
 		return uc, repo
 	}
@@ -248,7 +248,7 @@ func TestStockUsecase_Restore(t *testing.T) {
 
 	t.Run("restores stock", func(t *testing.T) {
 		repo := &mockStockRepo{}
-		uc := NewStockUsecase(repo, repo)
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{})
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 50})
 		uc.Deduct(ctx, AdjustStockParams{
 			MerchantID: 1, BranchID: 1, ReferenceType: "order", ReferenceID: 42,
@@ -265,6 +265,99 @@ func TestStockUsecase_Restore(t *testing.T) {
 		stock, _ := repo.GetByID(ctx, 1, 1)
 		if stock.Available != 50 {
 			t.Errorf("expected available back to 50, got %d", stock.Available)
+		}
+	})
+}
+
+func TestStockUsecase_ComponentConsumption(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	newUC := func() (StockUsecase, *mockStockRepo, *mockComponentRepo) {
+		repo := &mockStockRepo{}
+		compRepo := &mockComponentRepo{}
+		uc := NewStockUsecase(repo, repo, compRepo)
+		// stock: item 1 (produk jadi) = 10, item 2 (bahan baku) = 20
+		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 10})
+		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 2, Available: 20})
+		// component: 1x item 1 = 2x item 2
+		compRepo.Create(ctx, &domain.ProductComponent{
+			MerchantID:    1,
+			ProductItemID: 1,
+			Items: []domain.ProductComponentItem{
+				{ComponentProductItemID: 2, Quantity: 2, UnitID: 1},
+			},
+		})
+		return uc, repo, compRepo
+	}
+
+	t.Run("deducts raw materials too", func(t *testing.T) {
+		uc, repo, _ := newUC()
+		err := uc.Deduct(ctx, AdjustStockParams{
+			MerchantID: 1, BranchID: 1, ReferenceType: "order", ReferenceID: 42,
+			Items: []AdjustStockItem{{ProductItemID: 1, Quantity: 3}},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		product, _ := repo.GetByID(ctx, 1, 1)
+		raw, _ := repo.GetByID(ctx, 2, 1)
+		if product.Available != 7 {
+			t.Errorf("expected product stock 7, got %d", product.Available)
+		}
+		if raw.Available != 14 {
+			t.Errorf("expected raw material stock 14 (20-3*2), got %d", raw.Available)
+		}
+	})
+
+	t.Run("insufficient raw material rejected", func(t *testing.T) {
+		uc, _, _ := newUC()
+		// need 10*2=20 raw material but only 20 available → exactly enough, so use 11
+		err := uc.Deduct(ctx, AdjustStockParams{
+			MerchantID: 1, BranchID: 1, ReferenceType: "order", ReferenceID: 42,
+			Items: []AdjustStockItem{{ProductItemID: 1, Quantity: 11}},
+		})
+		if err != domain.ErrInsufficientStock {
+			t.Errorf("expected ErrInsufficientStock, got %v", err)
+		}
+	})
+
+	t.Run("no component = normal deduct", func(t *testing.T) {
+		uc, repo, _ := newUC()
+		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 99, Available: 5})
+		err := uc.Deduct(ctx, AdjustStockParams{
+			MerchantID: 1, BranchID: 1, ReferenceType: "order", ReferenceID: 42,
+			Items: []AdjustStockItem{{ProductItemID: 99, Quantity: 2}},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		stock, _ := repo.GetByID(ctx, 3, 1)
+		if stock.Available != 3 {
+			t.Errorf("expected 3, got %d", stock.Available)
+		}
+	})
+
+	t.Run("restore returns raw materials", func(t *testing.T) {
+		uc, repo, _ := newUC()
+		uc.Deduct(ctx, AdjustStockParams{
+			MerchantID: 1, BranchID: 1, ReferenceType: "order", ReferenceID: 42,
+			Items: []AdjustStockItem{{ProductItemID: 1, Quantity: 3}},
+		})
+		err := uc.Restore(ctx, AdjustStockParams{
+			MerchantID: 1, BranchID: 1, ReferenceType: "order", ReferenceID: 42,
+			Items: []AdjustStockItem{{ProductItemID: 1, Quantity: 3}},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		product, _ := repo.GetByID(ctx, 1, 1)
+		raw, _ := repo.GetByID(ctx, 2, 1)
+		if product.Available != 10 {
+			t.Errorf("expected product stock back to 10, got %d", product.Available)
+		}
+		if raw.Available != 20 {
+			t.Errorf("expected raw material stock back to 20, got %d", raw.Available)
 		}
 	})
 }

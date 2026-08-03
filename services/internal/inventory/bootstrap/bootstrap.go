@@ -74,7 +74,7 @@ func New(cfg Config) (*App, error) {
 		logger.Info("using in-memory storage")
 	}
 
-	stockUC := usecase.NewStockUsecase(stockRepo, stockAdjustRepo)
+	stockUC := usecase.NewStockUsecase(stockRepo, stockAdjustRepo, componentRepo)
 	componentUC := usecase.NewProductComponentUsecase(componentRepo)
 
 	stockHandler := stock.NewHandler(stockUC)
