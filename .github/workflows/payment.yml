@@ -78,24 +78,42 @@ jobs:
     environment: development
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up ssh-agent
-        uses: webfactory/ssh-agent@v0.10.0
+      - uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
-
       - name: Install Ansible
         run: |
-          pip install ansible ansible-lint
-          ansible-galaxy collection install community.docker
-
-      - name: Deploy payment service
-        working-directory: deploy/ansible
-        env:
-          ANSIBLE_HOST_KEY_CHECKING: 'False'
-          IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+          sudo apt-get update
+          sudo apt-get install -y ansible
+          ansible-galaxy collection install -r deploy/ansible/requirements.yml
+      - name: Create inventory
         run: |
-          ansible-playbook -i inventory/development/hosts.yml \
-            -e image_tag=$IMAGE_TAG \
-            -e ansible_ssh_private_key_file=/dev/null \
-            playbooks/deploy-payment.yml
+          mkdir -p deploy/ansible/inventory/development
+          cat > deploy/ansible/inventory/development/hosts.yml <<EOF
+          all:
+            hosts:
+              dev-server:
+                ansible_host: ${{ secrets.DEV_SERVER_IP }}
+                ansible_user: ${{ secrets.DEV_SERVER_USER }}
+                ansible_become: yes
+                ansible_become_password: ${{ secrets.DEV_SUDO_PASSWORD }}
+          EOF
+      - name: Write vault vars
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat > /tmp/vault-extra.yml << EOV
+          vault_postgres_password: "${{ secrets.POSTGRES_PASSWORD }}"
+          vault_ghcr_username: "${{ github.actor }}"
+          vault_ghcr_token: "$GHCR_TOKEN"
+          EOV
+      - name: Deploy Payment service
+        run: |
+          ansible-playbook -i deploy/ansible/inventory/development/hosts.yml \
+            deploy/ansible/playbooks/deploy-payment.yml \
+            --extra-vars "@/tmp/vault-extra.yml" \
+            -e image_tag=${{ inputs.image_tag || github.sha }}
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+          ANSIBLE_INVENTORY_ENABLED: "yaml"
+          ANSIBLE_ROLES_PATH: "deploy/ansible/roles"
