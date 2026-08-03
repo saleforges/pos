@@ -25,7 +25,7 @@ type OrderInfo struct {
 // OrderClient talks to the order service internal API.
 type OrderClient interface {
 	// GetOrder fetches the order snapshot used to validate a payment.
-	GetOrder(ctx context.Context, orderID int64) (*OrderInfo, error)
+	GetOrder(ctx context.Context, orderID, merchantID int64) (*OrderInfo, error)
 	// NotifyPaid records a gateway-confirmed payment on an order.
 	NotifyPaid(ctx context.Context, orderID, merchantID int64, amount float64, method string) error
 }

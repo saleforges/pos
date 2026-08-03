@@ -22,7 +22,7 @@ func NewPaymentUsecase(paymentRepo repository.PaymentRepository, gateway reposit
 // Create opens a gateway payment for an order and records the transaction.
 func (uc *paymentUsecase) Create(ctx context.Context, params CreatePaymentParams) (*domain.PaymentTransaction, error) {
 	// Fetch the order snapshot to validate state and size the payment.
-	order, err := uc.orderClient.GetOrder(ctx, params.OrderID)
+	order, err := uc.orderClient.GetOrder(ctx, params.OrderID, params.MerchantID)
 	if err != nil {
 		return nil, err
 	}

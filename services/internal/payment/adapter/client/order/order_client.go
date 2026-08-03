@@ -40,13 +40,14 @@ type notifyPaidReq struct {
 }
 
 // GetOrder fetches an order snapshot via the order service internal API.
-func (c *client) GetOrder(ctx context.Context, orderID int64) (*repository.OrderInfo, error) {
+func (c *client) GetOrder(ctx context.Context, orderID, merchantID int64) (*repository.OrderInfo, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		fmt.Sprintf("%s/internal/orders/%d", c.baseURL, orderID), nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("X-Internal-Key", c.apiKey)
+	req.Header.Set("X-Merchant-Id", strconv.FormatInt(merchantID, 10))
 
 	resp, err := c.http.Do(req)
 	if err != nil {

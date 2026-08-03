@@ -102,7 +102,7 @@ type mockOrderClient struct {
 	orderErr error
 }
 
-func (m *mockOrderClient) GetOrder(_ context.Context, orderID int64) (*repository.OrderInfo, error) {
+func (m *mockOrderClient) GetOrder(_ context.Context, orderID, _ int64) (*repository.OrderInfo, error) {
 	if m.orderErr != nil {
 		return nil, m.orderErr
 	}
