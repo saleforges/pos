@@ -39,15 +39,19 @@ func RunMigrations(databaseURL string) error {
 		return fmt.Errorf("schema_migrations table: %w", err)
 	}
 
-	var count int
-	if err := pool.QueryRow(ctx, `SELECT COUNT(*) FROM schema_migrations`).Scan(&count); err != nil {
-		return fmt.Errorf("check migrations: %w", err)
+	// Check if inventory v100 migration is already applied.
+	// NOTE: schema_migrations is shared across services (IAM/merchant use
+	// golang-migrate with version 1, catalog uses 1-7), so we check for our
+	// own version instead of the table being empty.
+	var v100exists bool
+	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = 100)`).Scan(&v100exists); err != nil {
+		return fmt.Errorf("check inventory v100 migration: %w", err)
 	}
 
-	if count == 0 {
-		// Fresh install — run full init migration (up to v1)
+	if !v100exists {
+		// Fresh install — run full init migration (v100)
 		migration := `
-		INSERT INTO schema_migrations (version, dirty) VALUES (1, false);
+		INSERT INTO schema_migrations (version, dirty) VALUES (100, false);
 
 		CREATE TABLE IF NOT EXISTS stocks (
 			id               BIGSERIAL    PRIMARY KEY,
