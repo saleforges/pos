@@ -29,8 +29,9 @@ type addPaymentReq struct {
 	PaidAt *string `json:"paidAt,omitempty"`
 }
 
-type updateDueDateReq struct {
-	DueDate string `json:"dueDate"`
+type updateOrderReq struct {
+	DueDate *string `json:"dueDate,omitempty"`
+	Note    *string `json:"note,omitempty"`
 }
 
 func parseDueDate(s *string) (*time.Time, error) {

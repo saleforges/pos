@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/saleforge/pos/services/internal/order/domain"
@@ -117,20 +116,17 @@ func (r *OrderRepository) List(ctx context.Context, merchantID int64, branchID *
 	return orders, nil
 }
 
+func (r *OrderRepository) Update(ctx context.Context, order *domain.Order) error {
+	_, err := r.pool.Exec(ctx,
+		`UPDATE orders SET due_date = $1, note = $2, updated_at = $3 WHERE id = $4 AND merchant_id = $5`,
+		order.DueDate, nullIfEmpty(order.Note), order.UpdatedAt, order.ID, order.MerchantID)
+	return err
+}
+
 func (r *OrderRepository) UpdateStatus(ctx context.Context, id int64, merchantID int64, status domain.OrderStatus) (*domain.Order, error) {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 AND merchant_id = $3`,
 		status, id, merchantID)
-	if err != nil {
-		return nil, err
-	}
-	return r.GetByID(ctx, id, merchantID)
-}
-
-func (r *OrderRepository) UpdateDueDate(ctx context.Context, id int64, merchantID int64, dueDate *time.Time) (*domain.Order, error) {
-	_, err := r.pool.Exec(ctx,
-		`UPDATE orders SET due_date = $1, updated_at = NOW() WHERE id = $2 AND merchant_id = $3`,
-		dueDate, id, merchantID)
 	if err != nil {
 		return nil, err
 	}

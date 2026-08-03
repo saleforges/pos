@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/order/domain"
@@ -20,8 +19,8 @@ type mockOrderSvc struct {
 	createFn  func(context.Context, usecase.CreateOrderParams) (*domain.Order, error)
 	getFn     func(context.Context, int64, int64) (*domain.Order, error)
 	listFn    func(context.Context, int64, *int64, *domain.OrderStatus, *domain.PaymentStatus) ([]domain.Order, error)
+	updateFn  func(context.Context, usecase.UpdateOrderParams) (*domain.Order, error)
 	cancelFn  func(context.Context, int64, int64) (*domain.Order, error)
-	dueDateFn func(context.Context, int64, int64, *time.Time) (*domain.Order, error)
 	paymentFn func(context.Context, usecase.AddPaymentParams) (*domain.Order, error)
 }
 
@@ -57,11 +56,11 @@ func (m *mockOrderSvc) Cancel(ctx context.Context, id int64, merchantID int64) (
 	return &domain.Order{ID: id, MerchantID: merchantID, BranchID: 1, Status: domain.OrderStatusCancelled, Total: 30000}, nil
 }
 
-func (m *mockOrderSvc) UpdateDueDate(ctx context.Context, id int64, merchantID int64, dueDate *time.Time) (*domain.Order, error) {
-	if m.dueDateFn != nil {
-		return m.dueDateFn(ctx, id, merchantID, dueDate)
+func (m *mockOrderSvc) Update(ctx context.Context, p usecase.UpdateOrderParams) (*domain.Order, error) {
+	if m.updateFn != nil {
+		return m.updateFn(ctx, p)
 	}
-	return &domain.Order{ID: id, MerchantID: merchantID, BranchID: 1, Status: domain.OrderStatusCompleted, DueDate: dueDate, Total: 30000}, nil
+	return &domain.Order{ID: p.ID, MerchantID: p.MerchantID, BranchID: 1, Status: domain.OrderStatusCompleted, DueDate: p.DueDate, Total: 30000}, nil
 }
 
 func (m *mockOrderSvc) AddPayment(ctx context.Context, p usecase.AddPaymentParams) (*domain.Order, error) {
@@ -210,6 +209,60 @@ func TestList(t *testing.T) {
 		}
 		if rec.Code != http.StatusOK {
 			t.Errorf("expected 200, got %d", rec.Code)
+		}
+	})
+}
+
+func TestUpdate(t *testing.T) {
+	t.Parallel()
+
+	t.Run("returns 200 with due date", func(t *testing.T) {
+		e := echo.New()
+		body := `{"dueDate":"2026-08-20"}`
+		req := httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues("1")
+		c = withContext(c)
+
+		h := NewHandler(&mockOrderSvc{
+			updateFn: func(_ context.Context, p usecase.UpdateOrderParams) (*domain.Order, error) {
+				if p.DueDate == nil {
+					t.Error("expected dueDate parsed")
+				}
+				if p.Note != nil {
+					t.Error("expected nil note")
+				}
+				return &domain.Order{ID: p.ID, MerchantID: p.MerchantID, Status: domain.OrderStatusCompleted, DueDate: p.DueDate}, nil
+			},
+		})
+		if err := h.Update(c); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if rec.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rec.Code)
+		}
+	})
+
+	t.Run("invalid due date returns 400", func(t *testing.T) {
+		e := echo.New()
+		body := `{"dueDate":"not-a-date"}`
+		req := httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(body))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+		c.SetParamNames("id")
+		c.SetParamValues("1")
+		c = withContext(c)
+
+		h := NewHandler(&mockOrderSvc{})
+		if err := h.Update(c); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", rec.Code)
 		}
 	})
 }

@@ -130,23 +130,33 @@ func (h *Handler) Cancel(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, result)
 }
 
-func (h *Handler) UpdateDueDate(c echo.Context) error {
+func (h *Handler) Update(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
 
-	var req updateDueDateReq
+	var req updateOrderReq
 	if err := c.Bind(&req); err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
-	dueDate, err := time.Parse("2006-01-02", req.DueDate)
-	if err != nil {
-		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+
+	var dueDate *time.Time
+	if req.DueDate != nil {
+		t, err := time.Parse("2006-01-02", *req.DueDate)
+		if err != nil {
+			return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+		}
+		dueDate = &t
 	}
 
 	merchantID := httputil.GetMerchantID(c)
-	result, err := h.uc.UpdateDueDate(c.Request().Context(), id, merchantID, &dueDate)
+	result, err := h.uc.Update(c.Request().Context(), usecase.UpdateOrderParams{
+		ID:         id,
+		MerchantID: merchantID,
+		DueDate:    dueDate,
+		Note:       req.Note,
+	})
 	if err != nil {
 		return mapError(c, err)
 	}

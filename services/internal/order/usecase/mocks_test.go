@@ -71,6 +71,18 @@ func (m *mockOrderRepo) List(_ context.Context, merchantID int64, branchID *int6
 	return result, nil
 }
 
+func (m *mockOrderRepo) Update(_ context.Context, order *domain.Order) error {
+	if m.err != nil {
+		return m.err
+	}
+	existing, ok := m.orders[order.ID]
+	if !ok || existing.MerchantID != order.MerchantID {
+		return domain.ErrOrderNotFound
+	}
+	m.orders[order.ID] = order
+	return nil
+}
+
 func (m *mockOrderRepo) UpdateStatus(_ context.Context, id int64, merchantID int64, status domain.OrderStatus) (*domain.Order, error) {
 	if m.err != nil {
 		return nil, m.err
@@ -80,19 +92,6 @@ func (m *mockOrderRepo) UpdateStatus(_ context.Context, id int64, merchantID int
 		return nil, domain.ErrOrderNotFound
 	}
 	o.Status = status
-	o.UpdatedAt = time.Now().UTC()
-	return o, nil
-}
-
-func (m *mockOrderRepo) UpdateDueDate(_ context.Context, id int64, merchantID int64, dueDate *time.Time) (*domain.Order, error) {
-	if m.err != nil {
-		return nil, m.err
-	}
-	o, ok := m.orders[id]
-	if !ok || o.MerchantID != merchantID {
-		return nil, domain.ErrOrderNotFound
-	}
-	o.DueDate = dueDate
 	o.UpdatedAt = time.Now().UTC()
 	return o, nil
 }

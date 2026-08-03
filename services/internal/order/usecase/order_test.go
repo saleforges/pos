@@ -154,11 +154,11 @@ func TestOrderUsecase_Create(t *testing.T) {
 	})
 }
 
-func TestOrderUsecase_UpdateDueDate(t *testing.T) {
+func TestOrderUsecase_Update(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	t.Run("updates due date", func(t *testing.T) {
+	t.Run("updates due date and note", func(t *testing.T) {
 		repo := &mockOrderRepo{}
 		uc := NewOrderUsecase(repo, newMockCustomerRepo())
 		uc.Create(ctx, CreateOrderParams{
@@ -167,16 +167,41 @@ func TestOrderUsecase_UpdateDueDate(t *testing.T) {
 		})
 
 		due := time.Now().UTC().AddDate(0, 0, 14)
-		order, err := uc.UpdateDueDate(ctx, 1, 1, &due)
+		note := "Perpanjang"
+		order, err := uc.Update(ctx, UpdateOrderParams{ID: 1, MerchantID: 1, DueDate: &due, Note: &note})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if !order.DueDate.Equal(due) {
 			t.Errorf("expected due date %v, got %v", due, order.DueDate)
 		}
+		if order.Note != "Perpanjang" {
+			t.Errorf("expected note 'Perpanjang', got '%s'", order.Note)
+		}
 	})
 
-	t.Run("cancelled order cannot change due date", func(t *testing.T) {
+	t.Run("partial update keeps other fields", func(t *testing.T) {
+		repo := &mockOrderRepo{}
+		uc := NewOrderUsecase(repo, newMockCustomerRepo())
+		uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5, Note: "Asli",
+			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 1000, Quantity: 1}},
+		})
+
+		note := "Ganti"
+		order, err := uc.Update(ctx, UpdateOrderParams{ID: 1, MerchantID: 1, Note: &note})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if order.Note != "Ganti" {
+			t.Errorf("expected note 'Ganti', got '%s'", order.Note)
+		}
+		if order.DueDate != nil {
+			t.Errorf("expected due date untouched, got %v", order.DueDate)
+		}
+	})
+
+	t.Run("cancelled order cannot update", func(t *testing.T) {
 		repo := &mockOrderRepo{}
 		uc := NewOrderUsecase(repo, newMockCustomerRepo())
 		uc.Create(ctx, CreateOrderParams{
@@ -185,8 +210,8 @@ func TestOrderUsecase_UpdateDueDate(t *testing.T) {
 		})
 		uc.Cancel(ctx, 1, 1)
 
-		due := time.Now().UTC().AddDate(0, 0, 14)
-		_, err := uc.UpdateDueDate(ctx, 1, 1, &due)
+		note := "Nope"
+		_, err := uc.Update(ctx, UpdateOrderParams{ID: 1, MerchantID: 1, Note: &note})
 		if err != domain.ErrInvalidTransition {
 			t.Errorf("expected ErrInvalidTransition for cancelled order, got %v", err)
 		}

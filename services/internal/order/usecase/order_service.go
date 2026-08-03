@@ -93,15 +93,25 @@ func (uc *orderUsecase) Cancel(ctx context.Context, id int64, merchantID int64) 
 	return uc.orderRepo.UpdateStatus(ctx, id, merchantID, domain.OrderStatusCancelled)
 }
 
-func (uc *orderUsecase) UpdateDueDate(ctx context.Context, id int64, merchantID int64, dueDate *time.Time) (*domain.Order, error) {
-	order, err := uc.orderRepo.GetByID(ctx, id, merchantID)
+func (uc *orderUsecase) Update(ctx context.Context, params UpdateOrderParams) (*domain.Order, error) {
+	order, err := uc.orderRepo.GetByID(ctx, params.ID, params.MerchantID)
 	if err != nil {
 		return nil, err
 	}
 	if order.Status != domain.OrderStatusCompleted {
 		return nil, domain.ErrInvalidTransition
 	}
-	return uc.orderRepo.UpdateDueDate(ctx, id, merchantID, dueDate)
+	if params.DueDate != nil {
+		order.DueDate = params.DueDate
+	}
+	if params.Note != nil {
+		order.Note = *params.Note
+	}
+	order.UpdatedAt = time.Now().UTC()
+	if err := uc.orderRepo.Update(ctx, order); err != nil {
+		return nil, err
+	}
+	return order, nil
 }
 
 func (uc *orderUsecase) AddPayment(ctx context.Context, params AddPaymentParams) (*domain.Order, error) {

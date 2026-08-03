@@ -77,6 +77,18 @@ func (r *OrderRepository) List(_ context.Context, merchantID int64, branchID *in
 	return result, nil
 }
 
+func (r *OrderRepository) Update(_ context.Context, order *domain.Order) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	existing, ok := r.orders[order.ID]
+	if !ok || existing.MerchantID != order.MerchantID {
+		return domain.ErrOrderNotFound
+	}
+	r.orders[order.ID] = order
+	return nil
+}
+
 func (r *OrderRepository) UpdateStatus(_ context.Context, id int64, merchantID int64, status domain.OrderStatus) (*domain.Order, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -86,19 +98,6 @@ func (r *OrderRepository) UpdateStatus(_ context.Context, id int64, merchantID i
 		return nil, domain.ErrOrderNotFound
 	}
 	o.Status = status
-	o.UpdatedAt = time.Now().UTC()
-	return o, nil
-}
-
-func (r *OrderRepository) UpdateDueDate(_ context.Context, id int64, merchantID int64, dueDate *time.Time) (*domain.Order, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
-	o, ok := r.orders[id]
-	if !ok || o.MerchantID != merchantID {
-		return nil, domain.ErrOrderNotFound
-	}
-	o.DueDate = dueDate
 	o.UpdatedAt = time.Now().UTC()
 	return o, nil
 }

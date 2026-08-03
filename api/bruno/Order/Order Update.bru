@@ -1,11 +1,11 @@
 meta {
-  name: Order Cancel
+  name: Order Update
   type: http
-  seq: 11
+  seq: 8
 }
 
 patch {
-  url: {{base_url}}/v1/orders/{{order_id}}/status
+  url: {{base_url}}/v1/orders/{{order_id}}
   body: json
   auth: bearer
 }
@@ -21,6 +21,7 @@ auth:bearer {
 
 body:json {
   {
-    "status": "cancelled"
+    "dueDate": "2026-08-20",
+    "note": "Perpanjang jatuh tempo"
   }
 }
