@@ -88,6 +88,11 @@ jobs:
           vault_postgres_password: "${{ secrets.POSTGRES_PASSWORD }}"
           vault_ghcr_username: "${{ github.actor }}"
           vault_ghcr_token: "$GHCR_TOKEN"
+          vault_ipaymu_va: "${{ secrets.IPAYMU_VA }}"
+          vault_ipaymu_api_key: "${{ secrets.IPAYMU_API_KEY }}"
+          vault_ipaymu_return_url: "${{ secrets.IPAYMU_RETURN_URL }}"
+          vault_ipaymu_cancel_url: "${{ secrets.IPAYMU_CANCEL_URL }}"
+          vault_ipaymu_notify_url: "${{ secrets.IPAYMU_NOTIFY_URL }}"
           EOV
       - name: Deploy Payment service
         run: |
