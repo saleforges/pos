@@ -16,13 +16,13 @@ import (
 )
 
 type mockOrderSvc struct {
-	createFn      func(context.Context, usecase.CreateOrderParams) (*domain.Order, error)
-	getFn         func(context.Context, int64, int64) (*domain.Order, error)
-	listFn        func(context.Context, int64, *int64, *domain.OrderStatus, *domain.PaymentStatus) ([]domain.Order, error)
-	updateFn      func(context.Context, usecase.UpdateOrderParams) (*domain.Order, error)
-	cancelFn      func(context.Context, int64, int64) (*domain.Order, error)
-	paymentFn     func(context.Context, usecase.AddPaymentParams) (*domain.Order, error)
-	paymentLinkFn func(context.Context, int64, int64) (*usecase.PaymentLinkResult, error)
+	createFn        func(context.Context, usecase.CreateOrderParams) (*domain.Order, error)
+	getFn           func(context.Context, int64, int64) (*domain.Order, error)
+	listFn          func(context.Context, int64, *int64, *domain.OrderStatus, *domain.PaymentStatus) ([]domain.Order, error)
+	updateFn        func(context.Context, usecase.UpdateOrderParams) (*domain.Order, error)
+	cancelFn        func(context.Context, int64, int64) (*domain.Order, error)
+	paymentFn       func(context.Context, usecase.AddPaymentParams) (*domain.Order, error)
+	paymentIntentFn func(context.Context, int64, int64) (*usecase.PaymentIntentResult, error)
 }
 
 func (m *mockOrderSvc) Create(ctx context.Context, p usecase.CreateOrderParams) (*domain.Order, error) {
@@ -71,11 +71,11 @@ func (m *mockOrderSvc) AddPayment(ctx context.Context, p usecase.AddPaymentParam
 	return &domain.Order{ID: p.OrderID, MerchantID: p.MerchantID, Status: domain.OrderStatusCompleted, Total: 30000, PaidAmount: p.Amount}, nil
 }
 
-func (m *mockOrderSvc) CreatePaymentLink(ctx context.Context, id int64, merchantID int64) (*usecase.PaymentLinkResult, error) {
-	if m.paymentLinkFn != nil {
-		return m.paymentLinkFn(ctx, id, merchantID)
+func (m *mockOrderSvc) CreatePaymentIntent(ctx context.Context, id int64, merchantID int64) (*usecase.PaymentIntentResult, error) {
+	if m.paymentIntentFn != nil {
+		return m.paymentIntentFn(ctx, id, merchantID)
 	}
-	return &usecase.PaymentLinkResult{OrderID: id, PaymentURL: "https://sandbox.ipaymu.com/pay/1"}, nil
+	return &usecase.PaymentIntentResult{OrderID: id, PaymentURL: "https://sandbox.ipaymu.com/pay/1"}, nil
 }
 
 func (m *mockOrderSvc) NotifyPaid(context.Context, usecase.NotifyPaidParams) error { return nil }

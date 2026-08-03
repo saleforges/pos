@@ -139,9 +139,9 @@ func (uc *orderUsecase) restoreOrder(ctx context.Context, order *domain.Order) e
 	return uc.inventory.RestoreStock(ctx, order.MerchantID, order.BranchID, "order", order.ID, items)
 }
 
-// CreatePaymentLink creates a gateway payment via the payment service and
+// CreatePaymentIntent creates a gateway payment via the payment service and
 // returns the redirect URL for the buyer.
-func (uc *orderUsecase) CreatePaymentLink(ctx context.Context, id int64, merchantID int64) (*PaymentLinkResult, error) {
+func (uc *orderUsecase) CreatePaymentIntent(ctx context.Context, id int64, merchantID int64) (*PaymentIntentResult, error) {
 	order, err := uc.orderRepo.GetByID(ctx, id, merchantID)
 	if err != nil {
 		return nil, err
@@ -178,7 +178,7 @@ func (uc *orderUsecase) CreatePaymentLink(ctx context.Context, id int64, merchan
 	if err != nil {
 		return nil, err
 	}
-	return &PaymentLinkResult{OrderID: order.ID, PaymentURL: result.PaymentURL, SessionID: result.SessionID}, nil
+	return &PaymentIntentResult{OrderID: order.ID, PaymentURL: result.PaymentURL, SessionID: result.SessionID}, nil
 }
 
 // NotifyPaid is called by the payment service when the gateway confirms a

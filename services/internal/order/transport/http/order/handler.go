@@ -201,14 +201,14 @@ func (h *Handler) AddPayment(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, result)
 }
 
-func (h *Handler) CreatePaymentLink(c echo.Context) error {
+func (h *Handler) CreatePaymentIntent(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
 	}
 
 	merchantID := httputil.GetMerchantID(c)
-	result, err := h.uc.CreatePaymentLink(c.Request().Context(), id, merchantID)
+	result, err := h.uc.CreatePaymentIntent(c.Request().Context(), id, merchantID)
 	if err != nil {
 		return mapError(c, err)
 	}
