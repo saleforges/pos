@@ -5,9 +5,9 @@ import "time"
 type MovementType string
 
 const (
-	MovementTypeStockIn     MovementType = "stock_in"
-	MovementTypeStockOut    MovementType = "stock_out"
-	MovementTypeAdjustment  MovementType = "adjustment"
+	MovementTypeStockIn    MovementType = "stock_in"
+	MovementTypeStockOut   MovementType = "stock_out"
+	MovementTypeAdjustment MovementType = "adjustment"
 )
 
 type StockMovement struct {

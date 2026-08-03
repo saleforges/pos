@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/labstack/echo/v4"
+	"github.com/saleforge/pos/services/internal/order/adapter/client/inventory"
 	"github.com/saleforge/pos/services/internal/order/adapter/repository/memory"
 	"github.com/saleforge/pos/services/internal/order/adapter/repository/postgres"
 	por "github.com/saleforge/pos/services/internal/order/port/repository"
@@ -18,9 +19,11 @@ import (
 )
 
 type Config struct {
-	DatabaseURL  string
-	IAMBaseURL   string
-	OtelEndpoint string
+	DatabaseURL      string
+	IAMBaseURL       string
+	OtelEndpoint     string
+	InventoryBaseURL string
+	InventoryAPIKey  string
 }
 
 type App struct {
@@ -70,7 +73,10 @@ func New(cfg Config) (*App, error) {
 		logger.Info("using in-memory storage")
 	}
 
-	orderUC := usecase.NewOrderUsecase(orderRepo, customerRepo)
+	orderUC := usecase.NewOrderUsecase(orderRepo, customerRepo, inventory.New(inventory.Config{
+		BaseURL: cfg.InventoryBaseURL,
+		APIKey:  cfg.InventoryAPIKey,
+	}))
 	customerUC := usecase.NewCustomerUsecase(customerRepo)
 
 	orderHandler := order.NewHandler(orderUC)

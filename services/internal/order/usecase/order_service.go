@@ -11,10 +11,11 @@ import (
 type orderUsecase struct {
 	orderRepo    repository.OrderRepository
 	customerRepo repository.CustomerRepository
+	inventory    repository.InventoryClient
 }
 
-func NewOrderUsecase(orderRepo repository.OrderRepository, customerRepo repository.CustomerRepository) OrderUsecase {
-	return &orderUsecase{orderRepo: orderRepo, customerRepo: customerRepo}
+func NewOrderUsecase(orderRepo repository.OrderRepository, customerRepo repository.CustomerRepository, inventory repository.InventoryClient) OrderUsecase {
+	return &orderUsecase{orderRepo: orderRepo, customerRepo: customerRepo, inventory: inventory}
 }
 
 func (uc *orderUsecase) Create(ctx context.Context, params CreateOrderParams) (*domain.Order, error) {
@@ -71,6 +72,13 @@ func (uc *orderUsecase) Create(ctx context.Context, params CreateOrderParams) (*
 	if err := uc.orderRepo.Create(ctx, order); err != nil {
 		return nil, err
 	}
+
+	// Completed orders deduct stock from inventory. If any line has
+	// insufficient stock the order is cancelled and the error returned.
+	if err := uc.deductOrder(ctx, order); err != nil {
+		_, _ = uc.orderRepo.UpdateStatus(ctx, order.ID, order.MerchantID, domain.OrderStatusCancelled)
+		return nil, err
+	}
 	return order, nil
 }
 
@@ -90,7 +98,27 @@ func (uc *orderUsecase) Cancel(ctx context.Context, id int64, merchantID int64) 
 	if order.Status != domain.OrderStatusCompleted {
 		return nil, domain.ErrInvalidTransition
 	}
+	// Restore the stock that was deducted when the order completed.
+	if err := uc.restoreOrder(ctx, order); err != nil {
+		return nil, err
+	}
 	return uc.orderRepo.UpdateStatus(ctx, id, merchantID, domain.OrderStatusCancelled)
+}
+
+func (uc *orderUsecase) deductOrder(ctx context.Context, order *domain.Order) error {
+	items := make([]repository.StockAdjustmentItem, len(order.Items))
+	for i, it := range order.Items {
+		items[i] = repository.StockAdjustmentItem{ProductItemID: it.ProductItemID, Quantity: int64(it.Quantity)}
+	}
+	return uc.inventory.DeductStock(ctx, order.MerchantID, order.BranchID, "order", order.ID, items)
+}
+
+func (uc *orderUsecase) restoreOrder(ctx context.Context, order *domain.Order) error {
+	items := make([]repository.StockAdjustmentItem, len(order.Items))
+	for i, it := range order.Items {
+		items[i] = repository.StockAdjustmentItem{ProductItemID: it.ProductItemID, Quantity: int64(it.Quantity)}
+	}
+	return uc.inventory.RestoreStock(ctx, order.MerchantID, order.BranchID, "order", order.ID, items)
 }
 
 func (uc *orderUsecase) Update(ctx context.Context, params UpdateOrderParams) (*domain.Order, error) {

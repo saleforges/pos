@@ -5,7 +5,31 @@ import (
 	"time"
 
 	"github.com/saleforge/pos/services/internal/order/domain"
+	"github.com/saleforge/pos/services/internal/order/port/repository"
 )
+
+type mockInventoryClient struct {
+	deductErr  error
+	restoreErr error
+	deducted   []repository.StockAdjustmentItem
+	restored   []repository.StockAdjustmentItem
+}
+
+func (m *mockInventoryClient) DeductStock(_ context.Context, _ int64, _ int64, _ string, _ int64, items []repository.StockAdjustmentItem) error {
+	if m.deductErr != nil {
+		return m.deductErr
+	}
+	m.deducted = append(m.deducted, items...)
+	return nil
+}
+
+func (m *mockInventoryClient) RestoreStock(_ context.Context, _ int64, _ int64, _ string, _ int64, items []repository.StockAdjustmentItem) error {
+	if m.restoreErr != nil {
+		return m.restoreErr
+	}
+	m.restored = append(m.restored, items...)
+	return nil
+}
 
 type mockOrderRepo struct {
 	orders  map[int64]*domain.Order

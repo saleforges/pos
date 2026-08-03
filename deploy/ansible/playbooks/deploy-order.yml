@@ -8,6 +8,8 @@
     ghcr_token: "{{ vault_ghcr_token | default('') }}"
     db_url: "postgres://pos:{{ vault_postgres_password }}@postgres:5432/pos?sslmode=disable"
     iam_base_url: "http://iam-service:8080"
+    inventory_base_url: "http://inventory-service:8083"
+    internal_api_key: "{{ vault_internal_api_key | default('dev-internal-key') }}"
   tasks:
     - name: Login to GHCR (fresh)
       shell: |
@@ -27,6 +29,8 @@
           ORDER_PORT: ":8084"
           DATABASE_URL: "{{ db_url }}"
           IAM_BASE_URL: "{{ iam_base_url }}"
+          INVENTORY_BASE_URL: "{{ inventory_base_url }}"
+          INTERNAL_API_KEY: "{{ internal_api_key }}"
           OTEL_EXPORTER_OTLP_ENDPOINT: "tempo:4317"
         networks:
           - name: pos

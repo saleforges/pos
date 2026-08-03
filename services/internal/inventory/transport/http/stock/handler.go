@@ -91,11 +91,57 @@ func (h *Handler) Update(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, result)
 }
 
+func (h *Handler) Deduct(c echo.Context) error {
+	var req adjustStockReq
+	if err := c.Bind(&req); err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+
+	items := make([]usecase.AdjustStockItem, len(req.Items))
+	for i, it := range req.Items {
+		items[i] = usecase.AdjustStockItem{ProductItemID: it.ProductItemID, Quantity: it.Quantity}
+	}
+
+	if err := h.uc.Deduct(c.Request().Context(), usecase.AdjustStockParams{
+		MerchantID:    req.MerchantID,
+		BranchID:      req.BranchID,
+		ReferenceType: req.ReferenceType,
+		ReferenceID:   req.ReferenceID,
+		Items:         items,
+	}); err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, map[string]string{"message": "stock deducted"})
+}
+
+func (h *Handler) Restore(c echo.Context) error {
+	var req adjustStockReq
+	if err := c.Bind(&req); err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+
+	items := make([]usecase.AdjustStockItem, len(req.Items))
+	for i, it := range req.Items {
+		items[i] = usecase.AdjustStockItem{ProductItemID: it.ProductItemID, Quantity: it.Quantity}
+	}
+
+	if err := h.uc.Restore(c.Request().Context(), usecase.AdjustStockParams{
+		MerchantID:    req.MerchantID,
+		BranchID:      req.BranchID,
+		ReferenceType: req.ReferenceType,
+		ReferenceID:   req.ReferenceID,
+		Items:         items,
+	}); err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, map[string]string{"message": "stock restored"})
+}
+
 func mapError(c echo.Context, err error) error {
 	switch err {
 	case domain.ErrStockNotFound:
 		return httputil.WriteError(c, http.StatusNotFound, err)
-	case domain.ErrInvalidStock, domain.ErrNegativeAvailable:
+	case domain.ErrInvalidStock, domain.ErrNegativeAvailable, domain.ErrInsufficientStock:
 		return httputil.WriteError(c, http.StatusBadRequest, err)
 	default:
 		logger.Error("stock handler error", "error", err.Error())

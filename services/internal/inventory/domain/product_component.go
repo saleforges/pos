@@ -5,11 +5,11 @@ import (
 )
 
 type ProductComponent struct {
-	ID            int64     `json:"id"`
-	MerchantID    int64     `json:"merchantId"`
-	ProductItemID int64     `json:"productItemId"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedAt     time.Time `json:"updatedAt"`
+	ID            int64                  `json:"id"`
+	MerchantID    int64                  `json:"merchantId"`
+	ProductItemID int64                  `json:"productItemId"`
+	CreatedAt     time.Time              `json:"createdAt"`
+	UpdatedAt     time.Time              `json:"updatedAt"`
 	Items         []ProductComponentItem `json:"items,omitempty"`
 }
 
@@ -32,12 +32,12 @@ func (pc *ProductComponent) Validate() error {
 }
 
 type ProductComponentItem struct {
-	ID                   int64   `json:"id"`
-	ProductComponentID   int64   `json:"productComponentId"`
-	ComponentProductItemID int64 `json:"componentProductItemId"`
-	Quantity             float64 `json:"quantity"`
-	UnitID               int64   `json:"unitId"`
-	CreatedAt            time.Time `json:"createdAt"`
+	ID                     int64     `json:"id"`
+	ProductComponentID     int64     `json:"productComponentId"`
+	ComponentProductItemID int64     `json:"componentProductItemId"`
+	Quantity               float64   `json:"quantity"`
+	UnitID                 int64     `json:"unitId"`
+	CreatedAt              time.Time `json:"createdAt"`
 }
 
 func (pci *ProductComponentItem) Validate() error {

@@ -21,6 +21,7 @@ type Config struct {
 	DatabaseURL  string
 	IAMBaseURL   string
 	OtelEndpoint string
+	InternalKey  string
 }
 
 type App struct {
@@ -48,8 +49,9 @@ func New(cfg Config) (*App, error) {
 	}
 
 	var (
-		stockRepo     por.StockRepository
-		componentRepo por.ProductComponentRepository
+		stockRepo       por.StockRepository
+		stockAdjustRepo por.StockAdjustmentRepository
+		componentRepo   por.ProductComponentRepository
 	)
 
 	if cfg.DatabaseURL != "" {
@@ -62,21 +64,23 @@ func New(cfg Config) (*App, error) {
 			return nil, err
 		}
 		stockRepo = postgres.NewStockRepository(pool)
+		stockAdjustRepo = postgres.NewStockRepository(pool)
 		componentRepo = postgres.NewProductComponentRepository(pool)
 		logger.Info("using postgres storage")
 	} else {
 		stockRepo = memory.NewStockRepository()
+		stockAdjustRepo = memory.NewStockRepository()
 		componentRepo = memory.NewProductComponentRepository()
 		logger.Info("using in-memory storage")
 	}
 
-	stockUC := usecase.NewStockUsecase(stockRepo)
+	stockUC := usecase.NewStockUsecase(stockRepo, stockAdjustRepo)
 	componentUC := usecase.NewProductComponentUsecase(componentRepo)
 
 	stockHandler := stock.NewHandler(stockUC)
 	componentHandler := productcomponent.NewHandler(componentUC)
 
-	e := httptransport.NewRouter(stockHandler, componentHandler, verifier)
+	e := httptransport.NewRouter(stockHandler, componentHandler, verifier, cfg.InternalKey)
 
 	return &App{router: e, otelShutdown: otelShutdown}, nil
 }

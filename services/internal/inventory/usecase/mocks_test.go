@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/saleforge/pos/services/internal/inventory/domain"
+	"github.com/saleforge/pos/services/internal/inventory/port/repository"
 )
 
 // Mock repositories for usecase tests
@@ -61,6 +62,49 @@ func (m *mockStockRepo) Update(_ context.Context, stock *domain.Stock) error {
 		return domain.ErrStockNotFound
 	}
 	m.stocks[stock.ID] = stock
+	return nil
+}
+
+func (m *mockStockRepo) Deduct(_ context.Context, merchantID, branchID int64, _ string, _ int64, items []repository.StockAdjustmentItem) error {
+	if m.err != nil {
+		return m.err
+	}
+	for _, it := range items {
+		stock := m.find(merchantID, branchID, it.ProductItemID)
+		if stock == nil {
+			return domain.ErrStockNotFound
+		}
+		if stock.Available < it.Quantity {
+			return domain.ErrInsufficientStock
+		}
+		stock.Available -= it.Quantity
+	}
+	return nil
+}
+
+func (m *mockStockRepo) Restore(_ context.Context, merchantID, branchID int64, _ string, _ int64, items []repository.StockAdjustmentItem) error {
+	if m.err != nil {
+		return m.err
+	}
+	for _, it := range items {
+		stock := m.find(merchantID, branchID, it.ProductItemID)
+		if stock == nil {
+			return domain.ErrStockNotFound
+		}
+		stock.Available += it.Quantity
+	}
+	return nil
+}
+
+func (m *mockStockRepo) find(merchantID, branchID, productItemID int64) *domain.Stock {
+	if m.stocks == nil {
+		return nil
+	}
+	for _, s := range m.stocks {
+		if s.MerchantID == merchantID && s.BranchID == branchID && s.ProductItemID == productItemID {
+			return s
+		}
+	}
 	return nil
 }
 

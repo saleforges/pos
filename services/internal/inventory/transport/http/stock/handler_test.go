@@ -49,6 +49,10 @@ func (m *mockStockSvc) Update(ctx context.Context, p usecase.UpdateStockParams) 
 	return &domain.Stock{ID: p.ID, MerchantID: p.MerchantID, BranchID: 1, ProductItemID: 1, Available: p.Available}, nil
 }
 
+func (m *mockStockSvc) Deduct(context.Context, usecase.AdjustStockParams) error { return nil }
+
+func (m *mockStockSvc) Restore(context.Context, usecase.AdjustStockParams) error { return nil }
+
 func withMerchant(c echo.Context) echo.Context {
 	c.Set(httputil.ContextKeyMerchantID, int64(1))
 	return c

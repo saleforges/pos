@@ -3,17 +3,20 @@ package memory
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/saleforge/pos/services/internal/inventory/domain"
 	"github.com/saleforge/pos/services/internal/inventory/port/repository"
 )
 
 var _ repository.StockRepository = (*StockRepository)(nil)
+var _ repository.StockAdjustmentRepository = (*StockRepository)(nil)
 
 type StockRepository struct {
-	mu    sync.RWMutex
-	stocks map[int64]*domain.Stock
-	seq   int64
+	mu        sync.RWMutex
+	stocks    map[int64]*domain.Stock
+	movements []domain.StockMovement
+	seq       int64
 }
 
 func NewStockRepository() *StockRepository {
@@ -68,5 +71,59 @@ func (r *StockRepository) Update(_ context.Context, stock *domain.Stock) error {
 		return domain.ErrStockNotFound
 	}
 	r.stocks[stock.ID] = stock
+	return nil
+}
+
+// Deduct applies a batch of stock deductions atomically and records a
+// stock_out movement per line. Fails the whole batch if any item has
+// insufficient available stock.
+func (r *StockRepository) Deduct(_ context.Context, merchantID, branchID int64, referenceType string, referenceID int64, items []repository.StockAdjustmentItem) error {
+	return r.adjust(merchantID, branchID, referenceType, referenceID, items, domain.MovementTypeStockOut, -1)
+}
+
+// Restore applies a batch of stock restores atomically and records a
+// stock_in movement per line (e.g. when an order is cancelled).
+func (r *StockRepository) Restore(_ context.Context, merchantID, branchID int64, referenceType string, referenceID int64, items []repository.StockAdjustmentItem) error {
+	return r.adjust(merchantID, branchID, referenceType, referenceID, items, domain.MovementTypeStockIn, 1)
+}
+
+func (r *StockRepository) adjust(merchantID, branchID int64, referenceType string, referenceID int64, items []repository.StockAdjustmentItem, movementType domain.MovementType, sign int64) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, it := range items {
+		if it.ProductItemID == 0 || it.Quantity <= 0 {
+			return domain.ErrInvalidStock
+		}
+		// find stock row for branch+item
+		var stock *domain.Stock
+		for _, s := range r.stocks {
+			if s.MerchantID == merchantID && s.BranchID == branchID && s.ProductItemID == it.ProductItemID {
+				stock = s
+				break
+			}
+		}
+		if stock == nil {
+			return domain.ErrStockNotFound
+		}
+		if sign < 0 && stock.Available < it.Quantity {
+			return domain.ErrInsufficientStock
+		}
+		stock.Available += sign * it.Quantity
+		stock.UpdatedAt = time.Now().UTC()
+
+		r.seq++
+		r.movements = append(r.movements, domain.StockMovement{
+			ID:            r.seq,
+			MerchantID:    merchantID,
+			BranchID:      branchID,
+			ProductItemID: it.ProductItemID,
+			Type:          movementType,
+			Quantity:      it.Quantity,
+			ReferenceType: referenceType,
+			ReferenceID:   &referenceID,
+			CreatedAt:     time.Now().UTC(),
+		})
+	}
 	return nil
 }

@@ -12,5 +12,6 @@ var (
 	ErrInvalidProductComponentItem = errors.New("INV007: invalid product component item data")
 	ErrNoComponentItems            = errors.New("INV008: product component must contain at least one item")
 	ErrStockMovementNotFound       = errors.New("INV009: stock movement not found")
+	ErrInsufficientStock           = errors.New("INV010: insufficient stock")
 	ErrInternal                    = errors.New("INV500: internal error")
 )

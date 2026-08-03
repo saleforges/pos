@@ -22,9 +22,11 @@ func main() {
 	logger.Info("Order service starting", "addr", addr)
 
 	app, err := bootstrap.New(bootstrap.Config{
-		DatabaseURL:  os.Getenv("DATABASE_URL"),
-		IAMBaseURL:   os.Getenv("IAM_BASE_URL"),
-		OtelEndpoint: os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+		DatabaseURL:      os.Getenv("DATABASE_URL"),
+		IAMBaseURL:       os.Getenv("IAM_BASE_URL"),
+		OtelEndpoint:     os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+		InventoryBaseURL: getEnv("INVENTORY_BASE_URL", "http://inventory-service:8083"),
+		InventoryAPIKey:  os.Getenv("INTERNAL_API_KEY"),
 	})
 	if err != nil {
 		logger.Error("bootstrap failed", "error", err.Error())

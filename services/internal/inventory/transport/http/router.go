@@ -15,6 +15,7 @@ func NewRouter(
 	stockHandler *stock.Handler,
 	componentHandler *productcomponent.Handler,
 	verifier *jwks.Verifier,
+	internalKey string,
 ) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
@@ -43,6 +44,11 @@ func NewRouter(
 	componentGroup := api.Group("/product-items", httputil.MerchantMiddleware())
 	componentGroup.GET("/:productItemId/components", componentHandler.GetByProductItem)
 	componentGroup.PUT("/:productItemId/components", componentHandler.CreateOrUpdate)
+
+	// Internal service-to-service endpoints (not exposed via Caddy)
+	internal := e.Group("/internal", middleware.InternalAuth(internalKey))
+	internal.POST("/stocks/deduct", stockHandler.Deduct)
+	internal.POST("/stocks/restore", stockHandler.Restore)
 
 	return e
 }

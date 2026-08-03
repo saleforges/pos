@@ -9,11 +9,12 @@ import (
 )
 
 type stockUsecase struct {
-	repo repository.StockRepository
+	repo           repository.StockRepository
+	adjustmentRepo repository.StockAdjustmentRepository
 }
 
-func NewStockUsecase(repo repository.StockRepository) StockUsecase {
-	return &stockUsecase{repo: repo}
+func NewStockUsecase(repo repository.StockRepository, adjustmentRepo repository.StockAdjustmentRepository) StockUsecase {
+	return &stockUsecase{repo: repo, adjustmentRepo: adjustmentRepo}
 }
 
 func (uc *stockUsecase) Create(ctx context.Context, params CreateStockParams) (*domain.Stock, error) {
@@ -62,6 +63,28 @@ func (uc *stockUsecase) Update(ctx context.Context, params UpdateStockParams) (*
 		return nil, err
 	}
 	return stock, nil
+}
+
+func (uc *stockUsecase) Deduct(ctx context.Context, params AdjustStockParams) error {
+	if params.BranchID == 0 || len(params.Items) == 0 {
+		return domain.ErrInvalidStock
+	}
+	items := make([]repository.StockAdjustmentItem, len(params.Items))
+	for i, it := range params.Items {
+		items[i] = repository.StockAdjustmentItem{ProductItemID: it.ProductItemID, Quantity: it.Quantity}
+	}
+	return uc.adjustmentRepo.Deduct(ctx, params.MerchantID, params.BranchID, params.ReferenceType, params.ReferenceID, items)
+}
+
+func (uc *stockUsecase) Restore(ctx context.Context, params AdjustStockParams) error {
+	if params.BranchID == 0 || len(params.Items) == 0 {
+		return domain.ErrInvalidStock
+	}
+	items := make([]repository.StockAdjustmentItem, len(params.Items))
+	for i, it := range params.Items {
+		items[i] = repository.StockAdjustmentItem{ProductItemID: it.ProductItemID, Quantity: it.Quantity}
+	}
+	return uc.adjustmentRepo.Restore(ctx, params.MerchantID, params.BranchID, params.ReferenceType, params.ReferenceID, items)
 }
 
 var _ StockUsecase = (*stockUsecase)(nil)

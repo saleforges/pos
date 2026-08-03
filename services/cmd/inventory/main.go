@@ -25,6 +25,7 @@ func main() {
 		DatabaseURL:  os.Getenv("DATABASE_URL"),
 		IAMBaseURL:   os.Getenv("IAM_BASE_URL"),
 		OtelEndpoint: os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+		InternalKey:  os.Getenv("INTERNAL_API_KEY"),
 	})
 	if err != nil {
 		logger.Error("bootstrap failed", "error", err.Error())

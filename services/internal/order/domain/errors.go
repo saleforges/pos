@@ -11,5 +11,7 @@ var (
 	ErrInvalidPayment      = errors.New("ORD006: invalid payment data")
 	ErrCustomerNotFound    = errors.New("ORD007: customer not found")
 	ErrInvalidCustomer     = errors.New("ORD008: invalid customer data")
+	ErrInsufficientStock   = errors.New("ORD009: insufficient stock")
+	ErrOrderStockNotFound  = errors.New("ORD010: stock not found for order item")
 	ErrInternal            = errors.New("ORD500: internal error")
 )
