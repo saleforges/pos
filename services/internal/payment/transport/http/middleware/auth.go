@@ -24,8 +24,6 @@ func Auth(verifier *jwks.Verifier) echo.MiddlewareFunc {
 
 			claims, err := verifier.Verify(token)
 			if err != nil {
-				// TEMP DEBUG: log the verify error to diagnose 401s.
-				c.Logger().Printf("auth verify error: %v", err)
 				return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid token"})
 			}
 

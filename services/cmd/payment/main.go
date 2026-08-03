@@ -25,6 +25,7 @@ func main() {
 
 	app, err := bootstrap.New(bootstrap.Config{
 		DatabaseURL:     os.Getenv("DATABASE_URL"),
+		IAMBaseURL:      os.Getenv("IAM_BASE_URL"),
 		OtelEndpoint:    os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 		InternalKey:     os.Getenv("INTERNAL_API_KEY"),
 		IpaymuBaseURL:   getEnv("IPAYMU_BASE_URL", "https://sandbox.ipaymu.com"),
