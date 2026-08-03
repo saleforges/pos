@@ -94,20 +94,20 @@ func (c *client) CreatePayment(ctx context.Context, params repository.CreatePaym
 		Status  int    `json:"Status"`
 		Success bool   `json:"Success"`
 		Message string `json:"Message"`
-		Data    []struct {
-			SessionID string `json:"sessionId"`
-			URL       string `json:"url"`
+		Data    struct {
+			SessionID string `json:"SessionID"`
+			URL       string `json:"Url"`
 		} `json:"Data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
 		return nil, domain.ErrGatewayUnavailable
 	}
-	if !envelope.Success || len(envelope.Data) == 0 {
+	if !envelope.Success || envelope.Data.URL == "" {
 		return nil, fmt.Errorf("%w: %s", domain.ErrGatewayError, envelope.Message)
 	}
 
 	return &repository.PaymentResult{
-		SessionID:  envelope.Data[0].SessionID,
-		PaymentURL: envelope.Data[0].URL,
+		SessionID:  envelope.Data.SessionID,
+		PaymentURL: envelope.Data.URL,
 	}, nil
 }
