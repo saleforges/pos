@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"time"
 
 	"github.com/saleforge/pos/services/internal/order/domain"
 )
@@ -12,6 +13,12 @@ type CustomerUsecase interface {
 	List(ctx context.Context, merchantID int64, search string) ([]domain.Customer, error)
 	Update(ctx context.Context, params UpdateCustomerParams) (*domain.Customer, error)
 	Delete(ctx context.Context, id int64, merchantID int64) error
+	Sync(ctx context.Context, merchantID int64, lastSync *time.Time) (*CustomerSyncResult, error)
+}
+
+type CustomerSyncResult struct {
+	Customers []domain.Customer
+	SyncToken string
 }
 
 type CreateCustomerParams struct {

@@ -76,4 +76,18 @@ func (uc *customerUsecase) Delete(ctx context.Context, id int64, merchantID int6
 	return uc.repo.Delete(ctx, id, merchantID)
 }
 
+func (uc *customerUsecase) Sync(ctx context.Context, merchantID int64, lastSync *time.Time) (*CustomerSyncResult, error) {
+	customers, err := uc.repo.ListChangedSince(ctx, merchantID, lastSync)
+	if err != nil {
+		return nil, err
+	}
+	if customers == nil {
+		customers = []domain.Customer{}
+	}
+	return &CustomerSyncResult{
+		Customers: customers,
+		SyncToken: time.Now().UTC().Format(time.RFC3339Nano),
+	}, nil
+}
+
 var _ CustomerUsecase = (*customerUsecase)(nil)

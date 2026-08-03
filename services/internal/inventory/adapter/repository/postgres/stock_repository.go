@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/saleforge/pos/services/internal/inventory/domain"
@@ -39,6 +40,24 @@ func (r *StockRepository) GetByID(ctx context.Context, id int64, merchantID int6
 func (r *StockRepository) List(ctx context.Context, merchantID int64) ([]domain.Stock, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT `+stockCols+` FROM stocks WHERE merchant_id = $1 ORDER BY id`, merchantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanStocks(rows)
+}
+
+// ListChangedSince returns stocks updated after the given time — the
+// incremental payload for mobile stock sync.
+func (r *StockRepository) ListChangedSince(ctx context.Context, merchantID int64, since *time.Time) ([]domain.Stock, error) {
+	query := `SELECT ` + stockCols + ` FROM stocks WHERE merchant_id = $1`
+	args := []interface{}{merchantID}
+	if since != nil {
+		query += ` AND updated_at > $2`
+		args = append(args, *since)
+	}
+	query += ` ORDER BY id`
+	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

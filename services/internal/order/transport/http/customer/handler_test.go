@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/order/domain"
@@ -54,6 +55,10 @@ func (m *mockCustomerSvc) Delete(ctx context.Context, id int64, merchantID int64
 		return m.deleteFn(ctx, id, merchantID)
 	}
 	return nil
+}
+
+func (m *mockCustomerSvc) Sync(ctx context.Context, merchantID int64, lastSync *time.Time) (*usecase.CustomerSyncResult, error) {
+	return &usecase.CustomerSyncResult{Customers: []domain.Customer{}, SyncToken: "2026-08-03T00:00:00Z"}, nil
 }
 
 func withMerchant(c echo.Context) echo.Context {

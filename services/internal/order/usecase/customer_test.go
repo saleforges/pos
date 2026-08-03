@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/saleforge/pos/services/internal/order/domain"
 )
@@ -111,6 +112,51 @@ func TestCustomerUsecase_Delete(t *testing.T) {
 		_, err := uc.GetByID(ctx, 1, 1)
 		if err != domain.ErrCustomerNotFound {
 			t.Errorf("expected ErrCustomerNotFound after delete, got %v", err)
+		}
+	})
+}
+
+func TestCustomerUsecase_Sync(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("returns changes since lastSync with token", func(t *testing.T) {
+		repo := &mockCustomerRepo{}
+		uc := NewCustomerUsecase(repo)
+		now := time.Now().UTC()
+		repo.customers = map[int64]*domain.Customer{
+			1: {ID: 1, MerchantID: 1, Name: "Pak Budi", Phone: "0811", CreatedAt: now, UpdatedAt: now},
+			2: {ID: 2, MerchantID: 2, Name: "Orang Lain", Phone: "0822", CreatedAt: now, UpdatedAt: now},
+		}
+
+		since := now.Add(-time.Hour)
+		result, err := uc.Sync(ctx, 1, &since)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(result.Customers) != 1 {
+			t.Errorf("expected 1 customer for merchant 1, got %d", len(result.Customers))
+		}
+		if result.SyncToken == "" {
+			t.Error("expected non-empty sync token")
+		}
+	})
+
+	t.Run("no lastSync returns all", func(t *testing.T) {
+		repo := &mockCustomerRepo{}
+		uc := NewCustomerUsecase(repo)
+		now := time.Now().UTC()
+		repo.customers = map[int64]*domain.Customer{
+			1: {ID: 1, MerchantID: 1, Name: "A", CreatedAt: now, UpdatedAt: now},
+			2: {ID: 2, MerchantID: 1, Name: "B", CreatedAt: now, UpdatedAt: now},
+		}
+
+		result, err := uc.Sync(ctx, 1, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(result.Customers) != 2 {
+			t.Errorf("expected 2 customers, got %d", len(result.Customers))
 		}
 	})
 }

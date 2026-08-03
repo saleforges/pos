@@ -3,6 +3,7 @@ package stock
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/inventory/domain"
@@ -85,6 +86,25 @@ func (h *Handler) Update(c echo.Context) error {
 		MerchantID: merchantID,
 		Available:  req.Available,
 	})
+	if err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, result)
+}
+
+func (h *Handler) Sync(c echo.Context) error {
+	merchantID := httputil.GetMerchantID(c)
+
+	var lastSync *time.Time
+	if raw := c.QueryParam("lastSync"); raw != "" {
+		t, err := time.Parse(time.RFC3339Nano, raw)
+		if err != nil {
+			return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+		}
+		lastSync = &t
+	}
+
+	result, err := h.uc.Sync(c.Request().Context(), merchantID, lastSync)
 	if err != nil {
 		return mapError(c, err)
 	}

@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/saleforge/pos/services/internal/inventory/domain"
 )
@@ -485,6 +486,44 @@ func TestStockUsecase_UnitConversion(t *testing.T) {
 		// unknown unit → factor 1 → 2 x 500 = 1000
 		if raw.Available != 29000 {
 			t.Errorf("expected raw stock 29000, got %d", raw.Available)
+		}
+	})
+}
+
+func TestStockUsecase_Sync(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("returns changes since lastSync with token", func(t *testing.T) {
+		repo := &mockStockRepo{}
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{}, newMockUnitRepo())
+		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 10})
+
+		since := time.Now().UTC().Add(-time.Hour)
+		result, err := uc.Sync(ctx, 1, &since)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(result.Stocks) != 1 {
+			t.Errorf("expected 1 stock, got %d", len(result.Stocks))
+		}
+		if result.SyncToken == "" {
+			t.Error("expected non-empty sync token")
+		}
+	})
+
+	t.Run("no lastSync returns all", func(t *testing.T) {
+		repo := &mockStockRepo{}
+		uc := NewStockUsecase(repo, repo, &mockComponentRepo{}, newMockUnitRepo())
+		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 10})
+		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 2, Available: 20})
+
+		result, err := uc.Sync(ctx, 1, nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(result.Stocks) != 2 {
+			t.Errorf("expected 2 stocks, got %d", len(result.Stocks))
 		}
 	})
 }

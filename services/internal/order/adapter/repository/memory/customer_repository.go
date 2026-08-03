@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/saleforge/pos/services/internal/order/domain"
 	"github.com/saleforge/pos/services/internal/order/port/repository"
@@ -58,6 +59,26 @@ func (r *CustomerRepository) List(_ context.Context, merchantID int64, search st
 			if !strings.Contains(strings.ToLower(c.Name), needle) && !strings.Contains(strings.ToLower(c.Phone), needle) {
 				continue
 			}
+		}
+		result = append(result, *c)
+	}
+	if result == nil {
+		return []domain.Customer{}, nil
+	}
+	return result, nil
+}
+
+func (r *CustomerRepository) ListChangedSince(_ context.Context, merchantID int64, since *time.Time) ([]domain.Customer, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var result []domain.Customer
+	for _, c := range r.customers {
+		if c.MerchantID != merchantID {
+			continue
+		}
+		if since != nil && !c.UpdatedAt.After(*since) {
+			continue
 		}
 		result = append(result, *c)
 	}

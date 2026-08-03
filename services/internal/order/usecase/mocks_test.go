@@ -195,6 +195,26 @@ func (m *mockCustomerRepo) List(_ context.Context, merchantID int64, _ string) (
 	return result, nil
 }
 
+func (m *mockCustomerRepo) ListChangedSince(_ context.Context, merchantID int64, since *time.Time) ([]domain.Customer, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	var result []domain.Customer
+	for _, c := range m.customers {
+		if c.MerchantID != merchantID {
+			continue
+		}
+		if since != nil && !c.UpdatedAt.After(*since) {
+			continue
+		}
+		result = append(result, *c)
+	}
+	if result == nil {
+		return []domain.Customer{}, nil
+	}
+	return result, nil
+}
+
 func (m *mockCustomerRepo) Update(_ context.Context, c *domain.Customer) error {
 	if m.err != nil {
 		return m.err

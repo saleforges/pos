@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/saleforge/pos/services/internal/order/domain"
@@ -44,6 +45,25 @@ func (r *CustomerRepository) List(ctx context.Context, merchantID int64, search 
 		query += ` AND (LOWER(name) LIKE $2 OR LOWER(COALESCE(phone,'')) LIKE $2)`
 	}
 	query += ` ORDER BY name`
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanCustomers(rows)
+}
+
+// ListChangedSince returns customers updated after the given time — the
+// incremental payload for mobile customer sync.
+func (r *CustomerRepository) ListChangedSince(ctx context.Context, merchantID int64, since *time.Time) ([]domain.Customer, error) {
+	query := `SELECT ` + customerCols + ` FROM customers WHERE merchant_id = $1`
+	args := []interface{}{merchantID}
+	if since != nil {
+		query += ` AND updated_at > $2`
+		args = append(args, *since)
+	}
+	query += ` ORDER BY id`
 
 	rows, err := r.pool.Query(ctx, query, args...)
 	if err != nil {

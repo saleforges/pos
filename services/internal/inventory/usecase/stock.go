@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"time"
 
 	"github.com/saleforge/pos/services/internal/inventory/domain"
 )
@@ -13,6 +14,12 @@ type StockUsecase interface {
 	Update(ctx context.Context, params UpdateStockParams) (*domain.Stock, error)
 	Deduct(ctx context.Context, params AdjustStockParams) error
 	Restore(ctx context.Context, params AdjustStockParams) error
+	Sync(ctx context.Context, merchantID int64, lastSync *time.Time) (*StockSyncResult, error)
+}
+
+type StockSyncResult struct {
+	Stocks    []domain.Stock
+	SyncToken string
 }
 
 type CreateStockParams struct {

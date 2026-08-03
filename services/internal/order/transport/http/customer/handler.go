@@ -3,6 +3,7 @@ package customer
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/order/domain"
@@ -102,6 +103,25 @@ func (h *Handler) Delete(c echo.Context) error {
 		return mapError(c, err)
 	}
 	return httputil.WriteJSON(c, http.StatusOK, map[string]string{"message": "customer deleted"})
+}
+
+func (h *Handler) Sync(c echo.Context) error {
+	merchantID := httputil.GetMerchantID(c)
+
+	var lastSync *time.Time
+	if raw := c.QueryParam("lastSync"); raw != "" {
+		t, err := time.Parse(time.RFC3339Nano, raw)
+		if err != nil {
+			return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+		}
+		lastSync = &t
+	}
+
+	result, err := h.uc.Sync(c.Request().Context(), merchantID, lastSync)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, result)
 }
 
 func mapError(c echo.Context, err error) error {

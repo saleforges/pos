@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"time"
 
 	"github.com/saleforge/pos/services/internal/inventory/domain"
 	"github.com/saleforge/pos/services/internal/inventory/port/repository"
@@ -46,6 +47,26 @@ func (m *mockStockRepo) List(_ context.Context, merchantID int64) ([]domain.Stoc
 		if s.MerchantID == merchantID {
 			result = append(result, *s)
 		}
+	}
+	if result == nil {
+		return []domain.Stock{}, nil
+	}
+	return result, nil
+}
+
+func (m *mockStockRepo) ListChangedSince(_ context.Context, merchantID int64, since *time.Time) ([]domain.Stock, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	var result []domain.Stock
+	for _, s := range m.stocks {
+		if s.MerchantID != merchantID {
+			continue
+		}
+		if since != nil && !s.UpdatedAt.After(*since) {
+			continue
+		}
+		result = append(result, *s)
 	}
 	if result == nil {
 		return []domain.Stock{}, nil

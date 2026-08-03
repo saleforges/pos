@@ -138,4 +138,19 @@ func (uc *stockUsecase) expandComponents(ctx context.Context, merchantID int64, 
 	return result, nil
 }
 
+func (uc *stockUsecase) Sync(ctx context.Context, merchantID int64, lastSync *time.Time) (*StockSyncResult, error) {
+	stocks, err := uc.repo.ListChangedSince(ctx, merchantID, lastSync)
+	if err != nil {
+		return nil, err
+	}
+	if stocks == nil {
+		stocks = []domain.Stock{}
+	}
+	// Server time becomes the next sync token.
+	return &StockSyncResult{
+		Stocks:    stocks,
+		SyncToken: time.Now().UTC().Format(time.RFC3339Nano),
+	}, nil
+}
+
 var _ StockUsecase = (*stockUsecase)(nil)

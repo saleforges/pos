@@ -62,6 +62,26 @@ func (r *StockRepository) List(_ context.Context, merchantID int64) ([]domain.St
 	return result, nil
 }
 
+func (r *StockRepository) ListChangedSince(_ context.Context, merchantID int64, since *time.Time) ([]domain.Stock, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var result []domain.Stock
+	for _, s := range r.stocks {
+		if s.MerchantID != merchantID {
+			continue
+		}
+		if since != nil && !s.UpdatedAt.After(*since) {
+			continue
+		}
+		result = append(result, *s)
+	}
+	if result == nil {
+		return []domain.Stock{}, nil
+	}
+	return result, nil
+}
+
 func (r *StockRepository) Update(_ context.Context, stock *domain.Stock) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

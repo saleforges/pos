@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/inventory/domain"
@@ -52,6 +53,10 @@ func (m *mockStockSvc) Update(ctx context.Context, p usecase.UpdateStockParams) 
 func (m *mockStockSvc) Deduct(context.Context, usecase.AdjustStockParams) error { return nil }
 
 func (m *mockStockSvc) Restore(context.Context, usecase.AdjustStockParams) error { return nil }
+
+func (m *mockStockSvc) Sync(context.Context, int64, *time.Time) (*usecase.StockSyncResult, error) {
+	return &usecase.StockSyncResult{Stocks: []domain.Stock{}, SyncToken: "2026-08-03T00:00:00Z"}, nil
+}
 
 func withMerchant(c echo.Context) echo.Context {
 	c.Set(httputil.ContextKeyMerchantID, int64(1))
