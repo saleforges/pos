@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
       alias: {
         '@': '/src',
       },
+      dedupe: ['react', 'react-dom'], // Force Vite to use the root installation for these packages
     },
     server: {
       proxy: {

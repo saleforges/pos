@@ -1,25 +1,29 @@
 import { LogOut, User, Store, ChevronDown } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import type { Locale } from '@pos/i18n';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-
-const PAGE_TITLES: Record<string, string> = {
-  dashboard: 'Dashboard',
-  orders: 'Orders',
-  products: 'Products',
-  staff: 'Staff',
-  roles: 'Roles',
-  merchants: 'Merchants',
-  settings: 'Settings',
-};
+import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 
 export function Header() {
   const { user, contexts, activeContext, logout } = useAuth();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname.split('/')[1];
-  const title = PAGE_TITLES[currentPath] ?? 'Dashboard';
+  const titles: Record<string, string> = {
+    dashboard: t('pages.dashboard'),
+    orders: t('pages.orders'),
+    products: t('pages.products'),
+    staff: t('pages.staff'),
+    roles: t('pages.roles'),
+    merchants: t('pages.merchants'),
+    settings: t('pages.settings'),
+  };
+  const title = titles[currentPath] ?? t('pages.dashboard');
 
   const showContextSwitch = contexts.length > 1;
+  const locale = (i18n.resolvedLanguage ?? i18n.language) as Locale;
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-neutral-200 bg-white px-6">
@@ -38,12 +42,13 @@ export function Header() {
             <span>{activeContext.merchant.name}</span>
           </div>
         )}
+        <LanguageSwitcher locale={locale} />
         {showContextSwitch && (
           <button
             onClick={() => navigate('/select-branch')}
             className="flex items-center gap-1 rounded-md border border-neutral-200 px-3 py-1.5 text-sm text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
           >
-            Switch branch
+            {t('common.switchBranch')}
             <ChevronDown size={14} />
           </button>
         )}
@@ -58,7 +63,7 @@ export function Header() {
           className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900"
         >
           <LogOut size={16} />
-          Log out
+          {t('common.logout')}
         </button>
       </div>
     </header>
