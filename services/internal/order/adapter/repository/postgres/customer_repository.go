@@ -68,10 +68,14 @@ func (r *CustomerRepository) Delete(ctx context.Context, id int64, merchantID in
 
 func scanCustomer(row pgx.Row) (*domain.Customer, error) {
 	var c domain.Customer
-	err := row.Scan(&c.ID, &c.MerchantID, &c.Name, &c.Phone, &c.Address, &c.Note, &c.CreatedAt, &c.UpdatedAt)
+	var phone, address, note *string
+	err := row.Scan(&c.ID, &c.MerchantID, &c.Name, &phone, &address, &note, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
+	c.Phone = deref(phone)
+	c.Address = deref(address)
+	c.Note = deref(note)
 	return &c, nil
 }
 
@@ -79,10 +83,21 @@ func scanCustomers(rows pgx.Rows) ([]domain.Customer, error) {
 	var result []domain.Customer
 	for rows.Next() {
 		var c domain.Customer
-		if err := rows.Scan(&c.ID, &c.MerchantID, &c.Name, &c.Phone, &c.Address, &c.Note, &c.CreatedAt, &c.UpdatedAt); err != nil {
+		var phone, address, note *string
+		if err := rows.Scan(&c.ID, &c.MerchantID, &c.Name, &phone, &address, &note, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, err
 		}
+		c.Phone = deref(phone)
+		c.Address = deref(address)
+		c.Note = deref(note)
 		result = append(result, c)
 	}
 	return result, rows.Err()
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

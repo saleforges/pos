@@ -188,11 +188,13 @@ func (r *OrderRepository) loadPayments(ctx context.Context, order *domain.Order)
 
 func scanOrder(row pgx.Row) (*domain.Order, error) {
 	var o domain.Order
+	var note *string
 	err := row.Scan(&o.ID, &o.MerchantID, &o.BranchID, &o.CreatedBy, &o.CustomerID, &o.Status,
-		&o.Subtotal, &o.Discount, &o.Tax, &o.Total, &o.PaidAmount, &o.DueDate, &o.Note, &o.CreatedAt, &o.UpdatedAt)
+		&o.Subtotal, &o.Discount, &o.Tax, &o.Total, &o.PaidAmount, &o.DueDate, &note, &o.CreatedAt, &o.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
+	o.Note = deref(note)
 	return &o, nil
 }
 
@@ -200,10 +202,12 @@ func scanOrders(rows pgx.Rows) ([]domain.Order, error) {
 	var result []domain.Order
 	for rows.Next() {
 		var o domain.Order
+		var note *string
 		if err := rows.Scan(&o.ID, &o.MerchantID, &o.BranchID, &o.CreatedBy, &o.CustomerID, &o.Status,
-			&o.Subtotal, &o.Discount, &o.Tax, &o.Total, &o.PaidAmount, &o.DueDate, &o.Note, &o.CreatedAt, &o.UpdatedAt); err != nil {
+			&o.Subtotal, &o.Discount, &o.Tax, &o.Total, &o.PaidAmount, &o.DueDate, &note, &o.CreatedAt, &o.UpdatedAt); err != nil {
 			return nil, err
 		}
+		o.Note = deref(note)
 		result = append(result, o)
 	}
 	return result, rows.Err()
