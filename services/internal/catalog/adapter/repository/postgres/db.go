@@ -125,6 +125,13 @@ func RunMigrations(databaseURL string) error {
 		);
 		CREATE UNIQUE INDEX IF NOT EXISTS idx_product_item_barcodes_unique ON product_item_barcodes(barcode);
 		CREATE INDEX IF NOT EXISTS idx_product_item_barcodes_item ON product_item_barcodes(product_item_id);
+
+		-- Heal pre-existing tables created by older migrations that lack
+		-- soft-delete and image columns.
+		ALTER TABLE categories ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+		ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;
+		ALTER TABLE products ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+		ALTER TABLE product_items ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 		`
 		if _, err := pool.Exec(ctx, migration); err != nil {
 			return fmt.Errorf("catalog init migration: %w", err)
