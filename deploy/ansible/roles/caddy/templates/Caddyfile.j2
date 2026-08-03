@@ -20,6 +20,12 @@
         rewrite * /api{path}
         reverse_proxy catalog-service:8082
     }
+
+    @inventory path /v1/stocks* /v1/product-items*
+    handle @inventory {
+        rewrite * /api{path}
+        reverse_proxy inventory-service:8083
+    }
 }
 
 {{ caddy_minio_domain }} {

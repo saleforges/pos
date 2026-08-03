@@ -19,7 +19,7 @@ localhost {
         reverse_proxy localhost:{env.SALES_PORT}
     }
 
-    @inventory path /api/v1/inventory/*
+    @inventory path /api/v1/stocks* /api/v1/product-items*
     handle @inventory {
         reverse_proxy localhost:{env.INVENTORY_PORT}
     }
