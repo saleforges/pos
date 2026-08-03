@@ -17,8 +17,8 @@ type CustomerUsecase interface {
 }
 
 type CustomerSyncResult struct {
-	Customers []domain.Customer
-	SyncToken string
+	Customers []domain.Customer `json:"customers"`
+	SyncToken string            `json:"syncToken"`
 }
 
 type CreateCustomerParams struct {

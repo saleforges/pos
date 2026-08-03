@@ -18,8 +18,8 @@ type StockUsecase interface {
 }
 
 type StockSyncResult struct {
-	Stocks    []domain.Stock
-	SyncToken string
+	Stocks    []domain.Stock `json:"stocks"`
+	SyncToken string         `json:"syncToken"`
 }
 
 type CreateStockParams struct {
