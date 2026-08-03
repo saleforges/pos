@@ -285,7 +285,7 @@ func TestStockUsecase_ComponentConsumption(t *testing.T) {
 			MerchantID:    1,
 			ProductItemID: 1,
 			Items: []domain.ProductComponentItem{
-				{ComponentProductItemID: 2, Quantity: 2, UnitID: 1},
+				{ComponentProductItemID: 2, Quantity: 2, UnitID: 1, ConversionFactor: 1},
 			},
 		})
 		return uc, repo, compRepo
@@ -358,6 +358,79 @@ func TestStockUsecase_ComponentConsumption(t *testing.T) {
 		}
 		if raw.Available != 20 {
 			t.Errorf("expected raw material stock back to 20, got %d", raw.Available)
+		}
+	})
+}
+
+func TestStockUsecase_ConversionFactor(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("component quantity converted to stock unit", func(t *testing.T) {
+		repo := &mockStockRepo{}
+		compRepo := &mockComponentRepo{}
+		uc := NewStockUsecase(repo, repo, compRepo)
+		// stock: item 1 (produk jadi) = 10, item 2 (gula) = 30000 gram
+		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 10})
+		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 2, Available: 30000})
+		// 1x item 1 = 0.5 kg gula, factor 1000 → 500 gram per item
+		compRepo.Create(ctx, &domain.ProductComponent{
+			MerchantID:    1,
+			ProductItemID: 1,
+			Items: []domain.ProductComponentItem{
+				{ComponentProductItemID: 2, Quantity: 0.5, UnitID: 3, ConversionFactor: 1000},
+			},
+		})
+
+		err := uc.Deduct(ctx, AdjustStockParams{
+			MerchantID: 1, BranchID: 1, ReferenceType: "order", ReferenceID: 42,
+			Items: []AdjustStockItem{{ProductItemID: 1, Quantity: 2}},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		raw, _ := repo.GetByID(ctx, 2, 1)
+		// 2 x 0.5 kg x 1000 = 1000 gram deducted
+		if raw.Available != 29000 {
+			t.Errorf("expected raw stock 29000 (30000-1000), got %d", raw.Available)
+		}
+	})
+
+	t.Run("shared raw material merged after conversion", func(t *testing.T) {
+		repo := &mockStockRepo{}
+		compRepo := &mockComponentRepo{}
+		uc := NewStockUsecase(repo, repo, compRepo)
+		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 10})
+		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 2, Available: 30000})
+		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 3, Available: 10})
+		// both items 1 and 3 consume item 2: 0.5 kg (factor 1000) each
+		compRepo.Create(ctx, &domain.ProductComponent{
+			MerchantID: 1, ProductItemID: 1,
+			Items: []domain.ProductComponentItem{
+				{ComponentProductItemID: 2, Quantity: 0.5, UnitID: 3, ConversionFactor: 1000},
+			},
+		})
+		compRepo.Create(ctx, &domain.ProductComponent{
+			MerchantID: 1, ProductItemID: 3,
+			Items: []domain.ProductComponentItem{
+				{ComponentProductItemID: 2, Quantity: 0.5, UnitID: 3, ConversionFactor: 1000},
+			},
+		})
+
+		err := uc.Deduct(ctx, AdjustStockParams{
+			MerchantID: 1, BranchID: 1, ReferenceType: "order", ReferenceID: 42,
+			Items: []AdjustStockItem{
+				{ProductItemID: 1, Quantity: 1},
+				{ProductItemID: 3, Quantity: 1},
+			},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		raw, _ := repo.GetByID(ctx, 2, 1)
+		// 500 + 500 = 1000 gram, single merged deduction
+		if raw.Available != 29000 {
+			t.Errorf("expected raw stock 29000 (30000-1000), got %d", raw.Available)
 		}
 	})
 }

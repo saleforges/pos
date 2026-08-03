@@ -32,12 +32,16 @@ func (pc *ProductComponent) Validate() error {
 }
 
 type ProductComponentItem struct {
-	ID                     int64     `json:"id"`
-	ProductComponentID     int64     `json:"productComponentId"`
-	ComponentProductItemID int64     `json:"componentProductItemId"`
-	Quantity               float64   `json:"quantity"`
-	UnitID                 int64     `json:"unitId"`
-	CreatedAt              time.Time `json:"createdAt"`
+	ID                     int64   `json:"id"`
+	ProductComponentID     int64   `json:"productComponentId"`
+	ComponentProductItemID int64   `json:"componentProductItemId"`
+	Quantity               float64 `json:"quantity"`
+	UnitID                 int64   `json:"unitId"`
+	// ConversionFactor converts the component quantity into the raw
+	// material's stock unit. E.g. quantity=0.5 (kg) with factor=1000 means
+	// 500 stock units (grams) are consumed per unit of the parent item.
+	ConversionFactor float64   `json:"conversionFactor"`
+	CreatedAt        time.Time `json:"createdAt"`
 }
 
 func (pci *ProductComponentItem) Validate() error {
@@ -48,6 +52,9 @@ func (pci *ProductComponentItem) Validate() error {
 		return ErrInvalidProductComponentItem
 	}
 	if pci.UnitID == 0 {
+		return ErrInvalidProductComponentItem
+	}
+	if pci.ConversionFactor <= 0 {
 		return ErrInvalidProductComponentItem
 	}
 	return nil

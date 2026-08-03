@@ -24,6 +24,7 @@ type CreateProductComponentItemParams struct {
 	ComponentProductItemID int64
 	Quantity               float64
 	UnitID                 int64
+	ConversionFactor       float64
 }
 
 type UpdateProductComponentParams struct {

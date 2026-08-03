@@ -99,6 +99,7 @@ func RunMigrations(databaseURL string) error {
 			component_product_item_id BIGINT       NOT NULL,
 			quantity                  NUMERIC(12,4) NOT NULL,
 			unit_id                   BIGINT       NOT NULL,
+			conversion_factor         NUMERIC(14,4) NOT NULL DEFAULT 1,
 			created_at                TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 		);
 		CREATE INDEX IF NOT EXISTS idx_component_items_component ON product_component_items(product_component_id);
@@ -106,6 +107,15 @@ func RunMigrations(databaseURL string) error {
 		if _, err := pool.Exec(ctx, migration); err != nil {
 			return fmt.Errorf("inventory init migration: %w", err)
 		}
+	}
+
+	// Heal migrations — run on every startup so existing deployments get
+	// new columns without a full re-init. Idempotent by design.
+	heal := `
+	ALTER TABLE product_component_items ADD COLUMN IF NOT EXISTS conversion_factor NUMERIC(14,4) NOT NULL DEFAULT 1;
+	`
+	if _, err := pool.Exec(ctx, heal); err != nil {
+		return fmt.Errorf("inventory heal migration: %w", err)
 	}
 
 	return nil

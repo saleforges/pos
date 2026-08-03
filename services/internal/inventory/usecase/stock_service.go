@@ -93,8 +93,10 @@ func (uc *stockUsecase) Restore(ctx context.Context, params AdjustStockParams) e
 // expandComponents resolves product components for every sold item and
 // merges component raw-material quantities so the adjustment batch is flat.
 // E.g. selling 2x Es Teh (component: 1x Gula each) produces a batch of
-// [EsTeh:2, Gula:2]. Items sharing a raw material are summed before
-// rounding, so fractional component quantities (e.g. 0.5 kg) stay accurate.
+// [EsTeh:2, Gula:2]. Each component quantity is converted to the raw
+// material's stock unit via its conversion factor BEFORE merging, so items
+// sharing a raw material in different units (0.5 kg + 2 packs) sum
+// correctly. Fractional results are rounded up to never undersell.
 func (uc *stockUsecase) expandComponents(ctx context.Context, merchantID int64, items []AdjustStockItem) ([]repository.StockAdjustmentItem, error) {
 	merged := make(map[int64]float64, len(items))
 	for _, it := range items {
@@ -108,7 +110,7 @@ func (uc *stockUsecase) expandComponents(ctx context.Context, merchantID int64, 
 			return nil, err
 		}
 		for _, ci := range comp.Items {
-			merged[ci.ComponentProductItemID] += ci.Quantity * float64(it.Quantity)
+			merged[ci.ComponentProductItemID] += ci.Quantity * ci.ConversionFactor * float64(it.Quantity)
 		}
 	}
 
