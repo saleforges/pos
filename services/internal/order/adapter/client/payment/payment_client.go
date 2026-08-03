@@ -95,9 +95,15 @@ func (c *client) CreatePayment(ctx context.Context, params repository.CreatePaym
 		return nil, domain.ErrPaymentGatewayUnavailable
 	}
 
-	var result repository.PaymentResult
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	// Payment service wraps responses in {message, data}.
+	var envelope struct {
+		Data repository.PaymentResult `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
 		return nil, domain.ErrPaymentGatewayUnavailable
 	}
-	return &result, nil
+	if envelope.Data.PaymentURL == "" {
+		return nil, domain.ErrPaymentGatewayUnavailable
+	}
+	return &envelope.Data, nil
 }
