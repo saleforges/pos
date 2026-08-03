@@ -16,12 +16,13 @@ import (
 )
 
 type mockOrderSvc struct {
-	createFn  func(context.Context, usecase.CreateOrderParams) (*domain.Order, error)
-	getFn     func(context.Context, int64, int64) (*domain.Order, error)
-	listFn    func(context.Context, int64, *int64, *domain.OrderStatus, *domain.PaymentStatus) ([]domain.Order, error)
-	updateFn  func(context.Context, usecase.UpdateOrderParams) (*domain.Order, error)
-	cancelFn  func(context.Context, int64, int64) (*domain.Order, error)
-	paymentFn func(context.Context, usecase.AddPaymentParams) (*domain.Order, error)
+	createFn      func(context.Context, usecase.CreateOrderParams) (*domain.Order, error)
+	getFn         func(context.Context, int64, int64) (*domain.Order, error)
+	listFn        func(context.Context, int64, *int64, *domain.OrderStatus, *domain.PaymentStatus) ([]domain.Order, error)
+	updateFn      func(context.Context, usecase.UpdateOrderParams) (*domain.Order, error)
+	cancelFn      func(context.Context, int64, int64) (*domain.Order, error)
+	paymentFn     func(context.Context, usecase.AddPaymentParams) (*domain.Order, error)
+	paymentLinkFn func(context.Context, int64, int64) (*usecase.PaymentLinkResult, error)
 }
 
 func (m *mockOrderSvc) Create(ctx context.Context, p usecase.CreateOrderParams) (*domain.Order, error) {
@@ -67,8 +68,17 @@ func (m *mockOrderSvc) AddPayment(ctx context.Context, p usecase.AddPaymentParam
 	if m.paymentFn != nil {
 		return m.paymentFn(ctx, p)
 	}
-	return &domain.Order{ID: p.OrderID, MerchantID: p.MerchantID, BranchID: 1, Status: domain.OrderStatusCompleted, PaymentStatus: domain.PaymentStatusPaid, Total: 30000, PaidAmount: p.Amount}, nil
+	return &domain.Order{ID: p.OrderID, MerchantID: p.MerchantID, Status: domain.OrderStatusCompleted, Total: 30000, PaidAmount: p.Amount}, nil
 }
+
+func (m *mockOrderSvc) CreatePaymentLink(ctx context.Context, id int64, merchantID int64) (*usecase.PaymentLinkResult, error) {
+	if m.paymentLinkFn != nil {
+		return m.paymentLinkFn(ctx, id, merchantID)
+	}
+	return &usecase.PaymentLinkResult{OrderID: id, PaymentURL: "https://sandbox.ipaymu.com/pay/1"}, nil
+}
+
+func (m *mockOrderSvc) NotifyPaid(context.Context, usecase.NotifyPaidParams) error { return nil }
 
 func withContext(c echo.Context) echo.Context {
 	c.Set(httputil.ContextKeyMerchantID, int64(1))

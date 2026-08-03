@@ -201,6 +201,20 @@ func (h *Handler) AddPayment(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, result)
 }
 
+func (h *Handler) CreatePaymentLink(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+
+	merchantID := httputil.GetMerchantID(c)
+	result, err := h.uc.CreatePaymentLink(c.Request().Context(), id, merchantID)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, result)
+}
+
 func getUserID(c echo.Context) int64 {
 	id, _ := c.Get(middleware.ContextKeyUserID).(int64)
 	return id
@@ -215,6 +229,12 @@ func mapError(c echo.Context, err error) error {
 	case domain.ErrInvalidTransition:
 		return httputil.WriteError(c, http.StatusConflict, err)
 	case domain.ErrPaymentExceedsTotal, domain.ErrInsufficientStock:
+		return httputil.WriteError(c, http.StatusBadRequest, err)
+	case domain.ErrPaymentGatewayNotConfigured:
+		return httputil.WriteError(c, http.StatusServiceUnavailable, err)
+	case domain.ErrPaymentGatewayUnavailable, domain.ErrPaymentGatewayError:
+		return httputil.WriteError(c, http.StatusBadGateway, err)
+	case domain.ErrInvalidCallback:
 		return httputil.WriteError(c, http.StatusBadRequest, err)
 	case domain.ErrOrderStockNotFound:
 		return httputil.WriteError(c, http.StatusNotFound, err)

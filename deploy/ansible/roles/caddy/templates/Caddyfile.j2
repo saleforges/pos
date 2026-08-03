@@ -27,6 +27,12 @@
         reverse_proxy order-service:8084
     }
 
+    @payment path /v1/payments*
+    handle @payment {
+        rewrite * /api{path}
+        reverse_proxy payment-service:8085
+    }
+
     @catalog path /v1/categories* /v1/products* /v1/product-items* /v1/units* /v1/images* /v1/sync*
     handle @catalog {
         rewrite * /api{path}

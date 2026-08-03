@@ -29,6 +29,11 @@ localhost {
         reverse_proxy localhost:{env.ORDER_PORT}
     }
 
+    @payment path /api/v1/payments*
+    handle @payment {
+        reverse_proxy localhost:{env.PAYMENT_PORT}
+    }
+
     @backoffice path /*
     handle @backoffice {
         reverse_proxy localhost:5173

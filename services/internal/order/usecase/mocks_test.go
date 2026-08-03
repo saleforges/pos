@@ -15,6 +15,23 @@ type mockInventoryClient struct {
 	restored   []repository.StockAdjustmentItem
 }
 
+type mockPaymentClient struct {
+	result *repository.PaymentResult
+	err    error
+	called bool
+}
+
+func (m *mockPaymentClient) CreatePayment(_ context.Context, _ repository.CreatePaymentParams) (*repository.PaymentResult, error) {
+	m.called = true
+	if m.err != nil {
+		return nil, m.err
+	}
+	if m.result != nil {
+		return m.result, nil
+	}
+	return &repository.PaymentResult{OrderID: 1, SessionID: "ses-1", PaymentURL: "https://sandbox.ipaymu.com/pay/1"}, nil
+}
+
 func (m *mockInventoryClient) DeductStock(_ context.Context, _ int64, _ int64, _ string, _ int64, items []repository.StockAdjustmentItem) error {
 	if m.deductErr != nil {
 		return m.deductErr

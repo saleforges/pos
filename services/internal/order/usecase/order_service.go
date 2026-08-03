@@ -12,10 +12,11 @@ type orderUsecase struct {
 	orderRepo    repository.OrderRepository
 	customerRepo repository.CustomerRepository
 	inventory    repository.InventoryClient
+	payment      repository.PaymentClient
 }
 
-func NewOrderUsecase(orderRepo repository.OrderRepository, customerRepo repository.CustomerRepository, inventory repository.InventoryClient) OrderUsecase {
-	return &orderUsecase{orderRepo: orderRepo, customerRepo: customerRepo, inventory: inventory}
+func NewOrderUsecase(orderRepo repository.OrderRepository, customerRepo repository.CustomerRepository, inventory repository.InventoryClient, payment repository.PaymentClient) OrderUsecase {
+	return &orderUsecase{orderRepo: orderRepo, customerRepo: customerRepo, inventory: inventory, payment: payment}
 }
 
 func (uc *orderUsecase) Create(ctx context.Context, params CreateOrderParams) (*domain.Order, error) {
@@ -136,6 +137,74 @@ func (uc *orderUsecase) restoreOrder(ctx context.Context, order *domain.Order) e
 		items[i] = repository.StockAdjustmentItem{ProductItemID: it.ProductItemID, Quantity: int64(it.Quantity)}
 	}
 	return uc.inventory.RestoreStock(ctx, order.MerchantID, order.BranchID, "order", order.ID, items)
+}
+
+// CreatePaymentLink creates a gateway payment via the payment service and
+// returns the redirect URL for the buyer.
+func (uc *orderUsecase) CreatePaymentLink(ctx context.Context, id int64, merchantID int64) (*PaymentLinkResult, error) {
+	order, err := uc.orderRepo.GetByID(ctx, id, merchantID)
+	if err != nil {
+		return nil, err
+	}
+	if order.Status != domain.OrderStatusCompleted {
+		return nil, domain.ErrInvalidTransition
+	}
+	if order.PaidAmount >= order.Total {
+		return nil, domain.ErrPaymentExceedsTotal
+	}
+
+	params := repository.CreatePaymentParams{
+		MerchantID: merchantID,
+		OrderID:    order.ID,
+		Amount:     order.Total - order.PaidAmount,
+		Items:      make([]repository.CreatePaymentItem, len(order.Items)),
+	}
+	for i, it := range order.Items {
+		params.Items[i] = repository.CreatePaymentItem{
+			ItemName:  it.ItemName,
+			Quantity:  it.Quantity,
+			UnitPrice: it.UnitPrice,
+		}
+	}
+	// Buyer info from customer when attached
+	if order.CustomerID != nil {
+		if c, err := uc.customerRepo.GetByID(ctx, *order.CustomerID, merchantID); err == nil {
+			params.BuyerName = c.Name
+			params.BuyerPhone = c.Phone
+		}
+	}
+
+	result, err := uc.payment.CreatePayment(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	return &PaymentLinkResult{OrderID: order.ID, PaymentURL: result.PaymentURL, SessionID: result.SessionID}, nil
+}
+
+// NotifyPaid is called by the payment service when the gateway confirms a
+// successful payment. Idempotent: already-settled orders are a no-op.
+func (uc *orderUsecase) NotifyPaid(ctx context.Context, params NotifyPaidParams) error {
+	order, err := uc.orderRepo.GetByID(ctx, params.OrderID, params.MerchantID)
+	if err != nil {
+		return err
+	}
+	if order.PaidAmount >= order.Total {
+		return nil
+	}
+
+	amount := params.Amount
+	remaining := order.Total - order.PaidAmount
+	if amount > remaining {
+		amount = remaining
+	}
+
+	return uc.orderRepo.AddPayment(ctx, order.ID, order.MerchantID, &domain.PaymentRecord{
+		Amount:    amount,
+		Method:    domain.PaymentMethod(params.Method),
+		CreatedBy: 0, // system (gateway callback via payment service)
+		PaidAt:    time.Now().UTC(),
+		CreatedAt: time.Now().UTC(),
+	})
 }
 
 func (uc *orderUsecase) Update(ctx context.Context, params UpdateOrderParams) (*domain.Order, error) {

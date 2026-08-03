@@ -13,7 +13,7 @@ func TestOrderUsecase_Create(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("success with totals", func(t *testing.T) {
-		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 
 		customerID := int64(1)
 		order, err := uc.Create(ctx, CreateOrderParams{
@@ -56,7 +56,7 @@ func TestOrderUsecase_Create(t *testing.T) {
 	})
 
 	t.Run("empty items returns error", func(t *testing.T) {
-		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		_, err := uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5, Items: []CreateOrderItemParams{},
 		})
@@ -66,7 +66,7 @@ func TestOrderUsecase_Create(t *testing.T) {
 	})
 
 	t.Run("missing branch returns error", func(t *testing.T) {
-		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		_, err := uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, CreatedBy: 5,
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 1000, Quantity: 1}},
@@ -77,7 +77,7 @@ func TestOrderUsecase_Create(t *testing.T) {
 	})
 
 	t.Run("zero quantity item returns error", func(t *testing.T) {
-		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		_, err := uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 1000, Quantity: 0}},
@@ -90,7 +90,7 @@ func TestOrderUsecase_Create(t *testing.T) {
 	t.Run("customer from another merchant rejected", func(t *testing.T) {
 		repo := &mockCustomerRepo{}
 		repo.Create(ctx, &domain.Customer{MerchantID: 2, Name: "Lain"})
-		uc := NewOrderUsecase(&mockOrderRepo{}, repo, &mockInventoryClient{})
+		uc := NewOrderUsecase(&mockOrderRepo{}, repo, &mockInventoryClient{}, &mockPaymentClient{})
 
 		customerID := int64(1)
 		_, err := uc.Create(ctx, CreateOrderParams{
@@ -104,7 +104,7 @@ func TestOrderUsecase_Create(t *testing.T) {
 
 	t.Run("credit sale without due date defaults to +7 days", func(t *testing.T) {
 		repo := &mockOrderRepo{}
-		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 
 		customerID := int64(1)
 		order, err := uc.Create(ctx, CreateOrderParams{
@@ -124,7 +124,7 @@ func TestOrderUsecase_Create(t *testing.T) {
 	})
 
 	t.Run("walk-in sale without due date stays nil", func(t *testing.T) {
-		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		order, err := uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 1000, Quantity: 1}},
@@ -138,7 +138,7 @@ func TestOrderUsecase_Create(t *testing.T) {
 	})
 
 	t.Run("explicit due date preserved", func(t *testing.T) {
-		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		due := time.Now().UTC().AddDate(0, 0, 30)
 		customerID := int64(1)
 		order, err := uc.Create(ctx, CreateOrderParams{
@@ -160,7 +160,7 @@ func TestOrderUsecase_Update(t *testing.T) {
 
 	t.Run("updates due date and note", func(t *testing.T) {
 		repo := &mockOrderRepo{}
-		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 1000, Quantity: 1}},
@@ -182,7 +182,7 @@ func TestOrderUsecase_Update(t *testing.T) {
 
 	t.Run("partial update keeps other fields", func(t *testing.T) {
 		repo := &mockOrderRepo{}
-		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5, Note: "Asli",
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 1000, Quantity: 1}},
@@ -203,7 +203,7 @@ func TestOrderUsecase_Update(t *testing.T) {
 
 	t.Run("cancelled order cannot update", func(t *testing.T) {
 		repo := &mockOrderRepo{}
-		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 1000, Quantity: 1}},
@@ -224,7 +224,7 @@ func TestOrderUsecase_GetByID(t *testing.T) {
 
 	t.Run("returns order", func(t *testing.T) {
 		repo := &mockOrderRepo{}
-		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 1000, Quantity: 1}},
@@ -241,7 +241,7 @@ func TestOrderUsecase_GetByID(t *testing.T) {
 
 	t.Run("cross-merchant returns not found", func(t *testing.T) {
 		repo := &mockOrderRepo{}
-		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 1000, Quantity: 1}},
@@ -260,7 +260,7 @@ func TestOrderUsecase_List(t *testing.T) {
 
 	t.Run("filters by payment status", func(t *testing.T) {
 		repo := &mockOrderRepo{}
-		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 10000, Quantity: 1}},
@@ -286,7 +286,7 @@ func TestOrderUsecase_Cancel(t *testing.T) {
 
 	t.Run("cancel completed order", func(t *testing.T) {
 		repo := &mockOrderRepo{}
-		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 1000, Quantity: 1}},
@@ -302,7 +302,7 @@ func TestOrderUsecase_Cancel(t *testing.T) {
 	})
 
 	t.Run("cancel non-existent returns not found", func(t *testing.T) {
-		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		_, err := uc.Cancel(ctx, 999, 1)
 		if err != domain.ErrOrderNotFound {
 			t.Errorf("expected ErrOrderNotFound, got %v", err)
@@ -316,7 +316,7 @@ func TestOrderUsecase_AddPayment(t *testing.T) {
 
 	t.Run("full payment marks paid", func(t *testing.T) {
 		repo := &mockOrderRepo{}
-		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 10000, Quantity: 1}},
@@ -336,7 +336,7 @@ func TestOrderUsecase_AddPayment(t *testing.T) {
 
 	t.Run("partial payment marks partial", func(t *testing.T) {
 		repo := &mockOrderRepo{}
-		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 10000, Quantity: 1}},
@@ -353,7 +353,7 @@ func TestOrderUsecase_AddPayment(t *testing.T) {
 
 	t.Run("accumulates partial payments", func(t *testing.T) {
 		repo := &mockOrderRepo{}
-		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 10000, Quantity: 1}},
@@ -374,7 +374,7 @@ func TestOrderUsecase_AddPayment(t *testing.T) {
 
 	t.Run("payment exceeding balance rejected", func(t *testing.T) {
 		repo := &mockOrderRepo{}
-		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 10000, Quantity: 1}},
@@ -388,7 +388,7 @@ func TestOrderUsecase_AddPayment(t *testing.T) {
 
 	t.Run("zero amount rejected", func(t *testing.T) {
 		repo := &mockOrderRepo{}
-		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 10000, Quantity: 1}},
@@ -402,7 +402,7 @@ func TestOrderUsecase_AddPayment(t *testing.T) {
 
 	t.Run("invalid method rejected", func(t *testing.T) {
 		repo := &mockOrderRepo{}
-		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{}, &mockPaymentClient{})
 		uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 10000, Quantity: 1}},
@@ -421,7 +421,7 @@ func TestOrderUsecase_StockDeduction(t *testing.T) {
 
 	t.Run("create completed order deducts stock", func(t *testing.T) {
 		inv := &mockInventoryClient{}
-		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), inv)
+		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), inv, &mockPaymentClient{})
 
 		_, err := uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
@@ -444,7 +444,7 @@ func TestOrderUsecase_StockDeduction(t *testing.T) {
 	t.Run("insufficient stock cancels order and returns error", func(t *testing.T) {
 		repo := &mockOrderRepo{}
 		inv := &mockInventoryClient{deductErr: domain.ErrInsufficientStock}
-		uc := NewOrderUsecase(repo, newMockCustomerRepo(), inv)
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), inv, &mockPaymentClient{})
 
 		_, err := uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
@@ -462,7 +462,7 @@ func TestOrderUsecase_StockDeduction(t *testing.T) {
 
 	t.Run("cancel restores stock", func(t *testing.T) {
 		inv := &mockInventoryClient{}
-		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), inv)
+		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), inv, &mockPaymentClient{})
 		uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
 			Items: []CreateOrderItemParams{{ProductItemID: 35, ItemName: "Es Teh", UnitPrice: 15000, Quantity: 2}},
@@ -488,7 +488,7 @@ func TestOrderUsecase_Idempotency(t *testing.T) {
 	newUC := func() (OrderUsecase, *mockOrderRepo, *mockInventoryClient) {
 		repo := &mockOrderRepo{}
 		inv := &mockInventoryClient{}
-		uc := NewOrderUsecase(repo, newMockCustomerRepo(), inv)
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), inv, &mockPaymentClient{})
 		return uc, repo, inv
 	}
 

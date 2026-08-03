@@ -1,0 +1,78 @@
+package postgres
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/saleforge/pos/services/pkg/otel"
+)
+
+func Connect(ctx context.Context, databaseURL string) (*otel.TracedPool, error) {
+	pool, err := pgxpool.New(ctx, databaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("unable to connect to database: %w", err)
+	}
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("unable to ping database: %w", err)
+	}
+	return otel.NewTracedPool(pool), nil
+}
+
+func RunMigrations(databaseURL string) error {
+	ctx := context.Background()
+
+	pool, err := pgxpool.New(ctx, databaseURL)
+	if err != nil {
+		return fmt.Errorf("unable to connect for migrations: %w", err)
+	}
+	defer pool.Close()
+
+	schema := `
+	CREATE TABLE IF NOT EXISTS schema_migrations (
+		version BIGINT PRIMARY KEY,
+		dirty   BOOLEAN NOT NULL
+	);
+	`
+	if _, err := pool.Exec(ctx, schema); err != nil {
+		return fmt.Errorf("schema_migrations table: %w", err)
+	}
+
+	// Check if payment v300 migration is already applied.
+	// NOTE: schema_migrations is shared across services (IAM/merchant
+	// golang-migrate v1, catalog 1-7, inventory v100, order v200), so we
+	// check for our own version instead of the table being empty.
+	var v300exists bool
+	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = 300)`).Scan(&v300exists); err != nil {
+		return fmt.Errorf("check payment v300 migration: %w", err)
+	}
+
+	if !v300exists {
+		migration := `
+		INSERT INTO schema_migrations (version, dirty) VALUES (300, false);
+
+		CREATE TABLE IF NOT EXISTS payment_transactions (
+			id          BIGSERIAL    PRIMARY KEY,
+			merchant_id BIGINT       NOT NULL,
+			order_id    BIGINT       NOT NULL,
+			gateway     VARCHAR(20)  NOT NULL,
+			status      VARCHAR(20)  NOT NULL DEFAULT 'pending',
+			amount      NUMERIC(14,2) NOT NULL,
+			payment_url TEXT,
+			session_id  VARCHAR(100),
+			gateway_ref VARCHAR(100),
+			created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+			updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+		);
+		CREATE INDEX IF NOT EXISTS idx_payment_transactions_merchant ON payment_transactions(merchant_id);
+		CREATE INDEX IF NOT EXISTS idx_payment_transactions_order ON payment_transactions(order_id);
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_transactions_gateway_ref ON payment_transactions(gateway_ref) WHERE gateway_ref IS NOT NULL;
+		`
+		if _, err := pool.Exec(ctx, migration); err != nil {
+			return fmt.Errorf("payment init migration: %w", err)
+		}
+	}
+
+	return nil
+}

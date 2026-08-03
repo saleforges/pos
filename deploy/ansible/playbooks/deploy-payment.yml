@@ -1,0 +1,47 @@
+- name: Deploy Payment service
+  hosts: all
+  become: yes
+  vars_files:
+    - ../vars/vault.yml
+  vars:
+    ghcr_username: "{{ vault_ghcr_username | default('') }}"
+    ghcr_token: "{{ vault_ghcr_token | default('') }}"
+    db_url: "postgres://pos:{{ vault_postgres_password }}@postgres:5432/pos?sslmode=disable"
+    internal_api_key: "{{ vault_internal_api_key | default('dev-internal-key') }}"
+    order_base_url: "http://order-service:8084"
+    ipaymu_base_url: "{{ vault_ipaymu_base_url | default('https://sandbox.ipaymu.com') }}"
+    ipaymu_va: "{{ vault_ipaymu_va | default('') }}"
+    ipaymu_api_key: "{{ vault_ipaymu_api_key | default('') }}"
+    ipaymu_return_url: "{{ vault_ipaymu_return_url | default('') }}"
+    ipaymu_cancel_url: "{{ vault_ipaymu_cancel_url | default('') }}"
+    ipaymu_notify_url: "{{ vault_ipaymu_notify_url | default('') }}"
+  tasks:
+    - name: Login to GHCR (fresh)
+      shell: |
+        docker logout ghcr.io 2>/dev/null || true
+        echo "{{ ghcr_token }}" | docker login ghcr.io -u "{{ ghcr_username }}" --password-stdin
+      when: ghcr_username != '' and ghcr_token != ''
+      no_log: true
+
+    - name: Pull and run Payment container
+      community.docker.docker_container:
+        name: payment-service
+        image: ghcr.io/saleforges/pos/payment-service:{{ image_tag }}
+        state: started
+        restart_policy: always
+        pull: true
+        env:
+          PAYMENT_PORT: ":8085"
+          DATABASE_URL: "{{ db_url }}"
+          INTERNAL_API_KEY: "{{ internal_api_key }}"
+          ORDER_BASE_URL: "{{ order_base_url }}"
+          IPAYMU_BASE_URL: "{{ ipaymu_base_url }}"
+          IPAYMU_VA: "{{ ipaymu_va }}"
+          IPAYMU_API_KEY: "{{ ipaymu_api_key }}"
+          IPAYMU_RETURN_URL: "{{ ipaymu_return_url }}"
+          IPAYMU_CANCEL_URL: "{{ ipaymu_cancel_url }}"
+          IPAYMU_NOTIFY_URL: "{{ ipaymu_notify_url }}"
+          OTEL_EXPORTER_OTLP_ENDPOINT: "tempo:4317"
+        networks:
+          - name: pos
+        networks_cli_compatible: true

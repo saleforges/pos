@@ -14,7 +14,9 @@ import (
 func NewRouter(
 	orderHandler *order.Handler,
 	customerHandler *customer.Handler,
+	internalHandler *order.InternalHandler,
 	verifier *jwks.Verifier,
+	internalKey string,
 ) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
@@ -30,6 +32,10 @@ func NewRouter(
 		return nil
 	})
 
+	// Internal service-to-service endpoints (called by payment service).
+	internal := e.Group("/internal", middleware.InternalAuth(internalKey))
+	internal.POST("/orders/:id/paid", internalHandler.NotifyPaid)
+
 	api := e.Group("/api/v1", middleware.Auth(verifier))
 
 	orderGroup := api.Group("/orders", httputil.MerchantMiddleware())
@@ -39,6 +45,7 @@ func NewRouter(
 	orderGroup.PATCH("/:id", orderHandler.Update)
 	orderGroup.PATCH("/:id/status", orderHandler.Cancel)
 	orderGroup.POST("/:id/payments", orderHandler.AddPayment)
+	orderGroup.POST("/:id/payment-link", orderHandler.CreatePaymentLink)
 
 	customerGroup := api.Group("/customers", httputil.MerchantMiddleware())
 	customerGroup.POST("", customerHandler.Create)

@@ -30,6 +30,7 @@
           DATABASE_URL: "{{ db_url }}"
           IAM_BASE_URL: "{{ iam_base_url }}"
           INVENTORY_BASE_URL: "{{ inventory_base_url }}"
+          PAYMENT_BASE_URL: "http://payment-service:8085"
           INTERNAL_API_KEY: "{{ internal_api_key }}"
           OTEL_EXPORTER_OTLP_ENDPOINT: "tempo:4317"
         networks:

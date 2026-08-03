@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/order/adapter/client/inventory"
+	"github.com/saleforge/pos/services/internal/order/adapter/client/payment"
 	"github.com/saleforge/pos/services/internal/order/adapter/repository/memory"
 	"github.com/saleforge/pos/services/internal/order/adapter/repository/postgres"
 	por "github.com/saleforge/pos/services/internal/order/port/repository"
@@ -24,6 +25,8 @@ type Config struct {
 	OtelEndpoint     string
 	InventoryBaseURL string
 	InventoryAPIKey  string
+	PaymentBaseURL   string
+	PaymentAPIKey    string
 }
 
 type App struct {
@@ -73,16 +76,22 @@ func New(cfg Config) (*App, error) {
 		logger.Info("using in-memory storage")
 	}
 
+	paymentClient := payment.New(payment.Config{
+		BaseURL: cfg.PaymentBaseURL,
+		APIKey:  cfg.PaymentAPIKey,
+	})
+
 	orderUC := usecase.NewOrderUsecase(orderRepo, customerRepo, inventory.New(inventory.Config{
 		BaseURL: cfg.InventoryBaseURL,
 		APIKey:  cfg.InventoryAPIKey,
-	}))
+	}), paymentClient)
 	customerUC := usecase.NewCustomerUsecase(customerRepo)
 
 	orderHandler := order.NewHandler(orderUC)
 	customerHandler := customer.NewHandler(customerUC)
+	internalHandler := order.NewInternalHandler(orderUC)
 
-	e := httptransport.NewRouter(orderHandler, customerHandler, verifier)
+	e := httptransport.NewRouter(orderHandler, customerHandler, internalHandler, verifier, cfg.InventoryAPIKey)
 
 	return &App{router: e, otelShutdown: otelShutdown}, nil
 }
