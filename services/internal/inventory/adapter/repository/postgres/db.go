@@ -103,13 +103,13 @@ func RunMigrations(databaseURL string) error {
 		);
 		CREATE INDEX IF NOT EXISTS idx_component_items_component ON product_component_items(product_component_id);
 
-		CREATE TABLE IF NOT EXISTS units (
+		CREATE TABLE IF NOT EXISTS inventory_units (
 			id             BIGINT       PRIMARY KEY,
 			name           VARCHAR(50)  NOT NULL,
 			symbol         VARCHAR(10)  NOT NULL DEFAULT '',
 			factor_to_base NUMERIC(14,4) NOT NULL DEFAULT 1
 		);
-		INSERT INTO units (id, name, symbol, factor_to_base) VALUES
+		INSERT INTO inventory_units (id, name, symbol, factor_to_base) VALUES
 			(1, 'Piece', 'pc', 1),
 			(2, 'Pack', 'pack', 1),
 			(3, 'Kilogram', 'kg', 1000),
@@ -130,13 +130,13 @@ func RunMigrations(databaseURL string) error {
 	heal := `
 	ALTER TABLE product_component_items DROP COLUMN IF EXISTS conversion_factor;
 
-	CREATE TABLE IF NOT EXISTS units (
+	CREATE TABLE IF NOT EXISTS inventory_units (
 		id             BIGINT       PRIMARY KEY,
 		name           VARCHAR(50)  NOT NULL,
 		symbol         VARCHAR(10)  NOT NULL DEFAULT '',
 		factor_to_base NUMERIC(14,4) NOT NULL DEFAULT 1
 	);
-	INSERT INTO units (id, name, symbol, factor_to_base) VALUES
+	INSERT INTO inventory_units (id, name, symbol, factor_to_base) VALUES
 		(1, 'Piece', 'pc', 1),
 		(2, 'Pack', 'pack', 1),
 		(3, 'Kilogram', 'kg', 1000),

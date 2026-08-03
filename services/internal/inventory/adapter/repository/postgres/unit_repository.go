@@ -22,7 +22,7 @@ func NewUnitRepository(pool *otel.TracedPool) *UnitRepository {
 func (r *UnitRepository) GetByID(ctx context.Context, id int64) (*domain.Unit, error) {
 	var u domain.Unit
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, name, symbol, factor_to_base FROM units WHERE id = $1`, id,
+		`SELECT id, name, symbol, factor_to_base FROM inventory_units WHERE id = $1`, id,
 	).Scan(&u.ID, &u.Name, &u.Symbol, &u.FactorToBase)
 	if err != nil {
 		if err == pgx.ErrNoRows {
