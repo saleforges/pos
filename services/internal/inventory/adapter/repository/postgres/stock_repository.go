@@ -89,11 +89,11 @@ func (r *StockRepository) adjust(ctx context.Context, merchantID, branchID int64
 			return domain.ErrInsufficientStock
 		}
 
+		delta := sign * it.Quantity
 		if _, err := tx.Exec(ctx,
-			`UPDATE stocks SET available = available + ($1 * $2), updated_at = NOW() WHERE id IN (
-				SELECT id FROM stocks WHERE merchant_id=$3 AND branch_id=$4 AND product_item_id=$5 FOR UPDATE
-			)`,
-			it.Quantity, sign, merchantID, branchID, it.ProductItemID); err != nil {
+			`UPDATE stocks SET available = available + $1, updated_at = NOW()
+			 WHERE merchant_id=$2 AND branch_id=$3 AND product_item_id=$4`,
+			delta, merchantID, branchID, it.ProductItemID); err != nil {
 			return err
 		}
 
