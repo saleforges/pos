@@ -27,8 +27,6 @@ func main() {
 		OtelEndpoint:     os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
 		InventoryBaseURL: getEnv("INVENTORY_BASE_URL", "http://inventory-service:8083"),
 		InventoryAPIKey:  os.Getenv("INTERNAL_API_KEY"),
-		PaymentBaseURL:   getEnv("PAYMENT_BASE_URL", "http://payment-service:8085"),
-		PaymentAPIKey:    os.Getenv("INTERNAL_API_KEY"),
 	})
 	if err != nil {
 		logger.Error("bootstrap failed", "error", err.Error())

@@ -24,41 +24,29 @@ func NewHandler(uc usecase.PaymentUsecase, va string) *Handler {
 }
 
 type createPaymentReq struct {
-	MerchantID int64               `json:"merchantId"`
-	OrderID    int64               `json:"orderId"`
-	Amount     float64             `json:"amount"`
-	BuyerName  string              `json:"buyerName,omitempty"`
-	BuyerEmail string              `json:"buyerEmail,omitempty"`
-	BuyerPhone string              `json:"buyerPhone,omitempty"`
-	Items      []createPaymentItem `json:"items"`
+	OrderID    int64  `json:"orderId"`
+	BuyerName  string `json:"buyerName,omitempty"`
+	BuyerEmail string `json:"buyerEmail,omitempty"`
+	BuyerPhone string `json:"buyerPhone,omitempty"`
 }
 
-type createPaymentItem struct {
-	ItemName  string  `json:"itemName"`
-	Quantity  float64 `json:"quantity"`
-	UnitPrice float64 `json:"unitPrice"`
-}
-
-// Create is the internal endpoint called by the order service.
+// Create opens a gateway payment for an order (JWT auth, merchant scoped).
 func (h *Handler) Create(c echo.Context) error {
 	var req createPaymentReq
 	if err := c.Bind(&req); err != nil {
 		return httputil.WriteError(c, http.StatusBadRequest, domain.ErrInvalidPayment)
 	}
-
-	items := make([]usecase.CreatePaymentItem, len(req.Items))
-	for i, it := range req.Items {
-		items[i] = usecase.CreatePaymentItem{ItemName: it.ItemName, Quantity: it.Quantity, UnitPrice: it.UnitPrice}
+	if req.OrderID == 0 {
+		return httputil.WriteError(c, http.StatusBadRequest, domain.ErrInvalidPayment)
 	}
 
+	merchantID := httputil.GetMerchantID(c)
 	result, err := h.uc.Create(c.Request().Context(), usecase.CreatePaymentParams{
-		MerchantID: req.MerchantID,
+		MerchantID: merchantID,
 		OrderID:    req.OrderID,
-		Amount:     req.Amount,
 		BuyerName:  req.BuyerName,
 		BuyerEmail: req.BuyerEmail,
 		BuyerPhone: req.BuyerPhone,
-		Items:      items,
 	})
 	if err != nil {
 		return mapError(c, err)
@@ -122,6 +110,8 @@ func mapError(c echo.Context, err error) error {
 	switch err {
 	case domain.ErrInvalidPayment:
 		return httputil.WriteError(c, http.StatusBadRequest, err)
+	case domain.ErrOrderNotPayable, domain.ErrAlreadyPaid:
+		return httputil.WriteError(c, http.StatusConflict, err)
 	case domain.ErrGatewayNotConfigured:
 		return httputil.WriteError(c, http.StatusServiceUnavailable, err)
 	case domain.ErrGatewayUnavailable, domain.ErrGatewayError, domain.ErrOrderClientUnavailable:

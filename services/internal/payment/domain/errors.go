@@ -11,5 +11,7 @@ var (
 	ErrInvalidCallback        = errors.New("PAY006: invalid payment callback")
 	ErrDuplicateCallback      = errors.New("PAY007: duplicate payment callback")
 	ErrOrderClientUnavailable = errors.New("PAY008: order service unavailable")
+	ErrOrderNotPayable        = errors.New("PAY009: order is not payable")
+	ErrAlreadyPaid            = errors.New("PAY010: order already paid")
 	ErrInternal               = errors.New("PAY500: internal error")
 )

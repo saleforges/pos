@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/saleforge/pos/services/internal/payment/domain"
+	"github.com/saleforge/pos/services/internal/payment/port/repository"
 )
 
 func TestPaymentUsecase_GetByID(t *testing.T) {
@@ -14,8 +15,7 @@ func TestPaymentUsecase_GetByID(t *testing.T) {
 	repo := newMockPaymentRepo()
 	uc := NewPaymentUsecase(repo, &mockGateway{}, &mockOrderClient{})
 	uc.Create(ctx, CreatePaymentParams{
-		MerchantID: 1, OrderID: 5, Amount: 30000,
-		Items: []CreatePaymentItem{{ItemName: "Es Teh", Quantity: 2, UnitPrice: 15000}},
+		MerchantID: 1, OrderID: 5,
 	})
 
 	t.Run("returns own payment", func(t *testing.T) {
@@ -53,8 +53,7 @@ func TestPaymentUsecase_Create(t *testing.T) {
 		uc := NewPaymentUsecase(repo, gw, &mockOrderClient{})
 
 		result, err := uc.Create(ctx, CreatePaymentParams{
-			MerchantID: 1, OrderID: 5, Amount: 30000,
-			Items: []CreatePaymentItem{{ItemName: "Es Teh", Quantity: 2, UnitPrice: 15000}},
+			MerchantID: 1, OrderID: 5,
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -73,8 +72,7 @@ func TestPaymentUsecase_Create(t *testing.T) {
 	t.Run("gateway not configured", func(t *testing.T) {
 		uc := NewPaymentUsecase(newMockPaymentRepo(), &mockGateway{err: domain.ErrGatewayNotConfigured}, &mockOrderClient{})
 		_, err := uc.Create(ctx, CreatePaymentParams{
-			MerchantID: 1, OrderID: 5, Amount: 30000,
-			Items: []CreatePaymentItem{{ItemName: "X", Quantity: 1, UnitPrice: 1000}},
+			MerchantID: 1, OrderID: 5,
 		})
 		if err != domain.ErrGatewayNotConfigured {
 			t.Errorf("expected ErrGatewayNotConfigured, got %v", err)
@@ -83,9 +81,43 @@ func TestPaymentUsecase_Create(t *testing.T) {
 
 	t.Run("invalid amount rejected", func(t *testing.T) {
 		uc := NewPaymentUsecase(newMockPaymentRepo(), &mockGateway{}, &mockOrderClient{})
-		_, err := uc.Create(ctx, CreatePaymentParams{MerchantID: 1, OrderID: 5, Amount: 0})
-		if err != domain.ErrInvalidPayment {
-			t.Errorf("expected ErrInvalidPayment, got %v", err)
+		_, err := uc.Create(ctx, CreatePaymentParams{MerchantID: 1, OrderID: 5})
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("cancelled order rejected", func(t *testing.T) {
+		uc := NewPaymentUsecase(newMockPaymentRepo(), &mockGateway{}, &mockOrderClient{
+			order: &repository.OrderInfo{ID: 5, MerchantID: 1, Status: "cancelled", Total: 30000},
+		})
+		_, err := uc.Create(ctx, CreatePaymentParams{MerchantID: 1, OrderID: 5})
+		if err != domain.ErrOrderNotPayable {
+			t.Errorf("expected ErrOrderNotPayable, got %v", err)
+		}
+	})
+
+	t.Run("already paid order rejected", func(t *testing.T) {
+		uc := NewPaymentUsecase(newMockPaymentRepo(), &mockGateway{}, &mockOrderClient{
+			order: &repository.OrderInfo{ID: 5, MerchantID: 1, Status: "completed", Total: 30000, PaidAmount: 30000},
+		})
+		_, err := uc.Create(ctx, CreatePaymentParams{MerchantID: 1, OrderID: 5})
+		if err != domain.ErrAlreadyPaid {
+			t.Errorf("expected ErrAlreadyPaid, got %v", err)
+		}
+	})
+
+	t.Run("amount is remaining balance", func(t *testing.T) {
+		repo := newMockPaymentRepo()
+		uc := NewPaymentUsecase(repo, &mockGateway{}, &mockOrderClient{
+			order: &repository.OrderInfo{ID: 5, MerchantID: 1, Status: "completed", Total: 30000, PaidAmount: 10000},
+		})
+		result, err := uc.Create(ctx, CreatePaymentParams{MerchantID: 1, OrderID: 5})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Amount != 20000 {
+			t.Errorf("expected amount 20000 (remaining), got %v", result.Amount)
 		}
 	})
 }
@@ -99,8 +131,7 @@ func TestPaymentUsecase_HandleCallback(t *testing.T) {
 		orderClient := &mockOrderClient{}
 		uc := NewPaymentUsecase(repo, &mockGateway{}, orderClient)
 		uc.Create(ctx, CreatePaymentParams{
-			MerchantID: 1, OrderID: 5, Amount: 30000,
-			Items: []CreatePaymentItem{{ItemName: "Es Teh", Quantity: 2, UnitPrice: 15000}},
+			MerchantID: 1, OrderID: 5,
 		})
 		return uc, repo, orderClient
 	}

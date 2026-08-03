@@ -98,6 +98,24 @@ func (m *mockGateway) CreatePayment(_ context.Context, _ repository.CreatePaymen
 type mockOrderClient struct {
 	notified bool
 	err      error
+	order    *repository.OrderInfo
+	orderErr error
+}
+
+func (m *mockOrderClient) GetOrder(_ context.Context, orderID int64) (*repository.OrderInfo, error) {
+	if m.orderErr != nil {
+		return nil, m.orderErr
+	}
+	if m.order != nil {
+		return m.order, nil
+	}
+	return &repository.OrderInfo{
+		ID:         orderID,
+		MerchantID: 1,
+		Status:     "completed",
+		Total:      30000,
+		Items:      []repository.OrderItem{{ItemName: "Es Teh", Quantity: 2, UnitPrice: 15000}},
+	}, nil
 }
 
 func (m *mockOrderClient) NotifyPaid(_ context.Context, _, _ int64, _ float64, _ string) error {

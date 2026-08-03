@@ -91,7 +91,7 @@ func New(cfg Config) (*App, error) {
 	paymentUC := usecase.NewPaymentUsecase(paymentRepo, gateway, orderClient)
 	paymentHandler := payment.NewHandler(paymentUC, cfg.IpaymuVA)
 
-	e := httptransport.NewRouter(paymentHandler, verifier, cfg.InternalKey)
+	e := httptransport.NewRouter(paymentHandler, verifier)
 
 	return &App{router: e, otelShutdown: otelShutdown}, nil
 }

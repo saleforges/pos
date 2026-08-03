@@ -26,6 +26,30 @@ type notifyPaidReq struct {
 	Method string  `json:"method"`
 }
 
+// GetOrder returns the order snapshot needed by the payment service to
+// validate and size a gateway payment. Internal (X-Internal-Key only).
+func (h *InternalHandler) GetOrder(c echo.Context) error {
+	orderID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+
+	// merchant id comes from the payment service (it owns the transaction).
+	var merchantID int64
+	if raw := c.Request().Header.Get("X-Merchant-Id"); raw != "" {
+		merchantID, _ = strconv.ParseInt(raw, 10, 64)
+	}
+	if merchantID == 0 {
+		return httputil.WriteError(c, http.StatusBadRequest, domain.ErrInvalidPayment)
+	}
+
+	order, err := h.uc.GetByID(c.Request().Context(), orderID, merchantID)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, order)
+}
+
 // NotifyPaid records a gateway-confirmed payment on an order.
 func (h *InternalHandler) NotifyPaid(c echo.Context) error {
 	orderID, err := strconv.ParseInt(c.Param("id"), 10, 64)

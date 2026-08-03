@@ -14,14 +14,7 @@ type OrderUsecase interface {
 	Update(ctx context.Context, params UpdateOrderParams) (*domain.Order, error)
 	Cancel(ctx context.Context, id int64, merchantID int64) (*domain.Order, error)
 	AddPayment(ctx context.Context, params AddPaymentParams) (*domain.Order, error)
-	CreatePaymentIntent(ctx context.Context, id int64, merchantID int64) (*PaymentIntentResult, error)
 	NotifyPaid(ctx context.Context, params NotifyPaidParams) error
-}
-
-type PaymentIntentResult struct {
-	OrderID    int64  `json:"orderId"`
-	PaymentURL string `json:"paymentUrl"`
-	SessionID  string `json:"sessionId,omitempty"`
 }
 
 // NotifyPaidParams is sent by the payment service when a gateway payment

@@ -21,13 +21,26 @@ func NewPaymentUsecase(paymentRepo repository.PaymentRepository, gateway reposit
 
 // Create opens a gateway payment for an order and records the transaction.
 func (uc *paymentUsecase) Create(ctx context.Context, params CreatePaymentParams) (*domain.PaymentTransaction, error) {
+	// Fetch the order snapshot to validate state and size the payment.
+	order, err := uc.orderClient.GetOrder(ctx, params.OrderID)
+	if err != nil {
+		return nil, err
+	}
+	if order.Status != "completed" {
+		return nil, domain.ErrOrderNotPayable
+	}
+	remaining := order.Total - order.PaidAmount
+	if remaining <= 0 {
+		return nil, domain.ErrAlreadyPaid
+	}
+
 	now := time.Now().UTC()
 	payment := &domain.PaymentTransaction{
-		MerchantID: params.MerchantID,
+		MerchantID: order.MerchantID,
 		OrderID:    params.OrderID,
 		Gateway:    "ipaymu",
 		Status:     domain.PaymentStatusPending,
-		Amount:     params.Amount,
+		Amount:     remaining,
 		CreatedAt:  now,
 		UpdatedAt:  now,
 	}
@@ -38,8 +51,8 @@ func (uc *paymentUsecase) Create(ctx context.Context, params CreatePaymentParams
 		return nil, err
 	}
 
-	items := make([]repository.CreatePaymentItem, len(params.Items))
-	for i, it := range params.Items {
+	items := make([]repository.CreatePaymentItem, len(order.Items))
+	for i, it := range order.Items {
 		items[i] = repository.CreatePaymentItem{ItemName: it.ItemName, Quantity: it.Quantity, UnitPrice: it.UnitPrice}
 	}
 

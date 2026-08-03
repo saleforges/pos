@@ -9,7 +9,7 @@ import (
 	"github.com/saleforge/pos/services/pkg/otel"
 )
 
-func NewRouter(paymentHandler *payment.Handler, verifier *jwks.Verifier, internalKey string) *echo.Echo {
+func NewRouter(paymentHandler *payment.Handler, verifier *jwks.Verifier) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
 
@@ -29,11 +29,8 @@ func NewRouter(paymentHandler *payment.Handler, verifier *jwks.Verifier, interna
 	// Merchant-facing API (JWT auth).
 	api := e.Group("/api/v1", middleware.Auth(verifier))
 	paymentGroup := api.Group("/payments", httputil.MerchantMiddleware())
+	paymentGroup.POST("", paymentHandler.Create)
 	paymentGroup.GET("/:id", paymentHandler.GetByID)
-
-	// Internal service-to-service endpoints.
-	internal := e.Group("/internal", middleware.InternalAuth(internalKey))
-	internal.POST("/payments", paymentHandler.Create)
 
 	return e
 }

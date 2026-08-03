@@ -34,6 +34,7 @@ func NewRouter(
 
 	// Internal service-to-service endpoints (called by payment service).
 	internal := e.Group("/internal", middleware.InternalAuth(internalKey))
+	internal.GET("/orders/:id", internalHandler.GetOrder)
 	internal.POST("/orders/:id/paid", internalHandler.NotifyPaid)
 
 	api := e.Group("/api/v1", middleware.Auth(verifier))
@@ -45,7 +46,6 @@ func NewRouter(
 	orderGroup.PATCH("/:id", orderHandler.Update)
 	orderGroup.PATCH("/:id/status", orderHandler.Cancel)
 	orderGroup.POST("/:id/payments", orderHandler.AddPayment)
-	orderGroup.POST("/:id/payment-intent", orderHandler.CreatePaymentIntent)
 
 	customerGroup := api.Group("/customers", httputil.MerchantMiddleware())
 	customerGroup.POST("", customerHandler.Create)

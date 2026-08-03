@@ -12,11 +12,10 @@ type orderUsecase struct {
 	orderRepo    repository.OrderRepository
 	customerRepo repository.CustomerRepository
 	inventory    repository.InventoryClient
-	payment      repository.PaymentClient
 }
 
-func NewOrderUsecase(orderRepo repository.OrderRepository, customerRepo repository.CustomerRepository, inventory repository.InventoryClient, payment repository.PaymentClient) OrderUsecase {
-	return &orderUsecase{orderRepo: orderRepo, customerRepo: customerRepo, inventory: inventory, payment: payment}
+func NewOrderUsecase(orderRepo repository.OrderRepository, customerRepo repository.CustomerRepository, inventory repository.InventoryClient) OrderUsecase {
+	return &orderUsecase{orderRepo: orderRepo, customerRepo: customerRepo, inventory: inventory}
 }
 
 func (uc *orderUsecase) Create(ctx context.Context, params CreateOrderParams) (*domain.Order, error) {
@@ -137,48 +136,6 @@ func (uc *orderUsecase) restoreOrder(ctx context.Context, order *domain.Order) e
 		items[i] = repository.StockAdjustmentItem{ProductItemID: it.ProductItemID, Quantity: int64(it.Quantity)}
 	}
 	return uc.inventory.RestoreStock(ctx, order.MerchantID, order.BranchID, "order", order.ID, items)
-}
-
-// CreatePaymentIntent creates a gateway payment via the payment service and
-// returns the redirect URL for the buyer.
-func (uc *orderUsecase) CreatePaymentIntent(ctx context.Context, id int64, merchantID int64) (*PaymentIntentResult, error) {
-	order, err := uc.orderRepo.GetByID(ctx, id, merchantID)
-	if err != nil {
-		return nil, err
-	}
-	if order.Status != domain.OrderStatusCompleted {
-		return nil, domain.ErrInvalidTransition
-	}
-	if order.PaidAmount >= order.Total {
-		return nil, domain.ErrPaymentExceedsTotal
-	}
-
-	params := repository.CreatePaymentParams{
-		MerchantID: merchantID,
-		OrderID:    order.ID,
-		Amount:     order.Total - order.PaidAmount,
-		Items:      make([]repository.CreatePaymentItem, len(order.Items)),
-	}
-	for i, it := range order.Items {
-		params.Items[i] = repository.CreatePaymentItem{
-			ItemName:  it.ItemName,
-			Quantity:  it.Quantity,
-			UnitPrice: it.UnitPrice,
-		}
-	}
-	// Buyer info from customer when attached
-	if order.CustomerID != nil {
-		if c, err := uc.customerRepo.GetByID(ctx, *order.CustomerID, merchantID); err == nil {
-			params.BuyerName = c.Name
-			params.BuyerPhone = c.Phone
-		}
-	}
-
-	result, err := uc.payment.CreatePayment(ctx, params)
-	if err != nil {
-		return nil, err
-	}
-	return &PaymentIntentResult{OrderID: order.ID, PaymentURL: result.PaymentURL, SessionID: result.SessionID}, nil
 }
 
 // NotifyPaid is called by the payment service when the gateway confirms a

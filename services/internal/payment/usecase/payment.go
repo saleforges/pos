@@ -13,21 +13,13 @@ type PaymentUsecase interface {
 	GetByOrderID(ctx context.Context, orderID int64, merchantID int64) (*domain.PaymentTransaction, error)
 }
 
-// CreatePaymentParams comes from the order service internal API.
+// CreatePaymentParams comes from the public payment API.
 type CreatePaymentParams struct {
 	MerchantID int64
 	OrderID    int64
-	Amount     float64
 	BuyerName  string
 	BuyerEmail string
 	BuyerPhone string
-	Items      []CreatePaymentItem
-}
-
-type CreatePaymentItem struct {
-	ItemName  string
-	Quantity  float64
-	UnitPrice float64
 }
 
 // CallbackParams is the gateway webhook payload.
