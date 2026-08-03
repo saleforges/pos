@@ -1,0 +1,19 @@
+meta {
+  name: Order List
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/v1/orders?branchId={{branch_id}}&paymentStatus=unpaid
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Merchant-Id: {{merchant_id}}
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

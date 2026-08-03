@@ -1,0 +1,43 @@
+meta {
+  name: Order Create
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url}}/v1/orders
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Merchant-Id: {{merchant_id}}
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "branchId": {{branch_id}},
+    "customerId": {{customer_id}},
+    "dueDate": "2026-08-10",
+    "note": "Utang Pak Budi",
+    "items": [
+      {
+        "productItemId": {{item_id}},
+        "itemName": "Es Teh Manis - Large",
+        "quantity": 2,
+        "unitPrice": 15000
+      }
+    ]
+  }
+}
+
+script:post-response {
+  if (res.body.data && res.body.data.id) {
+    bru.setVar("order_id", res.body.data.id);
+  }
+}

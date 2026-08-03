@@ -1,0 +1,121 @@
+name: Order CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag (default: commit SHA)"
+        required: false
+        type: string
+  push:
+    paths:
+      - "services/internal/order/**"
+      - "services/cmd/order/**"
+      - "services/pkg/**"
+      - "services/go.mod"
+      - "services/go.sum"
+      - "services/Dockerfile.order"
+      - "deploy/ansible/playbooks/deploy-order.yml"
+      - ".github/workflows/order.yml"
+  pull_request:
+    branches:
+      - main
+      - development
+    paths:
+      - "services/internal/order/**"
+      - "services/pkg/**"
+      - "services/cmd/order/**"
+      - "services/go.mod"
+      - "services/go.sum"
+      - "services/Dockerfile.order"
+      - ".github/workflows/order.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/go.mod
+          cache-dependency-path: services/go.sum
+      - name: Test
+        run: go test ./... -race -coverprofile=coverage.out
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: order-coverage
+          path: services/coverage.out
+
+  build:
+    if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/development')) || github.event_name == 'workflow_dispatch'
+    needs: [test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push Docker image
+        run: |
+          IMAGE=ghcr.io/${{ github.repository }}/order-service
+          docker build -t $IMAGE:${{ github.sha }} -f services/Dockerfile.order services
+          docker push $IMAGE:${{ github.sha }}
+
+  deploy-dev:
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/development') || github.event_name == 'workflow_dispatch'
+    needs: [build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: webfactory/ssh-agent@v0.10.0
+        with:
+          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+      - name: Install Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+          ansible-galaxy collection install -r deploy/ansible/requirements.yml
+      - name: Create inventory
+        run: |
+          mkdir -p deploy/ansible/inventory/development
+          cat > deploy/ansible/inventory/development/hosts.yml <<EOF
+          all:
+            hosts:
+              dev-server:
+                ansible_host: ${{ secrets.DEV_SERVER_IP }}
+                ansible_user: ${{ secrets.DEV_SERVER_USER }}
+                ansible_become: yes
+                ansible_become_password: ${{ secrets.DEV_SUDO_PASSWORD }}
+          EOF
+      - name: Write vault vars
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cat > /tmp/vault-extra.yml << EOV
+          vault_postgres_password: "${{ secrets.POSTGRES_PASSWORD }}"
+          vault_ghcr_username: "${{ github.actor }}"
+          vault_ghcr_token: "$GHCR_TOKEN"
+          EOV
+      - name: Deploy Order service
+        run: |
+          ansible-playbook -i deploy/ansible/inventory/development/hosts.yml \
+            deploy/ansible/playbooks/deploy-order.yml \
+            --extra-vars "@/tmp/vault-extra.yml" \
+            -e image_tag=${{ inputs.image_tag || github.sha }}
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "False"
+          ANSIBLE_INVENTORY_ENABLED: "yaml"
+          ANSIBLE_ROLES_PATH: "deploy/ansible/roles"
