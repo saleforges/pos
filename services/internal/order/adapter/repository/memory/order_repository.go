@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/saleforge/pos/services/internal/order/domain"
 	"github.com/saleforge/pos/services/internal/order/port/repository"
@@ -85,6 +86,20 @@ func (r *OrderRepository) UpdateStatus(_ context.Context, id int64, merchantID i
 		return nil, domain.ErrOrderNotFound
 	}
 	o.Status = status
+	o.UpdatedAt = time.Now().UTC()
+	return o, nil
+}
+
+func (r *OrderRepository) UpdateDueDate(_ context.Context, id int64, merchantID int64, dueDate *time.Time) (*domain.Order, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	o, ok := r.orders[id]
+	if !ok || o.MerchantID != merchantID {
+		return nil, domain.ErrOrderNotFound
+	}
+	o.DueDate = dueDate
+	o.UpdatedAt = time.Now().UTC()
 	return o, nil
 }
 

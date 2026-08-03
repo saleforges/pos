@@ -12,6 +12,7 @@ type OrderUsecase interface {
 	GetByID(ctx context.Context, id int64, merchantID int64) (*domain.Order, error)
 	List(ctx context.Context, merchantID int64, branchID *int64, status *domain.OrderStatus, paymentStatus *domain.PaymentStatus) ([]domain.Order, error)
 	Cancel(ctx context.Context, id int64, merchantID int64) (*domain.Order, error)
+	UpdateDueDate(ctx context.Context, id int64, merchantID int64, dueDate *time.Time) (*domain.Order, error)
 	AddPayment(ctx context.Context, params AddPaymentParams) (*domain.Order, error)
 }
 

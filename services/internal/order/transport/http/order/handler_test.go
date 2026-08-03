@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/order/domain"
@@ -20,6 +21,7 @@ type mockOrderSvc struct {
 	getFn     func(context.Context, int64, int64) (*domain.Order, error)
 	listFn    func(context.Context, int64, *int64, *domain.OrderStatus, *domain.PaymentStatus) ([]domain.Order, error)
 	cancelFn  func(context.Context, int64, int64) (*domain.Order, error)
+	dueDateFn func(context.Context, int64, int64, *time.Time) (*domain.Order, error)
 	paymentFn func(context.Context, usecase.AddPaymentParams) (*domain.Order, error)
 }
 
@@ -53,6 +55,13 @@ func (m *mockOrderSvc) Cancel(ctx context.Context, id int64, merchantID int64) (
 		return m.cancelFn(ctx, id, merchantID)
 	}
 	return &domain.Order{ID: id, MerchantID: merchantID, BranchID: 1, Status: domain.OrderStatusCancelled, Total: 30000}, nil
+}
+
+func (m *mockOrderSvc) UpdateDueDate(ctx context.Context, id int64, merchantID int64, dueDate *time.Time) (*domain.Order, error) {
+	if m.dueDateFn != nil {
+		return m.dueDateFn(ctx, id, merchantID, dueDate)
+	}
+	return &domain.Order{ID: id, MerchantID: merchantID, BranchID: 1, Status: domain.OrderStatusCompleted, DueDate: dueDate, Total: 30000}, nil
 }
 
 func (m *mockOrderSvc) AddPayment(ctx context.Context, p usecase.AddPaymentParams) (*domain.Order, error) {

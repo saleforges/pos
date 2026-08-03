@@ -84,6 +84,19 @@ func (m *mockOrderRepo) UpdateStatus(_ context.Context, id int64, merchantID int
 	return o, nil
 }
 
+func (m *mockOrderRepo) UpdateDueDate(_ context.Context, id int64, merchantID int64, dueDate *time.Time) (*domain.Order, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	o, ok := m.orders[id]
+	if !ok || o.MerchantID != merchantID {
+		return nil, domain.ErrOrderNotFound
+	}
+	o.DueDate = dueDate
+	o.UpdatedAt = time.Now().UTC()
+	return o, nil
+}
+
 func (m *mockOrderRepo) AddPayment(_ context.Context, orderID int64, merchantID int64, payment *domain.PaymentRecord) error {
 	if m.err != nil {
 		return m.err

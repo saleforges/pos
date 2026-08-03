@@ -56,6 +56,12 @@ func (uc *orderUsecase) Create(ctx context.Context, params CreateOrderParams) (*
 		UpdatedAt:  now,
 		Items:      items,
 	}
+	// Default due date: credit sales (customer attached) without an explicit
+	// due date get H+7 from today.
+	if order.CustomerID != nil && order.DueDate == nil {
+		d := now.AddDate(0, 0, defaultDueDays)
+		order.DueDate = &d
+	}
 	order.PaymentStatus = order.ComputePaymentStatus()
 
 	if err := order.Validate(); err != nil {
@@ -85,6 +91,17 @@ func (uc *orderUsecase) Cancel(ctx context.Context, id int64, merchantID int64) 
 		return nil, domain.ErrInvalidTransition
 	}
 	return uc.orderRepo.UpdateStatus(ctx, id, merchantID, domain.OrderStatusCancelled)
+}
+
+func (uc *orderUsecase) UpdateDueDate(ctx context.Context, id int64, merchantID int64, dueDate *time.Time) (*domain.Order, error) {
+	order, err := uc.orderRepo.GetByID(ctx, id, merchantID)
+	if err != nil {
+		return nil, err
+	}
+	if order.Status != domain.OrderStatusCompleted {
+		return nil, domain.ErrInvalidTransition
+	}
+	return uc.orderRepo.UpdateDueDate(ctx, id, merchantID, dueDate)
 }
 
 func (uc *orderUsecase) AddPayment(ctx context.Context, params AddPaymentParams) (*domain.Order, error) {
@@ -125,3 +142,5 @@ func (uc *orderUsecase) AddPayment(ctx context.Context, params AddPaymentParams)
 }
 
 var _ OrderUsecase = (*orderUsecase)(nil)
+
+const defaultDueDays = 7

@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/saleforge/pos/services/internal/order/domain"
 )
@@ -98,6 +99,96 @@ func TestOrderUsecase_Create(t *testing.T) {
 		})
 		if err != domain.ErrCustomerNotFound {
 			t.Errorf("expected ErrCustomerNotFound for cross-merchant customer, got %v", err)
+		}
+	})
+
+	t.Run("credit sale without due date defaults to +7 days", func(t *testing.T) {
+		repo := &mockOrderRepo{}
+		uc := NewOrderUsecase(repo, newMockCustomerRepo())
+
+		customerID := int64(1)
+		order, err := uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5, CustomerID: &customerID,
+			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 1000, Quantity: 1}},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if order.DueDate == nil {
+			t.Fatal("expected default due date for credit sale")
+		}
+		expected := time.Now().UTC().AddDate(0, 0, 7)
+		if order.DueDate.After(expected.Add(time.Hour)) || order.DueDate.Before(expected.Add(-time.Hour)) {
+			t.Errorf("expected due date ~+7 days, got %v", order.DueDate)
+		}
+	})
+
+	t.Run("walk-in sale without due date stays nil", func(t *testing.T) {
+		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo())
+		order, err := uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5,
+			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 1000, Quantity: 1}},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if order.DueDate != nil {
+			t.Errorf("expected nil due date for walk-in sale, got %v", order.DueDate)
+		}
+	})
+
+	t.Run("explicit due date preserved", func(t *testing.T) {
+		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo())
+		due := time.Now().UTC().AddDate(0, 0, 30)
+		customerID := int64(1)
+		order, err := uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5, CustomerID: &customerID, DueDate: &due,
+			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 1000, Quantity: 1}},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !order.DueDate.Equal(due) {
+			t.Errorf("expected explicit due date preserved, got %v", order.DueDate)
+		}
+	})
+}
+
+func TestOrderUsecase_UpdateDueDate(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("updates due date", func(t *testing.T) {
+		repo := &mockOrderRepo{}
+		uc := NewOrderUsecase(repo, newMockCustomerRepo())
+		uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5,
+			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 1000, Quantity: 1}},
+		})
+
+		due := time.Now().UTC().AddDate(0, 0, 14)
+		order, err := uc.UpdateDueDate(ctx, 1, 1, &due)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if !order.DueDate.Equal(due) {
+			t.Errorf("expected due date %v, got %v", due, order.DueDate)
+		}
+	})
+
+	t.Run("cancelled order cannot change due date", func(t *testing.T) {
+		repo := &mockOrderRepo{}
+		uc := NewOrderUsecase(repo, newMockCustomerRepo())
+		uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5,
+			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 1000, Quantity: 1}},
+		})
+		uc.Cancel(ctx, 1, 1)
+
+		due := time.Now().UTC().AddDate(0, 0, 14)
+		_, err := uc.UpdateDueDate(ctx, 1, 1, &due)
+		if err != domain.ErrInvalidTransition {
+			t.Errorf("expected ErrInvalidTransition for cancelled order, got %v", err)
 		}
 	})
 }

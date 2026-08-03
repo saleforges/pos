@@ -130,6 +130,29 @@ func (h *Handler) Cancel(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, result)
 }
 
+func (h *Handler) UpdateDueDate(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+
+	var req updateDueDateReq
+	if err := c.Bind(&req); err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+	dueDate, err := time.Parse("2006-01-02", req.DueDate)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+
+	merchantID := httputil.GetMerchantID(c)
+	result, err := h.uc.UpdateDueDate(c.Request().Context(), id, merchantID, &dueDate)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, result)
+}
+
 func (h *Handler) AddPayment(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
