@@ -9,6 +9,7 @@ import (
 type PaymentUsecase interface {
 	Create(ctx context.Context, params CreatePaymentParams) (*domain.PaymentTransaction, error)
 	HandleCallback(ctx context.Context, params CallbackParams) error
+	GetByID(ctx context.Context, id int64, merchantID int64) (*domain.PaymentTransaction, error)
 	GetByOrderID(ctx context.Context, orderID int64, merchantID int64) (*domain.PaymentTransaction, error)
 }
 

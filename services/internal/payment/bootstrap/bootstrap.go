@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/payment/adapter/client/ipaymu"
@@ -12,12 +13,14 @@ import (
 	httptransport "github.com/saleforge/pos/services/internal/payment/transport/http"
 	"github.com/saleforge/pos/services/internal/payment/transport/http/payment"
 	"github.com/saleforge/pos/services/internal/payment/usecase"
+	"github.com/saleforge/pos/services/pkg/jwks"
 	"github.com/saleforge/pos/services/pkg/logger"
 	"github.com/saleforge/pos/services/pkg/otel"
 )
 
 type Config struct {
 	DatabaseURL     string
+	IAMBaseURL      string
 	OtelEndpoint    string
 	InternalKey     string
 	IpaymuBaseURL   string
@@ -35,6 +38,13 @@ type App struct {
 }
 
 func New(cfg Config) (*App, error) {
+	jwksURL := cfg.IAMBaseURL
+	if jwksURL == "" {
+		jwksURL = "http://localhost:8080"
+	}
+	jwksURL = fmt.Sprintf("%s/.well-known/jwks.json", jwksURL)
+	verifier := jwks.New(jwksURL)
+
 	otelShutdown, err := otel.Init(context.Background(), otel.Config{
 		ServiceName:  "payment-service",
 		Environment:  "development",
@@ -81,7 +91,7 @@ func New(cfg Config) (*App, error) {
 	paymentUC := usecase.NewPaymentUsecase(paymentRepo, gateway, orderClient)
 	paymentHandler := payment.NewHandler(paymentUC, cfg.IpaymuVA)
 
-	e := httptransport.NewRouter(paymentHandler, cfg.InternalKey)
+	e := httptransport.NewRouter(paymentHandler, verifier, cfg.InternalKey)
 
 	return &App{router: e, otelShutdown: otelShutdown}, nil
 }

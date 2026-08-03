@@ -7,6 +7,42 @@ import (
 	"github.com/saleforge/pos/services/internal/payment/domain"
 )
 
+func TestPaymentUsecase_GetByID(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	repo := newMockPaymentRepo()
+	uc := NewPaymentUsecase(repo, &mockGateway{}, &mockOrderClient{})
+	uc.Create(ctx, CreatePaymentParams{
+		MerchantID: 1, OrderID: 5, Amount: 30000,
+		Items: []CreatePaymentItem{{ItemName: "Es Teh", Quantity: 2, UnitPrice: 15000}},
+	})
+
+	t.Run("returns own payment", func(t *testing.T) {
+		p, err := uc.GetByID(ctx, 1, 1)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if p.OrderID != 5 {
+			t.Errorf("expected order 5, got %d", p.OrderID)
+		}
+	})
+
+	t.Run("other merchant cannot read", func(t *testing.T) {
+		_, err := uc.GetByID(ctx, 1, 99)
+		if err != domain.ErrPaymentNotFound {
+			t.Errorf("expected ErrPaymentNotFound, got %v", err)
+		}
+	})
+
+	t.Run("missing payment", func(t *testing.T) {
+		_, err := uc.GetByID(ctx, 999, 1)
+		if err != domain.ErrPaymentNotFound {
+			t.Errorf("expected ErrPaymentNotFound, got %v", err)
+		}
+	})
+}
+
 func TestPaymentUsecase_Create(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

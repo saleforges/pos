@@ -33,6 +33,7 @@
         env:
           PAYMENT_PORT: ":8085"
           DATABASE_URL: "{{ db_url }}"
+          IAM_BASE_URL: "{{ iam_base_url | default('http://iam-service:8080') }}"
           INTERNAL_API_KEY: "{{ internal_api_key }}"
           ORDER_BASE_URL: "{{ order_base_url }}"
           IPAYMU_BASE_URL: "{{ ipaymu_base_url }}"

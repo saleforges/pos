@@ -2,6 +2,7 @@ package payment
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/payment/adapter/client/ipaymu"
@@ -59,6 +60,21 @@ func (h *Handler) Create(c echo.Context) error {
 		BuyerPhone: req.BuyerPhone,
 		Items:      items,
 	})
+	if err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, result)
+}
+
+// GetByID returns one payment transaction for the merchant (auth required).
+func (h *Handler) GetByID(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, domain.ErrInvalidPayment)
+	}
+	merchantID := httputil.GetMerchantID(c)
+
+	result, err := h.uc.GetByID(c.Request().Context(), id, merchantID)
 	if err != nil {
 		return mapError(c, err)
 	}

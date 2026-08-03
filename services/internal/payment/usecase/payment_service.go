@@ -114,6 +114,10 @@ func gatewayMethod(via, channel string) string {
 	}
 }
 
+func (uc *paymentUsecase) GetByID(ctx context.Context, id int64, merchantID int64) (*domain.PaymentTransaction, error) {
+	return uc.paymentRepo.GetByID(ctx, id, merchantID)
+}
+
 func (uc *paymentUsecase) GetByOrderID(ctx context.Context, orderID int64, merchantID int64) (*domain.PaymentTransaction, error) {
 	payment, err := uc.paymentRepo.GetByOrderID(ctx, orderID)
 	if err != nil {
