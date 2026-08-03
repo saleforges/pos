@@ -23,6 +23,7 @@ type Order struct {
 	BranchID      int64           `json:"branchId"`
 	CreatedBy     int64           `json:"createdBy"`
 	CustomerID    *int64          `json:"customerId,omitempty"`
+	ClientOrderID string          `json:"clientOrderId,omitempty"`
 	Status        OrderStatus     `json:"status"`
 	PaymentStatus PaymentStatus   `json:"paymentStatus"`
 	Subtotal      float64         `json:"subtotal"`

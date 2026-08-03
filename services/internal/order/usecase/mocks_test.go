@@ -69,6 +69,19 @@ func (m *mockOrderRepo) GetByID(_ context.Context, id int64, merchantID int64) (
 	return o, nil
 }
 
+func (m *mockOrderRepo) GetByClientOrderID(_ context.Context, clientOrderID string, merchantID int64) (*domain.Order, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	for _, o := range m.orders {
+		if o.ClientOrderID == clientOrderID && o.MerchantID == merchantID {
+			o.PaymentStatus = o.ComputePaymentStatus()
+			return o, nil
+		}
+	}
+	return nil, domain.ErrOrderNotFound
+}
+
 func (m *mockOrderRepo) List(_ context.Context, merchantID int64, branchID *int64, status *domain.OrderStatus, paymentStatus *domain.PaymentStatus) ([]domain.Order, error) {
 	if m.err != nil {
 		return nil, m.err

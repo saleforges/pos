@@ -46,13 +46,14 @@ func (h *Handler) Create(c echo.Context) error {
 	userID := getUserID(c)
 
 	result, err := h.uc.Create(c.Request().Context(), usecase.CreateOrderParams{
-		MerchantID: merchantID,
-		BranchID:   req.BranchID,
-		CreatedBy:  userID,
-		CustomerID: req.CustomerID,
-		DueDate:    dueDate,
-		Note:       req.Note,
-		Items:      items,
+		MerchantID:    merchantID,
+		BranchID:      req.BranchID,
+		CreatedBy:     userID,
+		CustomerID:    req.CustomerID,
+		ClientOrderID: req.ClientOrderID,
+		DueDate:       dueDate,
+		Note:          req.Note,
+		Items:         items,
 	})
 	if err != nil {
 		return mapError(c, err)

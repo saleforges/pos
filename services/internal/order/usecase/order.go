@@ -17,13 +17,14 @@ type OrderUsecase interface {
 }
 
 type CreateOrderParams struct {
-	MerchantID int64
-	BranchID   int64
-	CreatedBy  int64
-	CustomerID *int64
-	DueDate    *time.Time
-	Note       string
-	Items      []CreateOrderItemParams
+	MerchantID    int64
+	BranchID      int64
+	CreatedBy     int64
+	CustomerID    *int64
+	ClientOrderID string
+	DueDate       *time.Time
+	Note          string
+	Items         []CreateOrderItemParams
 }
 
 type CreateOrderItemParams struct {

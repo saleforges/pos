@@ -51,6 +51,18 @@ func (r *OrderRepository) GetByID(_ context.Context, id int64, merchantID int64)
 	return o, nil
 }
 
+func (r *OrderRepository) GetByClientOrderID(_ context.Context, clientOrderID string, merchantID int64) (*domain.Order, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, o := range r.orders {
+		if o.ClientOrderID == clientOrderID && o.MerchantID == merchantID {
+			return o, nil
+		}
+	}
+	return nil, domain.ErrOrderNotFound
+}
+
 func (r *OrderRepository) List(_ context.Context, merchantID int64, branchID *int64, status *domain.OrderStatus, paymentStatus *domain.PaymentStatus) ([]domain.Order, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

@@ -5,11 +5,12 @@ import (
 )
 
 type createOrderReq struct {
-	BranchID   int64                `json:"branchId"`
-	CustomerID *int64               `json:"customerId,omitempty"`
-	DueDate    *string              `json:"dueDate,omitempty"`
-	Note       string               `json:"note,omitempty"`
-	Items      []createOrderItemReq `json:"items"`
+	BranchID      int64                `json:"branchId"`
+	CustomerID    *int64               `json:"customerId,omitempty"`
+	ClientOrderID string               `json:"clientOrderId,omitempty"`
+	DueDate       *string              `json:"dueDate,omitempty"`
+	Note          string               `json:"note,omitempty"`
+	Items         []createOrderItemReq `json:"items"`
 }
 
 type createOrderItemReq struct {

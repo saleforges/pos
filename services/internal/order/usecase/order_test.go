@@ -480,3 +480,88 @@ func TestOrderUsecase_StockDeduction(t *testing.T) {
 		}
 	})
 }
+
+func TestOrderUsecase_Idempotency(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	newUC := func() (OrderUsecase, *mockOrderRepo, *mockInventoryClient) {
+		repo := &mockOrderRepo{}
+		inv := &mockInventoryClient{}
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), inv)
+		return uc, repo, inv
+	}
+
+	t.Run("same clientOrderId returns existing order", func(t *testing.T) {
+		uc, _, inv := newUC()
+
+		first, err := uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5, ClientOrderID: "uuid-abc-123",
+			Items: []CreateOrderItemParams{{ProductItemID: 35, ItemName: "Es Teh", UnitPrice: 15000, Quantity: 2}},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		// retry with the same client order id
+		second, err := uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5, ClientOrderID: "uuid-abc-123",
+			Items: []CreateOrderItemParams{{ProductItemID: 35, ItemName: "Es Teh", UnitPrice: 15000, Quantity: 2}},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if second.ID != first.ID {
+			t.Errorf("expected same order id %d, got %d", first.ID, second.ID)
+		}
+		// stock deducted only once
+		if len(inv.deducted) != 1 {
+			t.Errorf("expected 1 deduction, got %d", len(inv.deducted))
+		}
+	})
+
+	t.Run("different clientOrderId creates new order", func(t *testing.T) {
+		uc, _, _ := newUC()
+
+		first, err := uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5, ClientOrderID: "uuid-1",
+			Items: []CreateOrderItemParams{{ProductItemID: 35, ItemName: "Es Teh", UnitPrice: 15000, Quantity: 1}},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		second, err := uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5, ClientOrderID: "uuid-2",
+			Items: []CreateOrderItemParams{{ProductItemID: 35, ItemName: "Es Teh", UnitPrice: 15000, Quantity: 1}},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if second.ID == first.ID {
+			t.Errorf("expected different order ids, both %d", first.ID)
+		}
+	})
+
+	t.Run("clientOrderId scoped to merchant", func(t *testing.T) {
+		uc, _, _ := newUC()
+
+		first, err := uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5, ClientOrderID: "uuid-shared",
+			Items: []CreateOrderItemParams{{ProductItemID: 35, ItemName: "Es Teh", UnitPrice: 15000, Quantity: 1}},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		// same client order id, different merchant → new order
+		second, err := uc.Create(ctx, CreateOrderParams{
+			MerchantID: 2, BranchID: 1, CreatedBy: 5, ClientOrderID: "uuid-shared",
+			Items: []CreateOrderItemParams{{ProductItemID: 35, ItemName: "Es Teh", UnitPrice: 15000, Quantity: 1}},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if second.ID == first.ID {
+			t.Errorf("expected different order ids across merchants")
+		}
+	})
+}

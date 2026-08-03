@@ -19,6 +19,15 @@ func NewOrderUsecase(orderRepo repository.OrderRepository, customerRepo reposito
 }
 
 func (uc *orderUsecase) Create(ctx context.Context, params CreateOrderParams) (*domain.Order, error) {
+	// Idempotency: a client-generated UUID identifies the order across
+	// retries (offline-first mobile). If the same client order id was
+	// already created, return the existing order instead of duplicating.
+	if params.ClientOrderID != "" {
+		if existing, err := uc.orderRepo.GetByClientOrderID(ctx, params.ClientOrderID, params.MerchantID); err == nil && existing != nil {
+			return existing, nil
+		}
+	}
+
 	// Validate customer belongs to this merchant if provided
 	if params.CustomerID != nil {
 		if _, err := uc.customerRepo.GetByID(ctx, *params.CustomerID, params.MerchantID); err != nil {
@@ -41,21 +50,22 @@ func (uc *orderUsecase) Create(ctx context.Context, params CreateOrderParams) (*
 	}
 
 	order := &domain.Order{
-		MerchantID: params.MerchantID,
-		BranchID:   params.BranchID,
-		CreatedBy:  params.CreatedBy,
-		CustomerID: params.CustomerID,
-		Status:     domain.OrderStatusCompleted,
-		Subtotal:   subtotal,
-		Discount:   0,
-		Tax:        0,
-		Total:      subtotal,
-		PaidAmount: 0,
-		DueDate:    params.DueDate,
-		Note:       params.Note,
-		CreatedAt:  now,
-		UpdatedAt:  now,
-		Items:      items,
+		MerchantID:    params.MerchantID,
+		BranchID:      params.BranchID,
+		CreatedBy:     params.CreatedBy,
+		CustomerID:    params.CustomerID,
+		ClientOrderID: params.ClientOrderID,
+		Status:        domain.OrderStatusCompleted,
+		Subtotal:      subtotal,
+		Discount:      0,
+		Tax:           0,
+		Total:         subtotal,
+		PaidAmount:    0,
+		DueDate:       params.DueDate,
+		Note:          params.Note,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+		Items:         items,
 	}
 	// Default due date: credit sales (customer attached) without an explicit
 	// due date get H+7 from today.
@@ -70,6 +80,13 @@ func (uc *orderUsecase) Create(ctx context.Context, params CreateOrderParams) (*
 	}
 
 	if err := uc.orderRepo.Create(ctx, order); err != nil {
+		// Concurrent retry with the same client order id: the unique index
+		// rejected the duplicate insert — return the winner instead.
+		if params.ClientOrderID != "" {
+			if existing, getErr := uc.orderRepo.GetByClientOrderID(ctx, params.ClientOrderID, params.MerchantID); getErr == nil && existing != nil {
+				return existing, nil
+			}
+		}
 		return nil, err
 	}
 

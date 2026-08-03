@@ -11,7 +11,7 @@ import (
 
 var _ repository.OrderRepository = (*OrderRepository)(nil)
 
-const orderCols = `id, merchant_id, branch_id, created_by, customer_id, status, subtotal, discount, tax, total, paid_amount, due_date, note, created_at, updated_at`
+const orderCols = `id, merchant_id, branch_id, created_by, customer_id, client_order_id, status, subtotal, discount, tax, total, paid_amount, due_date, note, created_at, updated_at`
 const orderItemCols = `id, order_id, product_item_id, item_name, unit_price, quantity, line_total`
 const paymentCols = `id, order_id, amount, method, created_by, paid_at, created_at`
 
@@ -31,9 +31,9 @@ func (r *OrderRepository) Create(ctx context.Context, order *domain.Order) error
 	defer tx.Rollback(ctx)
 
 	err = tx.QueryRow(ctx,
-		`INSERT INTO orders (merchant_id, branch_id, created_by, customer_id, status, subtotal, discount, tax, total, paid_amount, due_date, note, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
-		order.MerchantID, order.BranchID, order.CreatedBy, order.CustomerID, order.Status,
+		`INSERT INTO orders (merchant_id, branch_id, created_by, customer_id, client_order_id, status, subtotal, discount, tax, total, paid_amount, due_date, note, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
+		order.MerchantID, order.BranchID, order.CreatedBy, order.CustomerID, nullIfEmpty(order.ClientOrderID), order.Status,
 		order.Subtotal, order.Discount, order.Tax, order.Total, order.PaidAmount,
 		order.DueDate, nullIfEmpty(order.Note), order.CreatedAt, order.UpdatedAt,
 	).Scan(&order.ID)
@@ -62,6 +62,26 @@ func (r *OrderRepository) GetByID(ctx context.Context, id int64, merchantID int6
 		`SELECT `+orderCols+` FROM orders WHERE id = $1 AND merchant_id = $2`, id, merchantID)
 	order, err := scanOrder(row)
 	if err != nil {
+		return nil, err
+	}
+	if err := r.loadItems(ctx, order); err != nil {
+		return nil, err
+	}
+	if err := r.loadPayments(ctx, order); err != nil {
+		return nil, err
+	}
+	order.PaymentStatus = order.ComputePaymentStatus()
+	return order, nil
+}
+
+func (r *OrderRepository) GetByClientOrderID(ctx context.Context, clientOrderID string, merchantID int64) (*domain.Order, error) {
+	row := r.pool.QueryRow(ctx,
+		`SELECT `+orderCols+` FROM orders WHERE client_order_id = $1 AND merchant_id = $2`, clientOrderID, merchantID)
+	order, err := scanOrder(row)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, domain.ErrOrderNotFound
+		}
 		return nil, err
 	}
 	if err := r.loadItems(ctx, order); err != nil {
@@ -195,13 +215,14 @@ func (r *OrderRepository) loadPayments(ctx context.Context, order *domain.Order)
 
 func scanOrder(row pgx.Row) (*domain.Order, error) {
 	var o domain.Order
-	var note *string
-	err := row.Scan(&o.ID, &o.MerchantID, &o.BranchID, &o.CreatedBy, &o.CustomerID, &o.Status,
+	var note, clientOrderID *string
+	err := row.Scan(&o.ID, &o.MerchantID, &o.BranchID, &o.CreatedBy, &o.CustomerID, &clientOrderID, &o.Status,
 		&o.Subtotal, &o.Discount, &o.Tax, &o.Total, &o.PaidAmount, &o.DueDate, &note, &o.CreatedAt, &o.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
 	o.Note = deref(note)
+	o.ClientOrderID = deref(clientOrderID)
 	return &o, nil
 }
 
@@ -209,12 +230,13 @@ func scanOrders(rows pgx.Rows) ([]domain.Order, error) {
 	var result []domain.Order
 	for rows.Next() {
 		var o domain.Order
-		var note *string
-		if err := rows.Scan(&o.ID, &o.MerchantID, &o.BranchID, &o.CreatedBy, &o.CustomerID, &o.Status,
+		var note, clientOrderID *string
+		if err := rows.Scan(&o.ID, &o.MerchantID, &o.BranchID, &o.CreatedBy, &o.CustomerID, &clientOrderID, &o.Status,
 			&o.Subtotal, &o.Discount, &o.Tax, &o.Total, &o.PaidAmount, &o.DueDate, &note, &o.CreatedAt, &o.UpdatedAt); err != nil {
 			return nil, err
 		}
 		o.Note = deref(note)
+		o.ClientOrderID = deref(clientOrderID)
 		result = append(result, o)
 	}
 	return result, rows.Err()

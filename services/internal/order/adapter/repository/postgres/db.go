@@ -65,25 +65,27 @@ func RunMigrations(databaseURL string) error {
 		CREATE INDEX IF NOT EXISTS idx_customers_merchant ON customers(merchant_id);
 
 		CREATE TABLE IF NOT EXISTS orders (
-			id          BIGSERIAL    PRIMARY KEY,
-			merchant_id BIGINT       NOT NULL,
-			branch_id   BIGINT       NOT NULL,
-			created_by  BIGINT       NOT NULL,
-			customer_id BIGINT       REFERENCES customers(id) ON DELETE SET NULL,
-			status      VARCHAR(20)  NOT NULL DEFAULT 'completed',
-			subtotal    NUMERIC(14,2) NOT NULL DEFAULT 0,
-			discount    NUMERIC(14,2) NOT NULL DEFAULT 0,
-			tax         NUMERIC(14,2) NOT NULL DEFAULT 0,
-			total       NUMERIC(14,2) NOT NULL DEFAULT 0,
-			paid_amount NUMERIC(14,2) NOT NULL DEFAULT 0,
-			due_date    DATE,
-			note        TEXT,
-			created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-			updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+			id             BIGSERIAL    PRIMARY KEY,
+			merchant_id    BIGINT       NOT NULL,
+			branch_id      BIGINT       NOT NULL,
+			created_by     BIGINT       NOT NULL,
+			customer_id    BIGINT       REFERENCES customers(id) ON DELETE SET NULL,
+			client_order_id VARCHAR(36),
+			status         VARCHAR(20)  NOT NULL DEFAULT 'completed',
+			subtotal       NUMERIC(14,2) NOT NULL DEFAULT 0,
+			discount       NUMERIC(14,2) NOT NULL DEFAULT 0,
+			tax            NUMERIC(14,2) NOT NULL DEFAULT 0,
+			total          NUMERIC(14,2) NOT NULL DEFAULT 0,
+			paid_amount    NUMERIC(14,2) NOT NULL DEFAULT 0,
+			due_date       DATE,
+			note           TEXT,
+			created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+			updated_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 		);
 		CREATE INDEX IF NOT EXISTS idx_orders_merchant ON orders(merchant_id);
 		CREATE INDEX IF NOT EXISTS idx_orders_branch ON orders(branch_id);
 		CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_client_order ON orders(client_order_id) WHERE client_order_id IS NOT NULL;
 
 		CREATE TABLE IF NOT EXISTS order_items (
 			id               BIGSERIAL    PRIMARY KEY,
@@ -110,6 +112,16 @@ func RunMigrations(databaseURL string) error {
 		if _, err := pool.Exec(ctx, migration); err != nil {
 			return fmt.Errorf("order init migration: %w", err)
 		}
+	}
+
+	// Heal migrations — run on every startup so existing deployments get
+	// new columns without a full re-init. Idempotent by design.
+	heal := `
+	ALTER TABLE orders ADD COLUMN IF NOT EXISTS client_order_id VARCHAR(36);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_client_order ON orders(client_order_id) WHERE client_order_id IS NOT NULL;
+	`
+	if _, err := pool.Exec(ctx, heal); err != nil {
+		return fmt.Errorf("order heal migration: %w", err)
 	}
 
 	return nil
