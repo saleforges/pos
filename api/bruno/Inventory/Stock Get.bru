@@ -1,0 +1,19 @@
+meta {
+  name: Stock Get
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/v1/stocks/{{stock_id}}
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Merchant-Id: {{merchant_id}}
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

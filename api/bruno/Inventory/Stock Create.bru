@@ -1,0 +1,34 @@
+meta {
+  name: Stock Create
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/v1/stocks
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Merchant-Id: {{merchant_id}}
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "branchId": {{branch_id}},
+    "productItemId": {{item_id}},
+    "available": 100
+  }
+}
+
+script:post-response {
+  if (res.body.data && res.body.data.id) {
+    bru.setVar("stock_id", res.body.data.id);
+  }
+}

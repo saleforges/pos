@@ -1,0 +1,37 @@
+meta {
+  name: Product Component Update
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{base_url}}/v1/product-items/{{item_id}}/components
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Merchant-Id: {{merchant_id}}
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "items": [
+      {
+        "componentProductItemId": 2,
+        "quantity": 2,
+        "unitId": 1
+      },
+      {
+        "componentProductItemId": 3,
+        "quantity": 1,
+        "unitId": 1
+      }
+    ]
+  }
+}
