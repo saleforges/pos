@@ -27,7 +27,7 @@ func TestClient_CreatePayment(t *testing.T) {
 		}))
 		defer srv.Close()
 
-		c := New(Config{BaseURL: srv.URL, VA: "0000001326904469", APIKey: "SANDBOXKEY"})
+		c := New(Config{BaseURL: srv.URL, VA: "0000000000000000", APIKey: "SANDBOXKEY"})
 		result, err := c.CreatePayment(context.Background(), repository.CreatePaymentParams{
 			ReferenceID: "21",
 			Items:       []repository.CreatePaymentItem{{ItemName: "Es Teh", Quantity: 1, UnitPrice: 15000}},
