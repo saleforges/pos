@@ -58,6 +58,7 @@ func (uc *paymentUsecase) Create(ctx context.Context, params CreatePaymentParams
 
 	result, err := uc.gateway.CreatePayment(ctx, repository.CreatePaymentParams{
 		ReferenceID: strconv.FormatInt(params.OrderID, 10),
+		Method:      params.Method,
 		BuyerName:   params.BuyerName,
 		BuyerEmail:  params.BuyerEmail,
 		BuyerPhone:  params.BuyerPhone,
@@ -67,12 +68,16 @@ func (uc *paymentUsecase) Create(ctx context.Context, params CreatePaymentParams
 		return nil, err
 	}
 
-	// Persist the gateway payment URL back onto the transaction.
-	if err := uc.paymentRepo.UpdatePaymentURL(ctx, payment.ID, result.PaymentURL, result.SessionID); err != nil {
+	payment.PaymentURL = result.PaymentURL
+	payment.PaymentNo = result.PaymentNo
+	payment.QrString = result.QrString
+	payment.QrImage = result.QrImage
+	payment.ExpiredAt = result.ExpiredAt
+	payment.SessionID = result.SessionID
+	payment.UpdatedAt = time.Now().UTC()
+	if err := uc.paymentRepo.UpdateDetails(ctx, payment.ID, payment); err != nil {
 		return nil, err
 	}
-	payment.PaymentURL = result.PaymentURL
-	payment.SessionID = result.SessionID
 	return payment, nil
 }
 

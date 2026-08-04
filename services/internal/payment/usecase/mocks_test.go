@@ -59,6 +59,20 @@ func (m *mockPaymentRepo) UpdatePaymentURL(_ context.Context, id int64, url, ses
 	return nil
 }
 
+func (m *mockPaymentRepo) UpdateDetails(_ context.Context, id int64, p *domain.PaymentTransaction) error {
+	existing, ok := m.payments[id]
+	if !ok {
+		return domain.ErrPaymentNotFound
+	}
+	existing.PaymentURL = p.PaymentURL
+	existing.PaymentNo = p.PaymentNo
+	existing.QrString = p.QrString
+	existing.QrImage = p.QrImage
+	existing.ExpiredAt = p.ExpiredAt
+	existing.SessionID = p.SessionID
+	return nil
+}
+
 func (m *mockPaymentRepo) MarkPaid(_ context.Context, id int64, gatewayRef string) error {
 	p, ok := m.payments[id]
 	if !ok {

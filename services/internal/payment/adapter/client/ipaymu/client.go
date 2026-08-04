@@ -31,19 +31,19 @@ func New(cfg Config) repository.GatewayClient {
 }
 
 type createPaymentReq struct {
-	Product     []string `json:"product"`
-	Qty         []int    `json:"qty"`
-	Price       []int64  `json:"price"`
-	ReturnURL   string   `json:"returnUrl"`
-	CancelURL   string   `json:"cancelUrl"`
-	NotifyURL   string   `json:"notifyUrl"`
-	ReferenceID string   `json:"referenceId"`
-	BuyerName   string   `json:"buyerName,omitempty"`
-	BuyerEmail  string   `json:"buyerEmail,omitempty"`
-	BuyerPhone  string   `json:"buyerPhone,omitempty"`
+	Product       []string `json:"product"`
+	Qty           []int    `json:"qty"`
+	Price         []int64  `json:"price"`
+	ReturnURL     string   `json:"returnUrl"`
+	CancelURL     string   `json:"cancelUrl"`
+	NotifyURL     string   `json:"notifyUrl"`
+	ReferenceID   string   `json:"referenceId"`
+	PaymentMethod string   `json:"paymentMethod,omitempty"`
+	BuyerName     string   `json:"buyerName,omitempty"`
+	BuyerEmail    string   `json:"buyerEmail,omitempty"`
+	BuyerPhone    string   `json:"buyerPhone,omitempty"`
 }
 
-// CreatePayment requests a payment URL from iPaymu for an order.
 func (c *client) CreatePayment(ctx context.Context, params repository.CreatePaymentParams) (*repository.PaymentResult, error) {
 	if c.cfg.VA == "" || c.cfg.APIKey == "" {
 		return nil, domain.ErrGatewayNotConfigured
@@ -59,23 +59,30 @@ func (c *client) CreatePayment(ctx context.Context, params repository.CreatePaym
 	}
 
 	body, err := json.Marshal(createPaymentReq{
-		Product:     products,
-		Qty:         qty,
-		Price:       prices,
-		ReturnURL:   c.cfg.ReturnURL,
-		CancelURL:   c.cfg.CancelURL,
-		NotifyURL:   c.cfg.NotifyURL,
-		ReferenceID: params.ReferenceID,
-		BuyerName:   params.BuyerName,
-		BuyerEmail:  params.BuyerEmail,
-		BuyerPhone:  params.BuyerPhone,
+		Product:       products,
+		Qty:           qty,
+		Price:         prices,
+		ReturnURL:     c.cfg.ReturnURL,
+		CancelURL:     c.cfg.CancelURL,
+		NotifyURL:     c.cfg.NotifyURL,
+		ReferenceID:   params.ReferenceID,
+		PaymentMethod: params.Method,
+		BuyerName:     params.BuyerName,
+		BuyerEmail:    params.BuyerEmail,
+		BuyerPhone:    params.BuyerPhone,
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		fmt.Sprintf("%s/api/v2/payment", c.cfg.BaseURL), bytes.NewReader(body))
+	// Direct mode (paymentMethod set) hits /payment/direct and returns the
+	// QRIS/VA payload; otherwise the hosted page returns a redirect URL.
+	endpoint := fmt.Sprintf("%s/api/v2/payment", c.cfg.BaseURL)
+	if params.Method != "" {
+		endpoint = fmt.Sprintf("%s/api/v2/payment/direct", c.cfg.BaseURL)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -95,19 +102,37 @@ func (c *client) CreatePayment(ctx context.Context, params repository.CreatePaym
 		Success bool   `json:"Success"`
 		Message string `json:"Message"`
 		Data    struct {
-			SessionID string `json:"SessionID"`
-			URL       string `json:"Url"`
+			SessionID     string `json:"SessionID"`
+			URL           string `json:"Url"`
+			TransactionID int64  `json:"TransactionId"`
+			Via           string `json:"Via"`
+			PaymentNo     string `json:"PaymentNo"`
+			QrString      string `json:"QrString"`
+			QrImage       string `json:"QrImage"`
+			Expired       string `json:"Expired"`
 		} `json:"Data"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
 		return nil, domain.ErrGatewayUnavailable
 	}
-	if !envelope.Success || envelope.Data.URL == "" {
+	if !envelope.Success {
 		return nil, fmt.Errorf("%w: %s", domain.ErrGatewayError, envelope.Message)
 	}
 
-	return &repository.PaymentResult{
+	result := &repository.PaymentResult{
 		SessionID:  envelope.Data.SessionID,
 		PaymentURL: envelope.Data.URL,
-	}, nil
+		Via:        envelope.Data.Via,
+		PaymentNo:  envelope.Data.PaymentNo,
+		QrString:   envelope.Data.QrString,
+		QrImage:    envelope.Data.QrImage,
+		ExpiredAt:  envelope.Data.Expired,
+	}
+	if params.Method != "" && result.QrImage == "" && result.PaymentNo == "" {
+		return nil, fmt.Errorf("%w: no payment details returned", domain.ErrGatewayError)
+	}
+	if params.Method == "" && result.PaymentURL == "" {
+		return nil, fmt.Errorf("%w: no payment url returned", domain.ErrGatewayError)
+	}
+	return result, nil
 }

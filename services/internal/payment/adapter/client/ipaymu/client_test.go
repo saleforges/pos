@@ -57,6 +57,34 @@ func TestClient_CreatePayment(t *testing.T) {
 		}
 	})
 
+	t.Run("direct qris returns qr details", func(t *testing.T) {
+		var gotPath string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotPath = r.URL.Path
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(`{"Status":200,"Success":true,"Message":"Success","Data":{"TransactionId":222706,"Via":"QRIS","PaymentNo":"IPAYMU-SANDBOX-DEMO","QrString":"QRIS-DEMO","QrImage":"https://sandbox.ipaymu.com/qris-basic/1","Expired":"2026-08-06 02:26:54"}}`))
+		}))
+		defer srv.Close()
+
+		c := New(Config{BaseURL: srv.URL, VA: "va", APIKey: "key"})
+		result, err := c.CreatePayment(context.Background(), repository.CreatePaymentParams{
+			ReferenceID: "21", Method: "qris",
+			Items: []repository.CreatePaymentItem{{ItemName: "Es Teh", Quantity: 1, UnitPrice: 15000}},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if gotPath != "/api/v2/payment/direct" {
+			t.Errorf("expected direct endpoint, got %s", gotPath)
+		}
+		if result.QrImage == "" || result.QrString == "" {
+			t.Error("expected qr details")
+		}
+		if result.Via != "QRIS" {
+			t.Errorf("expected via QRIS, got %s", result.Via)
+		}
+	})
+
 	t.Run("not configured", func(t *testing.T) {
 		c := New(Config{})
 		_, err := c.CreatePayment(context.Background(), repository.CreatePaymentParams{})

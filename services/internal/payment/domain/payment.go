@@ -16,16 +16,18 @@ type PaymentTransaction struct {
 	ID         int64         `json:"id"`
 	MerchantID int64         `json:"merchantId"`
 	OrderID    int64         `json:"orderId"`
-	Gateway    string        `json:"gateway"` // ipaymu
+	Gateway    string        `json:"gateway"`
 	Status     PaymentStatus `json:"status"`
 	Amount     float64       `json:"amount"`
 	PaymentURL string        `json:"paymentUrl,omitempty"`
+	PaymentNo  string        `json:"paymentNo,omitempty"`
+	QrString   string        `json:"qrString,omitempty"`
+	QrImage    string        `json:"qrImage,omitempty"`
+	ExpiredAt  string        `json:"expiredAt,omitempty"`
 	SessionID  string        `json:"sessionId,omitempty"`
-	// GatewayRef is the unique gateway-side transaction id (trx_id), used
-	// for callback idempotency.
-	GatewayRef string    `json:"gatewayRef,omitempty"`
-	CreatedAt  time.Time `json:"createdAt"`
-	UpdatedAt  time.Time `json:"updatedAt"`
+	GatewayRef string        `json:"gatewayRef,omitempty"`
+	CreatedAt  time.Time     `json:"createdAt"`
+	UpdatedAt  time.Time     `json:"updatedAt"`
 }
 
 func (p *PaymentTransaction) Validate() error {

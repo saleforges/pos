@@ -14,16 +14,21 @@ type CreatePaymentItem struct {
 // CreatePaymentParams is the order summary sent to the gateway.
 type CreatePaymentParams struct {
 	ReferenceID string
+	Method      string
 	BuyerName   string
 	BuyerEmail  string
 	BuyerPhone  string
 	Items       []CreatePaymentItem
 }
 
-// PaymentResult is the gateway response with a redirect URL.
 type PaymentResult struct {
 	SessionID  string
 	PaymentURL string
+	Via        string
+	PaymentNo  string
+	QrString   string
+	QrImage    string
+	ExpiredAt  string
 }
 
 // GatewayClient creates payment links via an external gateway (iPaymu).

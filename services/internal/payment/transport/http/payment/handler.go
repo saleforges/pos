@@ -25,12 +25,12 @@ func NewHandler(uc usecase.PaymentUsecase, va string) *Handler {
 
 type createPaymentReq struct {
 	OrderID    int64  `json:"orderId"`
+	Method     string `json:"method,omitempty"`
 	BuyerName  string `json:"buyerName,omitempty"`
 	BuyerEmail string `json:"buyerEmail,omitempty"`
 	BuyerPhone string `json:"buyerPhone,omitempty"`
 }
 
-// Create opens a gateway payment for an order (JWT auth, merchant scoped).
 func (h *Handler) Create(c echo.Context) error {
 	var req createPaymentReq
 	if err := c.Bind(&req); err != nil {
@@ -44,6 +44,7 @@ func (h *Handler) Create(c echo.Context) error {
 	result, err := h.uc.Create(c.Request().Context(), usecase.CreatePaymentParams{
 		MerchantID: merchantID,
 		OrderID:    req.OrderID,
+		Method:     req.Method,
 		BuyerName:  req.BuyerName,
 		BuyerEmail: req.BuyerEmail,
 		BuyerPhone: req.BuyerPhone,

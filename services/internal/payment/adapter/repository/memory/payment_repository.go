@@ -74,6 +74,24 @@ func (r *PaymentRepository) UpdatePaymentURL(_ context.Context, id int64, paymen
 	return nil
 }
 
+func (r *PaymentRepository) UpdateDetails(_ context.Context, id int64, p *domain.PaymentTransaction) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	existing, ok := r.payments[id]
+	if !ok {
+		return domain.ErrPaymentNotFound
+	}
+	existing.PaymentURL = p.PaymentURL
+	existing.PaymentNo = p.PaymentNo
+	existing.QrString = p.QrString
+	existing.QrImage = p.QrImage
+	existing.ExpiredAt = p.ExpiredAt
+	existing.SessionID = p.SessionID
+	existing.UpdatedAt = time.Now().UTC()
+	return nil
+}
+
 func (r *PaymentRepository) GetByGatewayRef(_ context.Context, gatewayRef string) (*domain.PaymentTransaction, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

@@ -74,5 +74,17 @@ func RunMigrations(databaseURL string) error {
 		}
 	}
 
+	// Heal migrations — run on every startup so existing deployments get
+	// new columns added over time.
+	heal := `
+	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS payment_no TEXT;
+	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS qr_string TEXT;
+	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS qr_image TEXT;
+	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS expired_at TEXT;
+	`
+	if _, err := pool.Exec(ctx, heal); err != nil {
+		return fmt.Errorf("payment heal migration: %w", err)
+	}
+
 	return nil
 }

@@ -17,6 +17,7 @@ type PaymentUsecase interface {
 type CreatePaymentParams struct {
 	MerchantID int64
 	OrderID    int64
+	Method     string
 	BuyerName  string
 	BuyerEmail string
 	BuyerPhone string
