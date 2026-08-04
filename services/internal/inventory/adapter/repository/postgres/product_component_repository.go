@@ -148,6 +148,9 @@ func scanProductComponent(row pgx.Row) (*domain.ProductComponent, error) {
 	var c domain.ProductComponent
 	err := row.Scan(&c.ID, &c.MerchantID, &c.ProductItemID, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, domain.ErrProductComponentNotFound
+		}
 		return nil, err
 	}
 	return &c, nil
