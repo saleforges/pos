@@ -70,6 +70,7 @@ func (m *mockPaymentRepo) UpdateDetails(_ context.Context, id int64, p *domain.P
 	existing.QrImage = p.QrImage
 	existing.ExpiredAt = p.ExpiredAt
 	existing.SessionID = p.SessionID
+	existing.TransactionID = p.TransactionID
 	return nil
 }
 

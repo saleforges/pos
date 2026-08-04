@@ -74,6 +74,7 @@ func (uc *paymentUsecase) Create(ctx context.Context, params CreatePaymentParams
 	payment.QrImage = result.QrImage
 	payment.ExpiredAt = result.ExpiredAt
 	payment.SessionID = result.SessionID
+	payment.TransactionID = result.TransactionID
 	payment.UpdatedAt = time.Now().UTC()
 	if err := uc.paymentRepo.UpdateDetails(ctx, payment.ID, payment); err != nil {
 		return nil, err

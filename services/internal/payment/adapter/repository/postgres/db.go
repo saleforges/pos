@@ -81,6 +81,7 @@ func RunMigrations(databaseURL string) error {
 	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS qr_string TEXT;
 	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS qr_image TEXT;
 	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS expired_at TEXT;
+	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS transaction_id TEXT;
 	`
 	if _, err := pool.Exec(ctx, heal); err != nil {
 		return fmt.Errorf("payment heal migration: %w", err)

@@ -88,6 +88,7 @@ func (r *PaymentRepository) UpdateDetails(_ context.Context, id int64, p *domain
 	existing.QrImage = p.QrImage
 	existing.ExpiredAt = p.ExpiredAt
 	existing.SessionID = p.SessionID
+	existing.TransactionID = p.TransactionID
 	existing.UpdatedAt = time.Now().UTC()
 	return nil
 }

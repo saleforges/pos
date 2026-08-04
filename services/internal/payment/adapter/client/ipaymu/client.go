@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/saleforge/pos/services/internal/payment/domain"
@@ -120,13 +121,14 @@ func (c *client) CreatePayment(ctx context.Context, params repository.CreatePaym
 	}
 
 	result := &repository.PaymentResult{
-		SessionID:  envelope.Data.SessionID,
-		PaymentURL: envelope.Data.URL,
-		Via:        envelope.Data.Via,
-		PaymentNo:  envelope.Data.PaymentNo,
-		QrString:   envelope.Data.QrString,
-		QrImage:    envelope.Data.QrImage,
-		ExpiredAt:  envelope.Data.Expired,
+		SessionID:     envelope.Data.SessionID,
+		PaymentURL:    envelope.Data.URL,
+		TransactionID: strconv.FormatInt(envelope.Data.TransactionID, 10),
+		Via:           envelope.Data.Via,
+		PaymentNo:     envelope.Data.PaymentNo,
+		QrString:      envelope.Data.QrString,
+		QrImage:       envelope.Data.QrImage,
+		ExpiredAt:     envelope.Data.Expired,
 	}
 	if params.Method != "" && result.QrImage == "" && result.PaymentNo == "" {
 		return nil, fmt.Errorf("%w: no payment details returned", domain.ErrGatewayError)
