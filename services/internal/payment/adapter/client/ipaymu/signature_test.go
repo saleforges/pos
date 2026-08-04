@@ -1,42 +1,28 @@
 package ipaymu
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"sort"
-	"strconv"
 	"strings"
 	"testing"
 )
 
-// buildCallbackSignature mirrors the documented iPaymu verification flow to
-// produce a valid signature for testing.
+// buildCallbackSignature mirrors the documented iPaymu verification flow:
+// normalize values, sort keys (json.Marshal on map does this), serialize
+// without HTML escaping, escape "/" as "\/", HMAC-SHA256 with VA secret.
 func buildCallbackSignature(va string, raw map[string]interface{}) string {
-	// Normalize exactly like VerifyCallback does.
 	normalized := normalizeValues(raw)
-	keys := make([]string, 0, len(normalized))
-	for k := range normalized {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	var sb strings.Builder
-	sb.WriteString("{")
-	for i, k := range keys {
-		if i > 0 {
-			sb.WriteString(",")
-		}
-		sb.WriteString(strconv.Quote(k))
-		sb.WriteString(":")
-		b, _ := json.Marshal(normalized[k])
-		sb.Write(b)
-	}
-	sb.WriteString("}")
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	_ = enc.Encode(normalized)
+	canonical := strings.ReplaceAll(strings.TrimRight(buf.String(), "\n"), "/", "\\/")
 
 	h := hmac.New(sha256.New, []byte(va))
-	h.Write([]byte(sb.String()))
+	h.Write([]byte(canonical))
 	return hex.EncodeToString(h.Sum(nil))
 }
 
@@ -96,6 +82,43 @@ func TestVerifyCallback(t *testing.T) {
 		sig := buildCallbackSignature(va, noAdditional)
 		if !VerifyCallback(va, sig, noAdditional) {
 			t.Error("expected signature with missing additional_info to pass")
+		}
+	})
+
+	// Regression: real payload captured from the iPaymu sandbox "Tes Notify"
+	// simulator. Its X-Signature must verify with our implementation.
+	t.Run("real sandbox simulator payload", func(t *testing.T) {
+		realVA := "0000001326904469"
+		realSig := "7cc161bded6ca01562e783cc38fe48e45bbc14077cf59120f4dd25c72323c06b"
+		realPayload := map[string]interface{}{
+			"trx_id":                 "222704",
+			"sid":                    "a1b14861-5782-4623-9ee1-f5b77191b7ff",
+			"reference_id":           "29",
+			"status":                 "berhasil",
+			"status_code":            "1",
+			"sub_total":              "15000",
+			"total":                  "15270",
+			"amount":                 "15270",
+			"fee":                    "375",
+			"paid_off":               "14895",
+			"created_at":             "2026-08-05 02:08:47",
+			"expired_at":             "2026-08-06 02:08:47",
+			"paid_at":                "2026-08-05 02:12:12",
+			"settlement_status":      "settled",
+			"transaction_status_code": "7",
+			"is_escrow":              "true",
+			"system_notes":           "Sandbox notify",
+			"via":                    "qris",
+			"channel":                "qris",
+			"payment_no":             "",
+			"buyer_name":             "ilhamp",
+			"buyer_email":            "sss@gmail.com",
+			"buyer_phone":            "2222",
+			"additional_info":        "[]",
+			"url":                    "https://api-dev.saleforges.com/v1/payments/ipaymu/callback",
+		}
+		if !VerifyCallback(realVA, realSig, realPayload) {
+			t.Error("expected real sandbox simulator signature to verify")
 		}
 	})
 }

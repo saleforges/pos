@@ -1,12 +1,12 @@
 package ipaymu
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -31,39 +31,28 @@ func Timestamp() string {
 }
 
 // VerifyCallback validates an iPaymu callback X-Signature. The secret key
-// is the merchant VA. Payload values must be normalized (strings to
-// int/bool, missing additional_info as []), keys sorted ascending, then
-// serialized to JSON before HMAC-SHA256.
+// is the merchant VA. Per iPaymu docs the payload is: values normalized
+// (strings to int/bool, additional_info as []), keys sorted ascending,
+// JSON-serialized WITHOUT HTML escaping, then every "/" escaped as "\/"
+// (their example uses JSON.stringify + replace(/\\\//g, '\\\/')) before
+// HMAC-SHA256.
 func VerifyCallback(va, signature string, raw map[string]interface{}) bool {
 	if signature == "" {
 		return false
 	}
 	normalized := normalizeValues(raw)
-	keys := make([]string, 0, len(normalized))
-	for k := range normalized {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
 
-	var sb strings.Builder
-	sb.WriteString("{")
-	for i, k := range keys {
-		if i > 0 {
-			sb.WriteString(",")
-		}
-		sb.WriteString(strconv.Quote(k))
-		sb.WriteString(":")
-		val := normalized[k]
-		b, err := json.Marshal(val)
-		if err != nil {
-			return false
-		}
-		sb.Write(b)
+	// json.Marshal on a map sorts keys ascending automatically.
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	if err := enc.Encode(normalized); err != nil {
+		return false
 	}
-	sb.WriteString("}")
+	canonical := strings.ReplaceAll(strings.TrimRight(buf.String(), "\n"), "/", "\\/")
 
 	h := hmac.New(sha256.New, []byte(va))
-	h.Write([]byte(sb.String()))
+	h.Write([]byte(canonical))
 	expected := hex.EncodeToString(h.Sum(nil))
 	return hmac.Equal([]byte(expected), []byte(strings.ToLower(signature)))
 }
