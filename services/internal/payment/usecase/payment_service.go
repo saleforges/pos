@@ -108,6 +108,9 @@ func (uc *paymentUsecase) HandleCallback(ctx context.Context, params CallbackPar
 
 	amount, err := strconv.ParseFloat(params.Amount, 64)
 	if err != nil || amount <= 0 {
+		amount = payment.Amount
+	}
+	if amount <= 0 {
 		return domain.ErrInvalidCallback
 	}
 
