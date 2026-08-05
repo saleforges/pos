@@ -199,3 +199,30 @@ func TestPaymentUsecase_HandleCallback(t *testing.T) {
 		}
 	})
 }
+
+func TestPaymentUsecase_StaticQR(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockPaymentRepo()
+	uc := NewPaymentUsecase(repo, &mockGateway{}, &mockOrderClient{})
+
+	qr := &domain.StaticQR{MerchantID: 1, PaymentNo: "STATIC-1", QrString: "QR", QrImage: "https://img/qr.png"}
+	if err := uc.UpdateStaticQR(ctx, qr); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	got, err := uc.GetStaticQR(ctx, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.QrImage != qr.QrImage || got.PaymentNo != qr.PaymentNo {
+		t.Errorf("mismatch: got %+v want %+v", got, qr)
+	}
+
+	if _, err := uc.GetStaticQR(ctx, 99); err != domain.ErrPaymentNotFound {
+		t.Errorf("expected not found, got %v", err)
+	}
+
+	if err := uc.UpdateStaticQR(ctx, &domain.StaticQR{MerchantID: 1}); err != domain.ErrInvalidPayment {
+		t.Errorf("expected invalid, got %v", err)
+	}
+}

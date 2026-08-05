@@ -30,6 +30,15 @@ type PaymentTransaction struct {
 	UpdatedAt  time.Time     `json:"updatedAt"`
 }
 
+// StaticQR is the merchant's permanent QRIS (display at counter; payment
+// confirmed manually, no gateway callback).
+type StaticQR struct {
+	MerchantID int64  `json:"merchantId"`
+	PaymentNo  string `json:"paymentNo"`
+	QrString   string `json:"qrString"`
+	QrImage    string `json:"qrImage"`
+}
+
 func (p *PaymentTransaction) Validate() error {
 	if p.MerchantID == 0 {
 		return ErrInvalidPayment

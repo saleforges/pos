@@ -15,4 +15,6 @@ type PaymentRepository interface {
 	UpdateDetails(ctx context.Context, id int64, p *domain.PaymentTransaction) error
 	MarkPaid(ctx context.Context, id int64, paymentRef string) error
 	MarkExpired(ctx context.Context, id int64) error
+	GetStaticQR(ctx context.Context, merchantID int64) (*domain.StaticQR, error)
+	UpsertStaticQR(ctx context.Context, qr *domain.StaticQR) error
 }

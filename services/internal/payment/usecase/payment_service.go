@@ -151,4 +151,15 @@ func (uc *paymentUsecase) GetByOrderID(ctx context.Context, orderID int64, merch
 	return payment, nil
 }
 
+func (uc *paymentUsecase) GetStaticQR(ctx context.Context, merchantID int64) (*domain.StaticQR, error) {
+	return uc.paymentRepo.GetStaticQR(ctx, merchantID)
+}
+
+func (uc *paymentUsecase) UpdateStaticQR(ctx context.Context, qr *domain.StaticQR) error {
+	if qr == nil || qr.MerchantID == 0 || qr.QrImage == "" {
+		return domain.ErrInvalidPayment
+	}
+	return uc.paymentRepo.UpsertStaticQR(ctx, qr)
+}
+
 var _ PaymentUsecase = (*paymentUsecase)(nil)

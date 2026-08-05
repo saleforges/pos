@@ -89,6 +89,14 @@ func RunMigrations(databaseURL string) error {
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_transactions_payment_ref ON payment_transactions(payment_ref) WHERE payment_ref IS NOT NULL;
 	ALTER TABLE payment_transactions DROP COLUMN IF EXISTS transaction_id;
 	ALTER TABLE payment_transactions DROP COLUMN IF EXISTS gateway_ref;
+
+	CREATE TABLE IF NOT EXISTS payment_static_qrs (
+		merchant_id BIGINT      PRIMARY KEY,
+		payment_no  VARCHAR(100) NOT NULL,
+		qr_string   TEXT        NOT NULL,
+		qr_image    TEXT        NOT NULL,
+		updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	);
 	`
 	if _, err := pool.Exec(ctx, heal); err != nil {
 		return fmt.Errorf("payment heal migration: %w", err)

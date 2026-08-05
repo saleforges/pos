@@ -12,13 +12,17 @@ import (
 var _ repository.PaymentRepository = (*PaymentRepository)(nil)
 
 type PaymentRepository struct {
-	mu       sync.RWMutex
-	payments map[int64]*domain.PaymentTransaction
-	seq      int64
+	mu        sync.RWMutex
+	payments  map[int64]*domain.PaymentTransaction
+	staticQRs map[int64]*domain.StaticQR
+	seq       int64
 }
 
 func NewPaymentRepository() *PaymentRepository {
-	return &PaymentRepository{payments: make(map[int64]*domain.PaymentTransaction)}
+	return &PaymentRepository{
+		payments:  make(map[int64]*domain.PaymentTransaction),
+		staticQRs: make(map[int64]*domain.StaticQR),
+	}
 }
 
 func (r *PaymentRepository) Create(_ context.Context, p *domain.PaymentTransaction) error {
@@ -131,5 +135,25 @@ func (r *PaymentRepository) MarkExpired(_ context.Context, id int64) error {
 	}
 	p.Status = domain.PaymentStatusExpired
 	p.UpdatedAt = time.Now().UTC()
+	return nil
+}
+
+func (r *PaymentRepository) GetStaticQR(_ context.Context, merchantID int64) (*domain.StaticQR, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, qr := range r.staticQRs {
+		if qr.MerchantID == merchantID {
+			return qr, nil
+		}
+	}
+	return nil, domain.ErrPaymentNotFound
+}
+
+func (r *PaymentRepository) UpsertStaticQR(_ context.Context, qr *domain.StaticQR) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.staticQRs[qr.MerchantID] = qr
 	return nil
 }

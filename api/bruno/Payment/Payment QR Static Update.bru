@@ -1,0 +1,23 @@
+meta {
+  name: Payment QR Static Update
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{base_url}}/v1/payments/qr-static
+  body: json
+  auth: bearer
+  headers {
+    X-Merchant-Id: {{merchant_id}}
+    Content-Type: application/json
+  }
+}
+
+body:json {
+  {
+    "paymentNo": "IPAYMU-STATIC-001",
+    "qrString": "0002010102112667...",
+    "qrImage": "https://sandbox.ipaymu.com/qris-static/001"
+  }
+}

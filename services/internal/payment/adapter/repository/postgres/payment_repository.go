@@ -99,6 +99,29 @@ func scanPayment(row pgx.Row) (*domain.PaymentTransaction, error) {
 	return &p, nil
 }
 
+func (r *PaymentRepository) GetStaticQR(ctx context.Context, merchantID int64) (*domain.StaticQR, error) {
+	var qr domain.StaticQR
+	err := r.pool.QueryRow(ctx,
+		`SELECT merchant_id, payment_no, qr_string, qr_image FROM payment_static_qrs WHERE merchant_id = $1`, merchantID,
+	).Scan(&qr.MerchantID, &qr.PaymentNo, &qr.QrString, &qr.QrImage)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, domain.ErrPaymentNotFound
+		}
+		return nil, err
+	}
+	return &qr, nil
+}
+
+func (r *PaymentRepository) UpsertStaticQR(ctx context.Context, qr *domain.StaticQR) error {
+	_, err := r.pool.Exec(ctx,
+		`INSERT INTO payment_static_qrs (merchant_id, payment_no, qr_string, qr_image, updated_at)
+		 VALUES ($1, $2, $3, $4, NOW())
+		 ON CONFLICT (merchant_id) DO UPDATE SET payment_no = $2, qr_string = $3, qr_image = $4, updated_at = NOW()`,
+		qr.MerchantID, qr.PaymentNo, qr.QrString, qr.QrImage)
+	return err
+}
+
 func nullIfEmpty(s string) *string {
 	if s == "" {
 		return nil

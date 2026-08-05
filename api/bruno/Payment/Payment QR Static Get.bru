@@ -1,0 +1,14 @@
+meta {
+  name: Payment QR Static Get
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/v1/payments/qr-static
+  body: none
+  auth: bearer
+  headers {
+    X-Merchant-Id: {{merchant_id}}
+  }
+}

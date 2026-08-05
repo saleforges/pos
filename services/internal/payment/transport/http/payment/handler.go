@@ -107,6 +107,38 @@ func (h *Handler) Callback(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, map[string]string{"message": "ok"})
 }
 
+// GetStaticQR returns the merchant's permanent counter QRIS.
+func (h *Handler) GetStaticQR(c echo.Context) error {
+	merchantID := httputil.GetMerchantID(c)
+	result, err := h.uc.GetStaticQR(c.Request().Context(), merchantID)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, result)
+}
+
+func (h *Handler) UpdateStaticQR(c echo.Context) error {
+	var req struct {
+		PaymentNo string `json:"paymentNo"`
+		QrString  string `json:"qrString"`
+		QrImage   string `json:"qrImage"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, domain.ErrInvalidPayment)
+	}
+	merchantID := httputil.GetMerchantID(c)
+	qr := &domain.StaticQR{
+		MerchantID: merchantID,
+		PaymentNo:  req.PaymentNo,
+		QrString:   req.QrString,
+		QrImage:    req.QrImage,
+	}
+	if err := h.uc.UpdateStaticQR(c.Request().Context(), qr); err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, qr)
+}
+
 func mapError(c echo.Context, err error) error {
 	switch err {
 	case domain.ErrInvalidPayment:

@@ -10,6 +10,7 @@ import (
 type mockPaymentRepo struct {
 	payments map[int64]*domain.PaymentTransaction
 	seq      int64
+	staticQR *domain.StaticQR
 }
 
 func newMockPaymentRepo() *mockPaymentRepo {
@@ -90,6 +91,18 @@ func (m *mockPaymentRepo) MarkExpired(_ context.Context, id int64) error {
 		return domain.ErrPaymentNotFound
 	}
 	p.Status = domain.PaymentStatusExpired
+	return nil
+}
+
+func (m *mockPaymentRepo) GetStaticQR(_ context.Context, merchantID int64) (*domain.StaticQR, error) {
+	if m.staticQR != nil && m.staticQR.MerchantID == merchantID {
+		return m.staticQR, nil
+	}
+	return nil, domain.ErrPaymentNotFound
+}
+
+func (m *mockPaymentRepo) UpsertStaticQR(_ context.Context, qr *domain.StaticQR) error {
+	m.staticQR = qr
 	return nil
 }
 
