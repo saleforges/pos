@@ -1,0 +1,43 @@
+name: Mobile
+
+on:
+  push:
+    branches: [mobile-develop]
+    paths:
+      - 'clients/mobile/**'
+  pull_request:
+    branches: [mobile-develop]
+    paths:
+      - 'clients/mobile/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients/mobile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@v1
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.6'
+          channel: stable
+
+      - run: flutter pub get
+
+      - run: flutter analyze
+
+      - run: flutter test
+
+      - name: Build APK
+        run: flutter build apk --debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-debug
+          path: clients/mobile/build/app/outputs/flutter-apk/*.apk

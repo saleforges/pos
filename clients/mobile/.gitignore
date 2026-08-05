@@ -1,0 +1,78 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.metadata
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code
+.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+.pub-preload-cache/
+/build/
+/coverage/
+*.js.map
+
+# Android
+/android/.gradle/
+/android/app/build/
+/android/local.properties
+/android/key.properties
+*.keystore
+*.jks
+
+# iOS
+/ios/.generated/
+/ios/Pods/
+/ios/.symlinks/
+/ios/Flutter/Flutter.framework
+/ios/Flutter/Flutter.podspec
+/ios/Flutter/.last_build_id
+/ios/Runner/GeneratedPluginRegistrant.*
+
+# macOS
+/macos/Pods/
+/macos/Flutter/Flutter.framework
+/macos/Flutter/Flutter.podspec
+/macos/Flutter/ephemeral/
+
+# Linux
+/linux/flutter/ephemeral/
+
+# Windows
+/windows/flutter/ephemeral/
+/windows/runner/flutter_window.h
+/windows/runner/runner.exe
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Environment variables
+.env
+
+# Graphify
+.graphify/
+graphify-out/
