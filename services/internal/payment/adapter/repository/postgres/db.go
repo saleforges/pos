@@ -82,6 +82,8 @@ func RunMigrations(databaseURL string) error {
 	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS qr_image TEXT;
 	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS expired_at TEXT;
 	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS payment_ref TEXT;
+	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS transaction_id TEXT;
+	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS gateway_ref TEXT;
 	UPDATE payment_transactions SET payment_ref = COALESCE(transaction_id, gateway_ref) WHERE payment_ref IS NULL OR payment_ref = '';
 	DROP INDEX IF EXISTS idx_payment_transactions_gateway_ref;
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_transactions_payment_ref ON payment_transactions(payment_ref) WHERE payment_ref IS NOT NULL;
