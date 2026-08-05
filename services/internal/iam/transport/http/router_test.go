@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/iam/domain"
@@ -111,6 +112,7 @@ func TestHTTPRouterSmoke(t *testing.T) {
 		mockPermissionCheck,
 		&mockJWKSProvider{},
 		[]string{"*"},
+		RateLimitConfig{LoginLimit: 5, LoginWindow: time.Minute, RefreshLimit: 20},
 	)
 
 	t.Run("register returns 201", func(t *testing.T) {

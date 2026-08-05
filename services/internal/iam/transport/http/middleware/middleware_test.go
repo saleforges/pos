@@ -3,8 +3,10 @@ package middleware
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -169,6 +171,69 @@ func TestCORSMiddleware(t *testing.T) {
 	})
 }
 
+func TestLoginKey(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/auth/login", strings.NewReader(`{"username":"owner","password":"secret"}`))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	key := LoginKey(c)
+	if key != "owner@"+c.RealIP() {
+		t.Fatalf("expected key owner@<ip>, got %q", key)
+	}
+
+	body, err := io.ReadAll(c.Request().Body)
+	if err != nil {
+		t.Fatalf("body not readable after LoginKey: %v", err)
+	}
+	if string(body) != `{"username":"owner","password":"secret"}` {
+		t.Fatalf("body not restored, got %q", string(body))
+	}
+}
+
+func TestLoginKeyFallsBackToIP(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/auth/login", strings.NewReader(`not-json`))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	if key := LoginKey(c); key != c.RealIP() {
+		t.Fatalf("expected IP fallback, got %q", key)
+	}
+}
+
+func TestRateLimitMiddleware_PerAccountIsolation(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+	e.POST("/auth/login", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	}, RateLimitMiddleware(1, time.Minute, LoginKey))
+
+	login := func(username string) int {
+		req := httptest.NewRequest(http.MethodPost, "/auth/login", strings.NewReader(`{"username":"`+username+`","password":"x"}`))
+		req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+		rec := httptest.NewRecorder()
+		e.ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	if code := login("owner"); code != http.StatusOK {
+		t.Fatalf("first owner login: expected 200, got %d", code)
+	}
+	if code := login("owner"); code != http.StatusTooManyRequests {
+		t.Fatalf("second owner login: expected 429, got %d", code)
+	}
+	if code := login("cashier"); code != http.StatusOK {
+		t.Fatalf("cashier login: expected 200 (different account not blocked), got %d", code)
+	}
+}
+
 func TestRateLimitMiddleware(t *testing.T) {
 	t.Parallel()
 
@@ -176,7 +241,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 		e := echo.New()
 		e.GET("/test", func(c echo.Context) error {
 			return c.NoContent(http.StatusOK)
-		}, RateLimitMiddleware(5, time.Minute))
+		}, RateLimitMiddleware(5, time.Minute, ClientIPKey))
 
 		req := httptest.NewRequest(http.MethodGet, "/test", nil)
 		rec := httptest.NewRecorder()
@@ -191,7 +256,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 		e := echo.New()
 		e.GET("/test", func(c echo.Context) error {
 			return c.NoContent(http.StatusOK)
-		}, RateLimitMiddleware(1, time.Minute))
+		}, RateLimitMiddleware(1, time.Minute, ClientIPKey))
 
 		// First request
 		req := httptest.NewRequest(http.MethodGet, "/test", nil)

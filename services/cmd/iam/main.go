@@ -2,7 +2,9 @@ package main
 
 import (
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/saleforge/pos/services/internal/iam/bootstrap"
@@ -42,6 +44,9 @@ func main() {
 		TokenHasherSecret: getEnv("TOKEN_HASHER_SECRET", ""),
 		SecureCookies:     os.Getenv("SECURE_COOKIES") != "false",
 		AllowedOrigins:    allowedOrigins,
+		LoginRateLimit:    getEnvInt("LOGIN_RATE_LIMIT", 5),
+		LoginRateWindow:   time.Duration(getEnvInt("LOGIN_RATE_WINDOW", 60)) * time.Second,
+		RefreshRateLimit:  getEnvInt("REFRESH_RATE_LIMIT", 20),
 	})
 	if err != nil {
 		logger.Error("bootstrap failed", "error", err.Error())
@@ -56,6 +61,15 @@ func main() {
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return fallback
+}
+
+func getEnvInt(key string, fallback int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
 	}
 	return fallback
 }

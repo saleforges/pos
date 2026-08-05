@@ -1,7 +1,10 @@
 package middleware
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -135,6 +138,26 @@ func BranchAccessMiddleware(branchParam string, hasAccess func(*port.TokenClaims
 	}
 }
 
+func ClientIPKey(c echo.Context) string {
+	return c.RealIP()
+}
+
+func LoginKey(c echo.Context) string {
+	ip := c.RealIP()
+	body, err := io.ReadAll(c.Request().Body)
+	if err != nil {
+		return ip
+	}
+	c.Request().Body = io.NopCloser(bytes.NewReader(body))
+	var payload struct {
+		Username string `json:"username"`
+	}
+	if json.Unmarshal(body, &payload) == nil && payload.Username != "" {
+		return payload.Username + "@" + ip
+	}
+	return ip
+}
+
 type rateLimiter struct {
 	mu       sync.Mutex
 	visitors map[string]*visitor
@@ -188,12 +211,11 @@ func (rl *rateLimiter) Allow(ip string, limit int, window time.Duration) bool {
 	return v.count <= limit
 }
 
-func RateLimitMiddleware(limit int, window time.Duration) echo.MiddlewareFunc {
+func RateLimitMiddleware(limit int, window time.Duration, keyFn func(c echo.Context) string) echo.MiddlewareFunc {
 	rl := newRateLimiter()
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			ip := c.RealIP()
-			if !rl.Allow(ip, limit, window) {
+			if limit > 0 && !rl.Allow(keyFn(c), limit, window) {
 				return writeError(c, http.StatusTooManyRequests, rateLimitExceeded)
 			}
 			return next(c)

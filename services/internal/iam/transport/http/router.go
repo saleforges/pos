@@ -18,6 +18,12 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 )
 
+type RateLimitConfig struct {
+	LoginLimit   int
+	LoginWindow  time.Duration
+	RefreshLimit int
+}
+
 func NewRouter(
 	authHandler *httpauth.Handler,
 	userHandler *httpuser.Handler,
@@ -27,6 +33,7 @@ func NewRouter(
 	hasPermissionFunc func(*port.TokenClaims, domain.Permission) bool,
 	jwksProvider port.JWKSProvider,
 	allowedOrigins []string,
+	rateLimit RateLimitConfig,
 ) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
@@ -48,8 +55,8 @@ func NewRouter(
 
 	api := e.Group("/api/v1")
 
-	loginRateLimit := middleware.RateLimitMiddleware(5, 1*time.Minute)
-	refreshRateLimit := middleware.RateLimitMiddleware(20, 1*time.Minute)
+	loginRateLimit := middleware.RateLimitMiddleware(rateLimit.LoginLimit, rateLimit.LoginWindow, middleware.LoginKey)
+	refreshRateLimit := middleware.RateLimitMiddleware(rateLimit.RefreshLimit, 1*time.Minute, middleware.ClientIPKey)
 
 	api.POST("/auth/register", authHandler.Register)
 	api.POST("/auth/login", authHandler.Login, loginRateLimit)

@@ -34,6 +34,9 @@ type Config struct {
 	SecureCookies     bool
 	// AllowedOrigins controls CORS. nil or empty = no cross-origin access allowed.
 	AllowedOrigins    []string
+	LoginRateLimit    int
+	LoginRateWindow   time.Duration
+	RefreshRateLimit  int
 }
 
 type App struct {
@@ -177,7 +180,11 @@ func New(cfg Config) (*App, error) {
 	userHandler := httpuser.NewHandler(authUsecase, userUsecase)
 	roleHandler := httprole.NewHandler(roleUsecase)
 	permHandler := httpperm.NewHandler(permUsecase)
-	router := httptransport.NewRouter(authHandler, userHandler, roleHandler, permHandler, authUsecase, authUsecase.HasPermission, tokenSigner, cfg.AllowedOrigins)
+	router := httptransport.NewRouter(authHandler, userHandler, roleHandler, permHandler, authUsecase, authUsecase.HasPermission, tokenSigner, cfg.AllowedOrigins, httptransport.RateLimitConfig{
+		LoginLimit:   cfg.LoginRateLimit,
+		LoginWindow:  cfg.LoginRateWindow,
+		RefreshLimit: cfg.RefreshRateLimit,
+	})
 
 	return &App{router: router, otelShutdown: otelShutdown}, nil
 }
