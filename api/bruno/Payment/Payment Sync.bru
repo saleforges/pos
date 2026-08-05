@@ -1,0 +1,25 @@
+meta {
+  name: Payment Sync
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/v1/payments/sync?branchId={{branch_id}}
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Merchant-Id: {{merchant_id}}
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+script:post-response {
+  if (res.body.data && res.body.data.payments) {
+    bru.setVar("payment_id", res.body.data.payments[0].id);
+  }
+}

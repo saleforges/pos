@@ -8,7 +8,12 @@ get {
   url: {{base_url}}/v1/orders/{{order_id}}/receipt
   body: none
   auth: bearer
-  headers {
-    X-Merchant-Id: {{merchant_id}}
-  }
+}
+
+headers {
+  X-Merchant-Id: {{merchant_id}}
+}
+
+auth:bearer {
+  token: {{access_token}}
 }

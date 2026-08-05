@@ -1,11 +1,11 @@
 meta {
-  name: Order Sync
+  name: Reports Sales
   type: http
-  seq: 14
+  seq: 15
 }
 
 get {
-  url: {{base_url}}/v1/orders/sync?branchId={{branch_id}}&lastSync={{last_sync}}
+  url: {{base_url}}/v1/reports/sales?branchId={{branch_id}}
   body: none
   auth: bearer
 }

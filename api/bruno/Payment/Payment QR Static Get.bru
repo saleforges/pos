@@ -5,10 +5,15 @@ meta {
 }
 
 get {
-  url: {{base_url}}/v1/payments/qr-static
+  url: {{base_url}}/v1/payments/qr-static?branchId={{branch_id}}
   body: none
   auth: bearer
-  headers {
-    X-Merchant-Id: {{merchant_id}}
-  }
+}
+
+headers {
+  X-Merchant-Id: {{merchant_id}}
+}
+
+auth:bearer {
+  token: {{access_token}}
 }

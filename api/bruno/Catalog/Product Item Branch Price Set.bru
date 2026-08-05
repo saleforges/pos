@@ -1,11 +1,11 @@
 meta {
-  name: Payment QR Static Update
+  name: Product Item Branch Price Set
   type: http
-  seq: 4
+  seq: 9
 }
 
 put {
-  url: {{base_url}}/v1/payments/qr-static
+  url: {{base_url}}/v1/product-items/{{item_id}}/branch-price
   body: json
   auth: bearer
 }
@@ -22,8 +22,7 @@ auth:bearer {
 body:json {
   {
     "branchId": {{branch_id}},
-    "paymentNo": "QR-{{branch_id}}",
-    "qrString": "000201010212...",
-    "qrImage": "https://img.example.com/qr.png"
+    "amount": 20000,
+    "currency": "IDR"
   }
 }

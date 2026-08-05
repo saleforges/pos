@@ -1,0 +1,24 @@
+meta {
+  name: Internal Notify Paid
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/internal/orders/{{order_id}}/paid
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Internal-Key: {{internal_key}}
+  X-Merchant-Id: {{merchant_id}}
+}
+
+body:json {
+  {
+    "amount": 15000,
+    "method": "qris"
+  }
+}

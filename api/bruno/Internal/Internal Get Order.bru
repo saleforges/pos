@@ -1,0 +1,16 @@
+meta {
+  name: Internal Get Order
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{base_url}}/internal/orders/{{order_id}}
+  body: none
+  auth: none
+}
+
+headers {
+  X-Internal-Key: {{internal_key}}
+  X-Merchant-Id: {{merchant_id}}
+}

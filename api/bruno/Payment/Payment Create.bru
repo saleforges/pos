@@ -8,14 +8,26 @@ post {
   url: {{base_url}}/v1/payments
   body: json
   auth: bearer
-  headers {
-    X-Merchant-Id: {{merchant_id}}
-    Content-Type: application/json
-  }
+}
+
+headers {
+  Content-Type: application/json
+  X-Merchant-Id: {{merchant_id}}
+}
+
+auth:bearer {
+  token: {{access_token}}
 }
 
 body:json {
   {
-    "orderId": {{order_id}}
+    "orderId": {{order_id}},
+    "method": "qris"
+  }
+}
+
+script:post-response {
+  if (res.body.data && res.body.data.id) {
+    bru.setVar("payment_id", res.body.data.id);
   }
 }

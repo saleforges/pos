@@ -1,0 +1,31 @@
+meta {
+  name: Internal Stock Restore
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/internal/stocks/restore
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Internal-Key: {{internal_key}}
+  X-Merchant-Id: {{merchant_id}}
+}
+
+body:json {
+  {
+    "branchId": {{branch_id}},
+    "referenceType": "order",
+    "referenceId": {{order_id}},
+    "items": [
+      {
+        "productItemId": {{item_id}},
+        "quantity": 1
+      }
+    ]
+  }
+}

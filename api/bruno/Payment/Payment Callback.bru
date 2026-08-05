@@ -1,0 +1,29 @@
+meta {
+  name: Payment Callback
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{base_url}}/v1/payments/ipaymu/callback
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  X-Signature: {{signature}}
+}
+
+body:json {
+  {
+    "reference_id": "{{order_id}}",
+    "trx_id": "222888",
+    "via": "qris",
+    "channel": "mpm",
+    "status": "Berhasil",
+    "status_code": "1",
+    "amount": "15000",
+    "paid_off": true
+  }
+}
