@@ -63,12 +63,23 @@ func (r *StockRepository) List(_ context.Context, merchantID int64) ([]domain.St
 }
 
 func (r *StockRepository) ListChangedSince(_ context.Context, merchantID int64, since *time.Time) ([]domain.Stock, error) {
+	return r.syncByBranch(merchantID, 0, since)
+}
+
+func (r *StockRepository) SyncByBranch(_ context.Context, merchantID, branchID int64, since *time.Time) ([]domain.Stock, error) {
+	return r.syncByBranch(merchantID, branchID, since)
+}
+
+func (r *StockRepository) syncByBranch(merchantID, branchID int64, since *time.Time) ([]domain.Stock, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	var result []domain.Stock
 	for _, s := range r.stocks {
 		if s.MerchantID != merchantID {
+			continue
+		}
+		if branchID > 0 && s.BranchID != branchID {
 			continue
 		}
 		if since != nil && !s.UpdatedAt.After(*since) {

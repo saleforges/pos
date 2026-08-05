@@ -55,12 +55,23 @@ func (m *mockStockRepo) List(_ context.Context, merchantID int64) ([]domain.Stoc
 }
 
 func (m *mockStockRepo) ListChangedSince(_ context.Context, merchantID int64, since *time.Time) ([]domain.Stock, error) {
+	return m.syncByBranch(merchantID, 0, since)
+}
+
+func (m *mockStockRepo) SyncByBranch(_ context.Context, merchantID, branchID int64, since *time.Time) ([]domain.Stock, error) {
+	return m.syncByBranch(merchantID, branchID, since)
+}
+
+func (m *mockStockRepo) syncByBranch(merchantID, branchID int64, since *time.Time) ([]domain.Stock, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	var result []domain.Stock
 	for _, s := range m.stocks {
 		if s.MerchantID != merchantID {
+			continue
+		}
+		if branchID > 0 && s.BranchID != branchID {
 			continue
 		}
 		if since != nil && !s.UpdatedAt.After(*since) {

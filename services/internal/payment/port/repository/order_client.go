@@ -16,6 +16,7 @@ type OrderItem struct {
 type OrderInfo struct {
 	ID         int64
 	MerchantID int64
+	BranchID   int64
 	Status     string
 	Total      float64
 	PaidAmount float64

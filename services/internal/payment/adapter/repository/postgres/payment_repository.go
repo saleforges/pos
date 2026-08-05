@@ -12,7 +12,7 @@ import (
 
 var _ repository.PaymentRepository = (*PaymentRepository)(nil)
 
-const paymentCols = `id, merchant_id, order_id, gateway, status, amount, payment_url, payment_no, qr_string, qr_image, expired_at, session_id, payment_ref, created_at, updated_at`
+const paymentCols = `id, merchant_id, branch_id, order_id, gateway, status, amount, payment_url, payment_no, qr_string, qr_image, expired_at, session_id, payment_ref, created_at, updated_at`
 
 type PaymentRepository struct {
 	pool *otel.TracedPool
@@ -24,9 +24,9 @@ func NewPaymentRepository(pool *otel.TracedPool) *PaymentRepository {
 
 func (r *PaymentRepository) Create(ctx context.Context, p *domain.PaymentTransaction) error {
 	return r.pool.QueryRow(ctx,
-		`INSERT INTO payment_transactions (merchant_id, order_id, gateway, status, amount, payment_url, payment_no, qr_string, qr_image, expired_at, session_id, payment_ref, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
-		p.MerchantID, p.OrderID, p.Gateway, p.Status, p.Amount, nullIfEmpty(p.PaymentURL),
+		`INSERT INTO payment_transactions (merchant_id, branch_id, order_id, gateway, status, amount, payment_url, payment_no, qr_string, qr_image, expired_at, session_id, payment_ref, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
+		p.MerchantID, p.BranchID, p.OrderID, p.Gateway, p.Status, p.Amount, nullIfEmpty(p.PaymentURL),
 		nullIfEmpty(p.PaymentNo), nullIfEmpty(p.QrString), nullIfEmpty(p.QrImage), nullIfEmpty(p.ExpiredAt),
 		nullIfEmpty(p.SessionID), nullIfEmpty(p.PaymentRef), p.CreatedAt, p.UpdatedAt,
 	).Scan(&p.ID)
@@ -81,7 +81,7 @@ func (r *PaymentRepository) MarkExpired(ctx context.Context, id int64) error {
 func scanPayment(row pgx.Row) (*domain.PaymentTransaction, error) {
 	var p domain.PaymentTransaction
 	var paymentURL, paymentNo, qrString, qrImage, expiredAt, sessionID, paymentRef *string
-	err := row.Scan(&p.ID, &p.MerchantID, &p.OrderID, &p.Gateway, &p.Status, &p.Amount,
+	err := row.Scan(&p.ID, &p.MerchantID, &p.BranchID, &p.OrderID, &p.Gateway, &p.Status, &p.Amount,
 		&paymentURL, &paymentNo, &qrString, &qrImage, &expiredAt, &sessionID, &paymentRef,
 		&p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
@@ -126,10 +126,22 @@ func (r *PaymentRepository) UpsertStaticQR(ctx context.Context, qr *domain.Stati
 // ListChangedSince returns payments updated after the given time — the
 // incremental payload for mobile payment sync.
 func (r *PaymentRepository) ListChangedSince(ctx context.Context, merchantID int64, since *time.Time) ([]domain.PaymentTransaction, error) {
+	return r.listChangedSince(ctx, merchantID, 0, since)
+}
+
+func (r *PaymentRepository) SyncByBranch(ctx context.Context, merchantID, branchID int64, since *time.Time) ([]domain.PaymentTransaction, error) {
+	return r.listChangedSince(ctx, merchantID, branchID, since)
+}
+
+func (r *PaymentRepository) listChangedSince(ctx context.Context, merchantID, branchID int64, since *time.Time) ([]domain.PaymentTransaction, error) {
 	query := `SELECT ` + paymentCols + ` FROM payment_transactions WHERE merchant_id = $1`
 	args := []interface{}{merchantID}
+	if branchID > 0 {
+		query += ` AND branch_id = $2`
+		args = append(args, branchID)
+	}
 	if since != nil {
-		query += ` AND updated_at > $2`
+		query += ` AND updated_at > $3`
 		args = append(args, *since)
 	}
 	query += ` ORDER BY id`

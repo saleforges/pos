@@ -12,6 +12,7 @@ type StockRepository interface {
 	GetByID(ctx context.Context, id int64, merchantID int64) (*domain.Stock, error)
 	List(ctx context.Context, merchantID int64) ([]domain.Stock, error)
 	ListChangedSince(ctx context.Context, merchantID int64, since *time.Time) ([]domain.Stock, error)
+	SyncByBranch(ctx context.Context, merchantID, branchID int64, since *time.Time) ([]domain.Stock, error)
 	Update(ctx context.Context, stock *domain.Stock) error
 }
 

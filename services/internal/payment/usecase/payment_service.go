@@ -36,7 +36,8 @@ func (uc *paymentUsecase) Create(ctx context.Context, params CreatePaymentParams
 
 	now := time.Now().UTC()
 	payment := &domain.PaymentTransaction{
-		MerchantID: order.MerchantID,
+		MerchantID: params.MerchantID,
+		BranchID:   order.BranchID,
 		OrderID:    params.OrderID,
 		Gateway:    "ipaymu",
 		Status:     domain.PaymentStatusPending,
@@ -175,8 +176,8 @@ func (uc *paymentUsecase) UpdateStaticQR(ctx context.Context, qr *domain.StaticQ
 	return uc.paymentRepo.UpsertStaticQR(ctx, qr)
 }
 
-func (uc *paymentUsecase) Sync(ctx context.Context, merchantID int64, lastSync *time.Time) (*PaymentSyncResult, error) {
-	payments, err := uc.paymentRepo.ListChangedSince(ctx, merchantID, lastSync)
+func (uc *paymentUsecase) Sync(ctx context.Context, merchantID, branchID int64, lastSync *time.Time) (*PaymentSyncResult, error) {
+	payments, err := uc.paymentRepo.SyncByBranch(ctx, merchantID, branchID, lastSync)
 	if err != nil {
 		return nil, err
 	}

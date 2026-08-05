@@ -89,6 +89,8 @@ func RunMigrations(databaseURL string) error {
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_transactions_payment_ref ON payment_transactions(payment_ref) WHERE payment_ref IS NOT NULL;
 	ALTER TABLE payment_transactions DROP COLUMN IF EXISTS transaction_id;
 	ALTER TABLE payment_transactions DROP COLUMN IF EXISTS gateway_ref;
+	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS branch_id BIGINT NOT NULL DEFAULT 0;
+	CREATE INDEX IF NOT EXISTS idx_payment_transactions_branch ON payment_transactions(branch_id);
 
 	CREATE TABLE IF NOT EXISTS payment_static_qrs (
 		merchant_id BIGINT      PRIMARY KEY,

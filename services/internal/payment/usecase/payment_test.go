@@ -236,7 +236,7 @@ func TestPaymentUsecase_Sync(t *testing.T) {
 	repo.Create(ctx, &domain.PaymentTransaction{ID: 1, MerchantID: 1, OrderID: 10, Gateway: "ipaymu", Status: domain.PaymentStatusPending, Amount: 15000, CreatedAt: time.Now(), UpdatedAt: time.Now()})
 	repo.Create(ctx, &domain.PaymentTransaction{ID: 2, MerchantID: 2, OrderID: 20, Gateway: "ipaymu", Status: domain.PaymentStatusPaid, Amount: 5000, CreatedAt: time.Now(), UpdatedAt: time.Now()})
 
-	res, err := uc.Sync(ctx, 1, nil)
+	res, err := uc.Sync(ctx, 1, 0, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -248,7 +248,7 @@ func TestPaymentUsecase_Sync(t *testing.T) {
 	}
 
 	future := time.Now().Add(time.Hour)
-	res2, err := uc.Sync(ctx, 1, &future)
+	res2, err := uc.Sync(ctx, 1, 0, &future)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

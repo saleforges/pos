@@ -50,10 +50,22 @@ func (r *StockRepository) List(ctx context.Context, merchantID int64) ([]domain.
 // ListChangedSince returns stocks updated after the given time — the
 // incremental payload for mobile stock sync.
 func (r *StockRepository) ListChangedSince(ctx context.Context, merchantID int64, since *time.Time) ([]domain.Stock, error) {
+	return r.listChangedSince(ctx, merchantID, 0, since)
+}
+
+func (r *StockRepository) SyncByBranch(ctx context.Context, merchantID, branchID int64, since *time.Time) ([]domain.Stock, error) {
+	return r.listChangedSince(ctx, merchantID, branchID, since)
+}
+
+func (r *StockRepository) listChangedSince(ctx context.Context, merchantID, branchID int64, since *time.Time) ([]domain.Stock, error) {
 	query := `SELECT ` + stockCols + ` FROM stocks WHERE merchant_id = $1`
 	args := []interface{}{merchantID}
+	if branchID > 0 {
+		query += ` AND branch_id = $2`
+		args = append(args, branchID)
+	}
 	if since != nil {
-		query += ` AND updated_at > $2`
+		query += ` AND updated_at > $3`
 		args = append(args, *since)
 	}
 	query += ` ORDER BY id`

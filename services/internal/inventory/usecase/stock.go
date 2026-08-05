@@ -14,7 +14,7 @@ type StockUsecase interface {
 	Update(ctx context.Context, params UpdateStockParams) (*domain.Stock, error)
 	Deduct(ctx context.Context, params AdjustStockParams) error
 	Restore(ctx context.Context, params AdjustStockParams) error
-	Sync(ctx context.Context, merchantID int64, lastSync *time.Time) (*StockSyncResult, error)
+	Sync(ctx context.Context, merchantID, branchID int64, lastSync *time.Time) (*StockSyncResult, error)
 }
 
 type StockSyncResult struct {

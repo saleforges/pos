@@ -108,9 +108,20 @@ func (m *mockPaymentRepo) UpsertStaticQR(_ context.Context, qr *domain.StaticQR)
 }
 
 func (m *mockPaymentRepo) ListChangedSince(_ context.Context, merchantID int64, since *time.Time) ([]domain.PaymentTransaction, error) {
+	return m.syncByBranch(merchantID, 0, since)
+}
+
+func (m *mockPaymentRepo) SyncByBranch(_ context.Context, merchantID, branchID int64, since *time.Time) ([]domain.PaymentTransaction, error) {
+	return m.syncByBranch(merchantID, branchID, since)
+}
+
+func (m *mockPaymentRepo) syncByBranch(merchantID, branchID int64, since *time.Time) ([]domain.PaymentTransaction, error) {
 	var result []domain.PaymentTransaction
 	for _, p := range m.payments {
 		if p.MerchantID != merchantID {
+			continue
+		}
+		if branchID > 0 && p.BranchID != branchID {
 			continue
 		}
 		if since != nil && !p.UpdatedAt.After(*since) {

@@ -500,7 +500,7 @@ func TestStockUsecase_Sync(t *testing.T) {
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 10})
 
 		since := time.Now().UTC().Add(-time.Hour)
-		result, err := uc.Sync(ctx, 1, &since)
+		result, err := uc.Sync(ctx, 1, 0, &since)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -518,7 +518,7 @@ func TestStockUsecase_Sync(t *testing.T) {
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 1, Available: 10})
 		uc.Create(ctx, CreateStockParams{MerchantID: 1, BranchID: 1, ProductItemID: 2, Available: 20})
 
-		result, err := uc.Sync(ctx, 1, nil)
+		result, err := uc.Sync(ctx, 1, 0, nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

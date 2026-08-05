@@ -159,12 +159,23 @@ func (r *PaymentRepository) UpsertStaticQR(_ context.Context, qr *domain.StaticQ
 }
 
 func (r *PaymentRepository) ListChangedSince(_ context.Context, merchantID int64, since *time.Time) ([]domain.PaymentTransaction, error) {
+	return r.syncByBranch(merchantID, 0, since)
+}
+
+func (r *PaymentRepository) SyncByBranch(_ context.Context, merchantID, branchID int64, since *time.Time) ([]domain.PaymentTransaction, error) {
+	return r.syncByBranch(merchantID, branchID, since)
+}
+
+func (r *PaymentRepository) syncByBranch(merchantID, branchID int64, since *time.Time) ([]domain.PaymentTransaction, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	var result []domain.PaymentTransaction
 	for _, p := range r.payments {
 		if p.MerchantID != merchantID {
+			continue
+		}
+		if branchID > 0 && p.BranchID != branchID {
 			continue
 		}
 		if since != nil && !p.UpdatedAt.After(*since) {

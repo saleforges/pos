@@ -69,6 +69,7 @@ func (c *client) GetOrder(ctx context.Context, orderID, merchantID int64) (*repo
 		Data struct {
 			ID         int64   `json:"id"`
 			MerchantID int64   `json:"merchantId"`
+			BranchID   int64   `json:"branchId"`
 			Status     string  `json:"status"`
 			Total      float64 `json:"total"`
 			PaidAmount float64 `json:"paidAmount"`
@@ -86,6 +87,7 @@ func (c *client) GetOrder(ctx context.Context, orderID, merchantID int64) (*repo
 	info := &repository.OrderInfo{
 		ID:         envelope.Data.ID,
 		MerchantID: envelope.Data.MerchantID,
+		BranchID:   envelope.Data.BranchID,
 		Status:     envelope.Data.Status,
 		Total:      envelope.Data.Total,
 		PaidAmount: envelope.Data.PaidAmount,

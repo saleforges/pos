@@ -138,8 +138,8 @@ func (uc *stockUsecase) expandComponents(ctx context.Context, merchantID int64, 
 	return result, nil
 }
 
-func (uc *stockUsecase) Sync(ctx context.Context, merchantID int64, lastSync *time.Time) (*StockSyncResult, error) {
-	stocks, err := uc.repo.ListChangedSince(ctx, merchantID, lastSync)
+func (uc *stockUsecase) Sync(ctx context.Context, merchantID, branchID int64, lastSync *time.Time) (*StockSyncResult, error) {
+	stocks, err := uc.repo.SyncByBranch(ctx, merchantID, branchID, lastSync)
 	if err != nil {
 		return nil, err
 	}

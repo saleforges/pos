@@ -54,7 +54,7 @@ func (m *mockStockSvc) Deduct(context.Context, usecase.AdjustStockParams) error 
 
 func (m *mockStockSvc) Restore(context.Context, usecase.AdjustStockParams) error { return nil }
 
-func (m *mockStockSvc) Sync(context.Context, int64, *time.Time) (*usecase.StockSyncResult, error) {
+func (m *mockStockSvc) Sync(context.Context, int64, int64, *time.Time) (*usecase.StockSyncResult, error) {
 	return &usecase.StockSyncResult{Stocks: []domain.Stock{}, SyncToken: "2026-08-03T00:00:00Z"}, nil
 }
 

@@ -15,6 +15,7 @@ const (
 type PaymentTransaction struct {
 	ID         int64         `json:"id"`
 	MerchantID int64         `json:"merchantId"`
+	BranchID   int64         `json:"branchId,omitempty"`
 	OrderID    int64         `json:"orderId"`
 	Gateway    string        `json:"gateway"`
 	Status     PaymentStatus `json:"status"`

@@ -95,6 +95,11 @@ func (h *Handler) Update(c echo.Context) error {
 func (h *Handler) Sync(c echo.Context) error {
 	merchantID := httputil.GetMerchantID(c)
 
+	var branchID int64
+	if raw := c.QueryParam("branchId"); raw != "" {
+		branchID, _ = strconv.ParseInt(raw, 10, 64)
+	}
+
 	var lastSync *time.Time
 	if raw := c.QueryParam("lastSync"); raw != "" {
 		t, err := time.Parse(time.RFC3339Nano, raw)
@@ -104,7 +109,7 @@ func (h *Handler) Sync(c echo.Context) error {
 		lastSync = &t
 	}
 
-	result, err := h.uc.Sync(c.Request().Context(), merchantID, lastSync)
+	result, err := h.uc.Sync(c.Request().Context(), merchantID, branchID, lastSync)
 	if err != nil {
 		return mapError(c, err)
 	}
