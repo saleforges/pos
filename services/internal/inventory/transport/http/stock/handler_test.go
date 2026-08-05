@@ -203,3 +203,5 @@ func TestUpdate(t *testing.T) {
 		}
 	})
 }
+
+func (m *mockStockSvc) Transfer(context.Context, usecase.TransferStockParams) error { return nil }

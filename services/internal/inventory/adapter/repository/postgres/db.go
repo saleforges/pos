@@ -66,6 +66,8 @@ func RunMigrations(databaseURL string) error {
 		CREATE INDEX IF NOT EXISTS idx_stocks_branch ON stocks(branch_id);
 		CREATE INDEX IF NOT EXISTS idx_stocks_product_item ON stocks(product_item_id);
 		CREATE UNIQUE INDEX IF NOT EXISTS idx_stocks_branch_product ON stocks(branch_id, product_item_id);
+		DROP INDEX IF EXISTS idx_stocks_branch_product;
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_stocks_merchant_branch_product ON stocks(merchant_id, branch_id, product_item_id);
 
 		CREATE TABLE IF NOT EXISTS stock_movements (
 			id               BIGSERIAL    PRIMARY KEY,

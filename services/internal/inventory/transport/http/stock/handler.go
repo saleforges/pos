@@ -92,6 +92,27 @@ func (h *Handler) Update(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, result)
 }
 
+func (h *Handler) Transfer(c echo.Context) error {
+	var req struct {
+		FromBranchID int64                     `json:"fromBranchId"`
+		ToBranchID   int64                     `json:"toBranchId"`
+		Items        []usecase.AdjustStockItem `json:"items"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, domain.ErrInvalidStock)
+	}
+	merchantID := httputil.GetMerchantID(c)
+	if err := h.uc.Transfer(c.Request().Context(), usecase.TransferStockParams{
+		MerchantID:   merchantID,
+		FromBranchID: req.FromBranchID,
+		ToBranchID:   req.ToBranchID,
+		Items:        req.Items,
+	}); err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, map[string]bool{"ok": true})
+}
+
 func (h *Handler) Sync(c echo.Context) error {
 	merchantID := httputil.GetMerchantID(c)
 

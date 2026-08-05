@@ -118,6 +118,51 @@ func (r *StockRepository) Restore(_ context.Context, merchantID, branchID int64,
 	return r.adjust(merchantID, branchID, referenceType, referenceID, items, domain.MovementTypeStockIn, 1)
 }
 
+func (r *StockRepository) Transfer(_ context.Context, merchantID, fromBranchID, toBranchID int64, items []repository.StockAdjustmentItem) error {
+	if fromBranchID == 0 || toBranchID == 0 || fromBranchID == toBranchID {
+		return domain.ErrInvalidStock
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for _, it := range items {
+		var src, dst *domain.Stock
+		for _, s := range r.stocks {
+			if s.MerchantID == merchantID && s.BranchID == fromBranchID && s.ProductItemID == it.ProductItemID {
+				src = s
+			}
+			if s.MerchantID == merchantID && s.BranchID == toBranchID && s.ProductItemID == it.ProductItemID {
+				dst = s
+			}
+		}
+		if src == nil {
+			return domain.ErrStockNotFound
+		}
+		if src.Available < it.Quantity {
+			return domain.ErrInsufficientStock
+		}
+		src.Available -= it.Quantity
+		src.UpdatedAt = time.Now().UTC()
+		if dst == nil {
+			r.seq++
+			dst = &domain.Stock{
+				ID:            r.seq,
+				MerchantID:    merchantID,
+				BranchID:      toBranchID,
+				ProductItemID: it.ProductItemID,
+				Available:     it.Quantity,
+				CreatedAt:     time.Now().UTC(),
+				UpdatedAt:     time.Now().UTC(),
+			}
+			r.stocks[dst.ID] = dst
+		} else {
+			dst.Available += it.Quantity
+			dst.UpdatedAt = time.Now().UTC()
+		}
+	}
+	return nil
+}
+
 func (r *StockRepository) adjust(merchantID, branchID int64, referenceType string, referenceID int64, items []repository.StockAdjustmentItem, movementType domain.MovementType, sign int64) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

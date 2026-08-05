@@ -37,6 +37,7 @@ func NewRouter(
 	stockGroup := api.Group("/stocks", httputil.MerchantMiddleware())
 	stockGroup.POST("", stockHandler.Create)
 	stockGroup.GET("", stockHandler.List)
+	stockGroup.POST("/transfer", stockHandler.Transfer)
 	stockGroup.GET("/sync", stockHandler.Sync)
 	stockGroup.GET("/:id", stockHandler.GetByID)
 	stockGroup.PUT("/:id", stockHandler.Update)

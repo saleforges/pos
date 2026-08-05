@@ -138,6 +138,17 @@ func (uc *stockUsecase) expandComponents(ctx context.Context, merchantID int64, 
 	return result, nil
 }
 
+func (uc *stockUsecase) Transfer(ctx context.Context, params TransferStockParams) error {
+	if params.FromBranchID == 0 || params.ToBranchID == 0 || len(params.Items) == 0 {
+		return domain.ErrInvalidStock
+	}
+	items := make([]repository.StockAdjustmentItem, len(params.Items))
+	for i, it := range params.Items {
+		items[i] = repository.StockAdjustmentItem{ProductItemID: it.ProductItemID, Quantity: it.Quantity, ReferenceID: 0}
+	}
+	return uc.adjustmentRepo.Transfer(ctx, params.MerchantID, params.FromBranchID, params.ToBranchID, items)
+}
+
 func (uc *stockUsecase) Sync(ctx context.Context, merchantID, branchID int64, lastSync *time.Time) (*StockSyncResult, error) {
 	stocks, err := uc.repo.SyncByBranch(ctx, merchantID, branchID, lastSync)
 	if err != nil {

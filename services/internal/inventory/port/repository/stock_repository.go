@@ -13,6 +13,7 @@ type StockRepository interface {
 	List(ctx context.Context, merchantID int64) ([]domain.Stock, error)
 	ListChangedSince(ctx context.Context, merchantID int64, since *time.Time) ([]domain.Stock, error)
 	SyncByBranch(ctx context.Context, merchantID, branchID int64, since *time.Time) ([]domain.Stock, error)
+	Transfer(ctx context.Context, merchantID, fromBranchID, toBranchID int64, items []StockAdjustmentItem) error
 	Update(ctx context.Context, stock *domain.Stock) error
 }
 
@@ -20,6 +21,7 @@ type StockRepository interface {
 type StockAdjustmentItem struct {
 	ProductItemID int64
 	Quantity      int64
+	ReferenceID   int64
 }
 
 // StockAdjustmentRepository applies batch stock changes atomically and
@@ -28,4 +30,5 @@ type StockAdjustmentItem struct {
 type StockAdjustmentRepository interface {
 	Deduct(ctx context.Context, merchantID, branchID int64, referenceType string, referenceID int64, items []StockAdjustmentItem) error
 	Restore(ctx context.Context, merchantID, branchID int64, referenceType string, referenceID int64, items []StockAdjustmentItem) error
+	Transfer(ctx context.Context, merchantID, fromBranchID, toBranchID int64, items []StockAdjustmentItem) error
 }

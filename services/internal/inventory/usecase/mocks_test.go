@@ -244,3 +244,7 @@ func (m *mockComponentRepo) Delete(_ context.Context, id int64, merchantID int64
 // Test helpers
 
 func int64Ptr(v int64) *int64 { return &v }
+
+func (m *mockStockRepo) Transfer(_ context.Context, merchantID, fromBranchID, toBranchID int64, items []repository.StockAdjustmentItem) error {
+	return nil
+}

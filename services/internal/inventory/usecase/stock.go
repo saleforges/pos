@@ -14,6 +14,7 @@ type StockUsecase interface {
 	Update(ctx context.Context, params UpdateStockParams) (*domain.Stock, error)
 	Deduct(ctx context.Context, params AdjustStockParams) error
 	Restore(ctx context.Context, params AdjustStockParams) error
+	Transfer(ctx context.Context, params TransferStockParams) error
 	Sync(ctx context.Context, merchantID, branchID int64, lastSync *time.Time) (*StockSyncResult, error)
 }
 
@@ -46,6 +47,13 @@ type AdjustStockParams struct {
 }
 
 type AdjustStockItem struct {
-	ProductItemID int64
-	Quantity      int64
+	ProductItemID int64 `json:"productItemId"`
+	Quantity      int64 `json:"quantity"`
+}
+
+type TransferStockParams struct {
+	MerchantID   int64
+	FromBranchID int64
+	ToBranchID   int64
+	Items        []AdjustStockItem
 }
