@@ -211,7 +211,7 @@ func TestPaymentUsecase_StaticQR(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	got, err := uc.GetStaticQR(ctx, 1)
+	got, err := uc.GetStaticQR(ctx, 1, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -219,7 +219,7 @@ func TestPaymentUsecase_StaticQR(t *testing.T) {
 		t.Errorf("mismatch: got %+v want %+v", got, qr)
 	}
 
-	if _, err := uc.GetStaticQR(ctx, 99); err != domain.ErrPaymentNotFound {
+	if _, err := uc.GetStaticQR(ctx, 99, 0); err != domain.ErrPaymentNotFound {
 		t.Errorf("expected not found, got %v", err)
 	}
 

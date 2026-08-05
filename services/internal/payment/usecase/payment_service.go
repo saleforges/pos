@@ -165,8 +165,8 @@ func (uc *paymentUsecase) GetByOrderID(ctx context.Context, orderID int64, merch
 	return payment, nil
 }
 
-func (uc *paymentUsecase) GetStaticQR(ctx context.Context, merchantID int64) (*domain.StaticQR, error) {
-	return uc.paymentRepo.GetStaticQR(ctx, merchantID)
+func (uc *paymentUsecase) GetStaticQR(ctx context.Context, merchantID, branchID int64) (*domain.StaticQR, error) {
+	return uc.paymentRepo.GetStaticQR(ctx, merchantID, branchID)
 }
 
 func (uc *paymentUsecase) UpdateStaticQR(ctx context.Context, qr *domain.StaticQR) error {

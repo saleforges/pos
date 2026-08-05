@@ -93,12 +93,17 @@ func RunMigrations(databaseURL string) error {
 	CREATE INDEX IF NOT EXISTS idx_payment_transactions_branch ON payment_transactions(branch_id);
 
 	CREATE TABLE IF NOT EXISTS payment_static_qrs (
-		merchant_id BIGINT      PRIMARY KEY,
+		merchant_id BIGINT      NOT NULL,
+		branch_id   BIGINT      NOT NULL DEFAULT 0,
 		payment_no  VARCHAR(100) NOT NULL,
 		qr_string   TEXT        NOT NULL,
 		qr_image    TEXT        NOT NULL,
-		updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+		updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+		PRIMARY KEY (merchant_id, branch_id)
 	);
+	ALTER TABLE payment_static_qrs ADD COLUMN IF NOT EXISTS branch_id BIGINT NOT NULL DEFAULT 0;
+	ALTER TABLE payment_static_qrs DROP CONSTRAINT IF EXISTS payment_static_qrs_pkey;
+	ALTER TABLE payment_static_qrs ADD PRIMARY KEY (merchant_id, branch_id);
 	`
 	if _, err := pool.Exec(ctx, heal); err != nil {
 		return fmt.Errorf("payment heal migration: %w", err)

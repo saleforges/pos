@@ -111,7 +111,8 @@ func (h *Handler) Callback(c echo.Context) error {
 // GetStaticQR returns the merchant's permanent counter QRIS.
 func (h *Handler) GetStaticQR(c echo.Context) error {
 	merchantID := httputil.GetMerchantID(c)
-	result, err := h.uc.GetStaticQR(c.Request().Context(), merchantID)
+	branchID := branchFromQuery(c)
+	result, err := h.uc.GetStaticQR(c.Request().Context(), merchantID, branchID)
 	if err != nil {
 		return mapError(c, err)
 	}
@@ -120,6 +121,7 @@ func (h *Handler) GetStaticQR(c echo.Context) error {
 
 func (h *Handler) UpdateStaticQR(c echo.Context) error {
 	var req struct {
+		BranchID  int64  `json:"branchId"`
 		PaymentNo string `json:"paymentNo"`
 		QrString  string `json:"qrString"`
 		QrImage   string `json:"qrImage"`
@@ -130,6 +132,7 @@ func (h *Handler) UpdateStaticQR(c echo.Context) error {
 	merchantID := httputil.GetMerchantID(c)
 	qr := &domain.StaticQR{
 		MerchantID: merchantID,
+		BranchID:   req.BranchID,
 		PaymentNo:  req.PaymentNo,
 		QrString:   req.QrString,
 		QrImage:    req.QrImage,
@@ -140,15 +143,19 @@ func (h *Handler) UpdateStaticQR(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, qr)
 }
 
-// Sync returns payments changed since lastSync — the offline-first
-// incremental payload for the mobile app (same pattern as stock/customer).
-func (h *Handler) Sync(c echo.Context) error {
-	merchantID := httputil.GetMerchantID(c)
-
+func branchFromQuery(c echo.Context) int64 {
 	var branchID int64
 	if raw := c.QueryParam("branchId"); raw != "" {
 		branchID, _ = strconv.ParseInt(raw, 10, 64)
 	}
+	return branchID
+}
+
+// Sync returns payments changed since lastSync — the offline-first
+// incremental payload for the mobile app (same pattern as stock/customer).
+func (h *Handler) Sync(c echo.Context) error {
+	merchantID := httputil.GetMerchantID(c)
+	branchID := branchFromQuery(c)
 
 	var lastSync *time.Time
 	if raw := c.QueryParam("lastSync"); raw != "" {

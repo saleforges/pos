@@ -35,6 +35,7 @@ type PaymentTransaction struct {
 // confirmed manually, no gateway callback).
 type StaticQR struct {
 	MerchantID int64  `json:"merchantId"`
+	BranchID   int64  `json:"branchId,omitempty"`
 	PaymentNo  string `json:"paymentNo"`
 	QrString   string `json:"qrString"`
 	QrImage    string `json:"qrImage"`

@@ -95,8 +95,8 @@ func (m *mockPaymentRepo) MarkExpired(_ context.Context, id int64) error {
 	return nil
 }
 
-func (m *mockPaymentRepo) GetStaticQR(_ context.Context, merchantID int64) (*domain.StaticQR, error) {
-	if m.staticQR != nil && m.staticQR.MerchantID == merchantID {
+func (m *mockPaymentRepo) GetStaticQR(_ context.Context, merchantID, branchID int64) (*domain.StaticQR, error) {
+	if m.staticQR != nil && m.staticQR.MerchantID == merchantID && m.staticQR.BranchID == branchID {
 		return m.staticQR, nil
 	}
 	return nil, domain.ErrPaymentNotFound

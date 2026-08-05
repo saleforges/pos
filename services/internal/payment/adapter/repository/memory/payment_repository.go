@@ -138,12 +138,12 @@ func (r *PaymentRepository) MarkExpired(_ context.Context, id int64) error {
 	return nil
 }
 
-func (r *PaymentRepository) GetStaticQR(_ context.Context, merchantID int64) (*domain.StaticQR, error) {
+func (r *PaymentRepository) GetStaticQR(_ context.Context, merchantID, branchID int64) (*domain.StaticQR, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	for _, qr := range r.staticQRs {
-		if qr.MerchantID == merchantID {
+		if qr.MerchantID == merchantID && qr.BranchID == branchID {
 			return qr, nil
 		}
 	}
@@ -154,7 +154,7 @@ func (r *PaymentRepository) UpsertStaticQR(_ context.Context, qr *domain.StaticQ
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.staticQRs[qr.MerchantID] = qr
+	r.staticQRs[qr.MerchantID*1000+qr.BranchID] = qr
 	return nil
 }
 

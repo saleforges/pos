@@ -12,7 +12,7 @@ type PaymentUsecase interface {
 	HandleCallback(ctx context.Context, params CallbackParams) error
 	GetByID(ctx context.Context, id int64, merchantID int64) (*domain.PaymentTransaction, error)
 	GetByOrderID(ctx context.Context, orderID int64, merchantID int64) (*domain.PaymentTransaction, error)
-	GetStaticQR(ctx context.Context, merchantID int64) (*domain.StaticQR, error)
+	GetStaticQR(ctx context.Context, merchantID, branchID int64) (*domain.StaticQR, error)
 	UpdateStaticQR(ctx context.Context, qr *domain.StaticQR) error
 	Sync(ctx context.Context, merchantID, branchID int64, lastSync *time.Time) (*PaymentSyncResult, error)
 }
