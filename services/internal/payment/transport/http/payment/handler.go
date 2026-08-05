@@ -3,6 +3,7 @@ package payment
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/payment/adapter/client/ipaymu"
@@ -137,6 +138,27 @@ func (h *Handler) UpdateStaticQR(c echo.Context) error {
 		return mapError(c, err)
 	}
 	return httputil.WriteJSON(c, http.StatusOK, qr)
+}
+
+// Sync returns payments changed since lastSync — the offline-first
+// incremental payload for the mobile app (same pattern as stock/customer).
+func (h *Handler) Sync(c echo.Context) error {
+	merchantID := httputil.GetMerchantID(c)
+
+	var lastSync *time.Time
+	if raw := c.QueryParam("lastSync"); raw != "" {
+		t, err := time.Parse(time.RFC3339Nano, raw)
+		if err != nil {
+			return httputil.WriteError(c, http.StatusBadRequest, domain.ErrInvalidPayment)
+		}
+		lastSync = &t
+	}
+
+	result, err := h.uc.Sync(c.Request().Context(), merchantID, lastSync)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, result)
 }
 
 func mapError(c echo.Context, err error) error {

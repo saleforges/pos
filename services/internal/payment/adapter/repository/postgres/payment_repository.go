@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/saleforge/pos/services/internal/payment/domain"
@@ -120,6 +121,44 @@ func (r *PaymentRepository) UpsertStaticQR(ctx context.Context, qr *domain.Stati
 		 ON CONFLICT (merchant_id) DO UPDATE SET payment_no = $2, qr_string = $3, qr_image = $4, updated_at = NOW()`,
 		qr.MerchantID, qr.PaymentNo, qr.QrString, qr.QrImage)
 	return err
+}
+
+// ListChangedSince returns payments updated after the given time — the
+// incremental payload for mobile payment sync.
+func (r *PaymentRepository) ListChangedSince(ctx context.Context, merchantID int64, since *time.Time) ([]domain.PaymentTransaction, error) {
+	query := `SELECT ` + paymentCols + ` FROM payment_transactions WHERE merchant_id = $1`
+	args := []interface{}{merchantID}
+	if since != nil {
+		query += ` AND updated_at > $2`
+		args = append(args, *since)
+	}
+	query += ` ORDER BY id`
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []domain.PaymentTransaction
+	for rows.Next() {
+		var p domain.PaymentTransaction
+		var paymentURL, paymentNo, qrString, qrImage, expiredAt, sessionID, paymentRef *string
+		if err := rows.Scan(&p.ID, &p.MerchantID, &p.OrderID, &p.Gateway, &p.Status, &p.Amount,
+			&paymentURL, &paymentNo, &qrString, &qrImage, &expiredAt, &sessionID, &paymentRef,
+			&p.CreatedAt, &p.UpdatedAt); err != nil {
+			return nil, err
+		}
+		p.PaymentURL = deref(paymentURL)
+		p.PaymentNo = deref(paymentNo)
+		p.QrString = deref(qrString)
+		p.QrImage = deref(qrImage)
+		p.ExpiredAt = deref(expiredAt)
+		p.SessionID = deref(sessionID)
+		p.PaymentRef = deref(paymentRef)
+		result = append(result, p)
+	}
+	return result, rows.Err()
 }
 
 func nullIfEmpty(s string) *string {

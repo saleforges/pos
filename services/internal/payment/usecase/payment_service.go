@@ -137,7 +137,20 @@ func gatewayMethod(via, channel string) string {
 }
 
 func (uc *paymentUsecase) GetByID(ctx context.Context, id int64, merchantID int64) (*domain.PaymentTransaction, error) {
-	return uc.paymentRepo.GetByID(ctx, id, merchantID)
+	payment, err := uc.paymentRepo.GetByID(ctx, id, merchantID)
+	if err != nil {
+		return nil, err
+	}
+	if payment.Status == domain.PaymentStatusPending && payment.ExpiredAt != "" {
+		// iPaymu sends expiry in WIB (UTC+7); parse as fixed zone so the
+		// comparison is correct regardless of server timezone.
+		jakarta := time.FixedZone("WIB", 7*60*60)
+		if t, perr := time.ParseInLocation("2006-01-02 15:04:05", payment.ExpiredAt, jakarta); perr == nil && time.Now().After(t) {
+			_ = uc.paymentRepo.MarkExpired(ctx, payment.ID)
+			payment.Status = domain.PaymentStatusExpired
+		}
+	}
+	return payment, nil
 }
 
 func (uc *paymentUsecase) GetByOrderID(ctx context.Context, orderID int64, merchantID int64) (*domain.PaymentTransaction, error) {
@@ -160,6 +173,20 @@ func (uc *paymentUsecase) UpdateStaticQR(ctx context.Context, qr *domain.StaticQ
 		return domain.ErrInvalidPayment
 	}
 	return uc.paymentRepo.UpsertStaticQR(ctx, qr)
+}
+
+func (uc *paymentUsecase) Sync(ctx context.Context, merchantID int64, lastSync *time.Time) (*PaymentSyncResult, error) {
+	payments, err := uc.paymentRepo.ListChangedSince(ctx, merchantID, lastSync)
+	if err != nil {
+		return nil, err
+	}
+	if payments == nil {
+		payments = []domain.PaymentTransaction{}
+	}
+	return &PaymentSyncResult{
+		Payments:  payments,
+		SyncToken: time.Now().UTC().Format(time.RFC3339Nano),
+	}, nil
 }
 
 var _ PaymentUsecase = (*paymentUsecase)(nil)

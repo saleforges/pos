@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/saleforge/pos/services/internal/payment/domain"
 	"github.com/saleforge/pos/services/internal/payment/port/repository"
@@ -224,5 +225,61 @@ func TestPaymentUsecase_StaticQR(t *testing.T) {
 
 	if err := uc.UpdateStaticQR(ctx, &domain.StaticQR{MerchantID: 1}); err != domain.ErrInvalidPayment {
 		t.Errorf("expected invalid, got %v", err)
+	}
+}
+
+func TestPaymentUsecase_Sync(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockPaymentRepo()
+	uc := NewPaymentUsecase(repo, &mockGateway{}, &mockOrderClient{})
+
+	repo.Create(ctx, &domain.PaymentTransaction{ID: 1, MerchantID: 1, OrderID: 10, Gateway: "ipaymu", Status: domain.PaymentStatusPending, Amount: 15000, CreatedAt: time.Now(), UpdatedAt: time.Now()})
+	repo.Create(ctx, &domain.PaymentTransaction{ID: 2, MerchantID: 2, OrderID: 20, Gateway: "ipaymu", Status: domain.PaymentStatusPaid, Amount: 5000, CreatedAt: time.Now(), UpdatedAt: time.Now()})
+
+	res, err := uc.Sync(ctx, 1, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.Payments) != 1 || res.Payments[0].OrderID != 10 {
+		t.Errorf("expected 1 payment for merchant 1, got %+v", res.Payments)
+	}
+	if res.SyncToken == "" {
+		t.Error("expected sync token")
+	}
+
+	future := time.Now().Add(time.Hour)
+	res2, err := uc.Sync(ctx, 1, &future)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res2.Payments) != 0 {
+		t.Errorf("expected 0 payments after future lastSync, got %d", len(res2.Payments))
+	}
+}
+
+func TestPaymentUsecase_GetByIDExpired(t *testing.T) {
+	ctx := context.Background()
+	repo := newMockPaymentRepo()
+	uc := NewPaymentUsecase(repo, &mockGateway{}, &mockOrderClient{})
+
+	repo.Create(ctx, &domain.PaymentTransaction{
+		MerchantID: 1, OrderID: 30, Gateway: "ipaymu",
+		Status: domain.PaymentStatusPending, Amount: 10000,
+		ExpiredAt: time.Now().In(time.FixedZone("WIB", 7*60*60)).Add(-time.Hour).Format("2006-01-02 15:04:05"),
+		CreatedAt: time.Now(), UpdatedAt: time.Now(),
+	})
+	paymentID := repo.seq
+
+	got, err := uc.GetByID(ctx, paymentID, 1)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.Status != domain.PaymentStatusExpired {
+		t.Errorf("expected expired, got %s", got.Status)
+	}
+
+	fresh := repo.payments[paymentID]
+	if fresh.Status != domain.PaymentStatusExpired {
+		t.Error("expected repo state also expired")
 	}
 }

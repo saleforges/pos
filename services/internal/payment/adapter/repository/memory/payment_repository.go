@@ -157,3 +157,20 @@ func (r *PaymentRepository) UpsertStaticQR(_ context.Context, qr *domain.StaticQ
 	r.staticQRs[qr.MerchantID] = qr
 	return nil
 }
+
+func (r *PaymentRepository) ListChangedSince(_ context.Context, merchantID int64, since *time.Time) ([]domain.PaymentTransaction, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var result []domain.PaymentTransaction
+	for _, p := range r.payments {
+		if p.MerchantID != merchantID {
+			continue
+		}
+		if since != nil && !p.UpdatedAt.After(*since) {
+			continue
+		}
+		result = append(result, *p)
+	}
+	return result, nil
+}

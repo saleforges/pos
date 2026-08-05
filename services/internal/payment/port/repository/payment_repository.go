@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"github.com/saleforge/pos/services/internal/payment/domain"
 )
@@ -17,4 +18,5 @@ type PaymentRepository interface {
 	MarkExpired(ctx context.Context, id int64) error
 	GetStaticQR(ctx context.Context, merchantID int64) (*domain.StaticQR, error)
 	UpsertStaticQR(ctx context.Context, qr *domain.StaticQR) error
+	ListChangedSince(ctx context.Context, merchantID int64, since *time.Time) ([]domain.PaymentTransaction, error)
 }

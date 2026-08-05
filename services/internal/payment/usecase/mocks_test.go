@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"time"
 
 	"github.com/saleforge/pos/services/internal/payment/domain"
 	"github.com/saleforge/pos/services/internal/payment/port/repository"
@@ -104,6 +105,20 @@ func (m *mockPaymentRepo) GetStaticQR(_ context.Context, merchantID int64) (*dom
 func (m *mockPaymentRepo) UpsertStaticQR(_ context.Context, qr *domain.StaticQR) error {
 	m.staticQR = qr
 	return nil
+}
+
+func (m *mockPaymentRepo) ListChangedSince(_ context.Context, merchantID int64, since *time.Time) ([]domain.PaymentTransaction, error) {
+	var result []domain.PaymentTransaction
+	for _, p := range m.payments {
+		if p.MerchantID != merchantID {
+			continue
+		}
+		if since != nil && !p.UpdatedAt.After(*since) {
+			continue
+		}
+		result = append(result, *p)
+	}
+	return result, nil
 }
 
 type mockGateway struct {
