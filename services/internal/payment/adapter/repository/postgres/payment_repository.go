@@ -156,7 +156,7 @@ func (r *PaymentRepository) listChangedSince(ctx context.Context, merchantID, br
 	for rows.Next() {
 		var p domain.PaymentTransaction
 		var paymentURL, paymentNo, qrString, qrImage, expiredAt, sessionID, paymentRef *string
-		if err := rows.Scan(&p.ID, &p.MerchantID, &p.OrderID, &p.Gateway, &p.Status, &p.Amount,
+		if err := rows.Scan(&p.ID, &p.MerchantID, &p.BranchID, &p.OrderID, &p.Gateway, &p.Status, &p.Amount,
 			&paymentURL, &paymentNo, &qrString, &qrImage, &expiredAt, &sessionID, &paymentRef,
 			&p.CreatedAt, &p.UpdatedAt); err != nil {
 			return nil, err
