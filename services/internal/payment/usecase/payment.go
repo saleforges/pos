@@ -29,7 +29,7 @@ type CallbackParams struct {
 	Status      string
 	StatusCode  int
 	Amount      string
-	GatewayRef  string // trx_id from gateway
+	PaymentRef  string // trx_id from gateway
 	Via         string // va / qris / ew / cod
 	Channel     string
 	Signature   string

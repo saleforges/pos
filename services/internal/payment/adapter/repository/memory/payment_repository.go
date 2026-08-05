@@ -88,24 +88,24 @@ func (r *PaymentRepository) UpdateDetails(_ context.Context, id int64, p *domain
 	existing.QrImage = p.QrImage
 	existing.ExpiredAt = p.ExpiredAt
 	existing.SessionID = p.SessionID
-	existing.TransactionID = p.TransactionID
+	existing.PaymentRef = p.PaymentRef
 	existing.UpdatedAt = time.Now().UTC()
 	return nil
 }
 
-func (r *PaymentRepository) GetByGatewayRef(_ context.Context, gatewayRef string) (*domain.PaymentTransaction, error) {
+func (r *PaymentRepository) GetByPaymentRef(_ context.Context, paymentRef string) (*domain.PaymentTransaction, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	for _, p := range r.payments {
-		if p.GatewayRef == gatewayRef {
+		if p.PaymentRef == paymentRef {
 			return p, nil
 		}
 	}
 	return nil, domain.ErrPaymentNotFound
 }
 
-func (r *PaymentRepository) MarkPaid(_ context.Context, id int64, gatewayRef string) error {
+func (r *PaymentRepository) MarkPaid(_ context.Context, id int64, paymentRef string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -114,8 +114,8 @@ func (r *PaymentRepository) MarkPaid(_ context.Context, id int64, gatewayRef str
 		return domain.ErrPaymentNotFound
 	}
 	p.Status = domain.PaymentStatusPaid
-	if gatewayRef != "" {
-		p.GatewayRef = gatewayRef
+	if paymentRef != "" {
+		p.PaymentRef = paymentRef
 	}
 	p.UpdatedAt = time.Now().UTC()
 	return nil

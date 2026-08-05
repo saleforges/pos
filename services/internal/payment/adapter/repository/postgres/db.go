@@ -61,13 +61,13 @@ func RunMigrations(databaseURL string) error {
 			amount      NUMERIC(14,2) NOT NULL,
 			payment_url TEXT,
 			session_id  VARCHAR(100),
-			gateway_ref VARCHAR(100),
+			payment_ref VARCHAR(100),
 			created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
 			updated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 		);
 		CREATE INDEX IF NOT EXISTS idx_payment_transactions_merchant ON payment_transactions(merchant_id);
 		CREATE INDEX IF NOT EXISTS idx_payment_transactions_order ON payment_transactions(order_id);
-		CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_transactions_gateway_ref ON payment_transactions(gateway_ref) WHERE gateway_ref IS NOT NULL;
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_transactions_payment_ref ON payment_transactions(payment_ref) WHERE payment_ref IS NOT NULL;
 		`
 		if _, err := pool.Exec(ctx, migration); err != nil {
 			return fmt.Errorf("payment init migration: %w", err)
@@ -81,7 +81,12 @@ func RunMigrations(databaseURL string) error {
 	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS qr_string TEXT;
 	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS qr_image TEXT;
 	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS expired_at TEXT;
-	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS transaction_id TEXT;
+	ALTER TABLE payment_transactions ADD COLUMN IF NOT EXISTS payment_ref TEXT;
+	UPDATE payment_transactions SET payment_ref = COALESCE(transaction_id, gateway_ref) WHERE payment_ref IS NULL OR payment_ref = '';
+	DROP INDEX IF EXISTS idx_payment_transactions_gateway_ref;
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_transactions_payment_ref ON payment_transactions(payment_ref) WHERE payment_ref IS NOT NULL;
+	ALTER TABLE payment_transactions DROP COLUMN IF EXISTS transaction_id;
+	ALTER TABLE payment_transactions DROP COLUMN IF EXISTS gateway_ref;
 	`
 	if _, err := pool.Exec(ctx, heal); err != nil {
 		return fmt.Errorf("payment heal migration: %w", err)

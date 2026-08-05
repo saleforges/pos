@@ -140,7 +140,7 @@ func TestPaymentUsecase_HandleCallback(t *testing.T) {
 		uc, _, orderClient := newSetup()
 		err := uc.HandleCallback(ctx, CallbackParams{
 			ReferenceID: "5", Status: "berhasil", StatusCode: 1,
-			Amount: "30000", Via: "qris", GatewayRef: "TRX123",
+			Amount: "30000", Via: "qris", PaymentRef: "TRX123",
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -153,7 +153,7 @@ func TestPaymentUsecase_HandleCallback(t *testing.T) {
 	t.Run("duplicate callback is idempotent", func(t *testing.T) {
 		uc, repo, orderClient := newSetup()
 		err := uc.HandleCallback(ctx, CallbackParams{
-			ReferenceID: "5", StatusCode: 1, Amount: "30000", Via: "qris", GatewayRef: "TRX123",
+			ReferenceID: "5", StatusCode: 1, Amount: "30000", Via: "qris", PaymentRef: "TRX123",
 		})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -164,7 +164,7 @@ func TestPaymentUsecase_HandleCallback(t *testing.T) {
 		}
 		// second callback with same gateway ref → no-op
 		err = uc.HandleCallback(ctx, CallbackParams{
-			ReferenceID: "5", StatusCode: 1, Amount: "30000", Via: "qris", GatewayRef: "TRX123",
+			ReferenceID: "5", StatusCode: 1, Amount: "30000", Via: "qris", PaymentRef: "TRX123",
 		})
 		if err != nil {
 			t.Fatalf("unexpected error on duplicate: %v", err)

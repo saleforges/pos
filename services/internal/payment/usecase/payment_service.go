@@ -74,7 +74,7 @@ func (uc *paymentUsecase) Create(ctx context.Context, params CreatePaymentParams
 	payment.QrImage = result.QrImage
 	payment.ExpiredAt = result.ExpiredAt
 	payment.SessionID = result.SessionID
-	payment.TransactionID = result.TransactionID
+	payment.PaymentRef = result.PaymentRef
 	payment.UpdatedAt = time.Now().UTC()
 	if err := uc.paymentRepo.UpdateDetails(ctx, payment.ID, payment); err != nil {
 		return nil, err
@@ -102,8 +102,8 @@ func (uc *paymentUsecase) HandleCallback(ctx context.Context, params CallbackPar
 	}
 
 	// Idempotency: gateway retries callbacks until 200. If we already
-	// recorded this gateway ref, it's a duplicate — no-op.
-	if payment.GatewayRef != "" && payment.GatewayRef == params.GatewayRef && payment.Status == domain.PaymentStatusPaid {
+	// recorded this payment ref, it's a duplicate — no-op.
+	if payment.PaymentRef != "" && payment.PaymentRef == params.PaymentRef && payment.Status == domain.PaymentStatusPaid {
 		return nil
 	}
 
@@ -115,7 +115,7 @@ func (uc *paymentUsecase) HandleCallback(ctx context.Context, params CallbackPar
 		return domain.ErrInvalidCallback
 	}
 
-	if err := uc.paymentRepo.MarkPaid(ctx, payment.ID, params.GatewayRef); err != nil {
+	if err := uc.paymentRepo.MarkPaid(ctx, payment.ID, params.PaymentRef); err != nil {
 		return err
 	}
 

@@ -40,9 +40,9 @@ func (m *mockPaymentRepo) GetByOrderID(_ context.Context, orderID int64) (*domai
 	return nil, domain.ErrPaymentNotFound
 }
 
-func (m *mockPaymentRepo) GetByGatewayRef(_ context.Context, gatewayRef string) (*domain.PaymentTransaction, error) {
+func (m *mockPaymentRepo) GetByPaymentRef(_ context.Context, paymentRef string) (*domain.PaymentTransaction, error) {
 	for _, p := range m.payments {
-		if p.GatewayRef == gatewayRef {
+		if p.PaymentRef == paymentRef {
 			return p, nil
 		}
 	}
@@ -70,17 +70,17 @@ func (m *mockPaymentRepo) UpdateDetails(_ context.Context, id int64, p *domain.P
 	existing.QrImage = p.QrImage
 	existing.ExpiredAt = p.ExpiredAt
 	existing.SessionID = p.SessionID
-	existing.TransactionID = p.TransactionID
+	existing.PaymentRef = p.PaymentRef
 	return nil
 }
 
-func (m *mockPaymentRepo) MarkPaid(_ context.Context, id int64, gatewayRef string) error {
+func (m *mockPaymentRepo) MarkPaid(_ context.Context, id int64, paymentRef string) error {
 	p, ok := m.payments[id]
 	if !ok {
 		return domain.ErrPaymentNotFound
 	}
 	p.Status = domain.PaymentStatusPaid
-	p.GatewayRef = gatewayRef
+	p.PaymentRef = paymentRef
 	return nil
 }
 

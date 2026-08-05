@@ -22,14 +22,14 @@ type CreatePaymentParams struct {
 }
 
 type PaymentResult struct {
-	SessionID     string
-	PaymentURL    string
-	TransactionID string
-	Via           string
-	PaymentNo     string
-	QrString      string
-	QrImage       string
-	ExpiredAt     string
+	SessionID  string
+	PaymentURL string
+	PaymentRef string
+	Via        string
+	PaymentNo  string
+	QrString   string
+	QrImage    string
+	ExpiredAt  string
 }
 
 // GatewayClient creates payment links via an external gateway (iPaymu).

@@ -11,7 +11,7 @@ import (
 
 var _ repository.PaymentRepository = (*PaymentRepository)(nil)
 
-const paymentCols = `id, merchant_id, order_id, gateway, status, amount, payment_url, payment_no, qr_string, qr_image, expired_at, session_id, gateway_ref, transaction_id, created_at, updated_at`
+const paymentCols = `id, merchant_id, order_id, gateway, status, amount, payment_url, payment_no, qr_string, qr_image, expired_at, session_id, payment_ref, created_at, updated_at`
 
 type PaymentRepository struct {
 	pool *otel.TracedPool
@@ -23,11 +23,11 @@ func NewPaymentRepository(pool *otel.TracedPool) *PaymentRepository {
 
 func (r *PaymentRepository) Create(ctx context.Context, p *domain.PaymentTransaction) error {
 	return r.pool.QueryRow(ctx,
-		`INSERT INTO payment_transactions (merchant_id, order_id, gateway, status, amount, payment_url, payment_no, qr_string, qr_image, expired_at, session_id, gateway_ref, transaction_id, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
+		`INSERT INTO payment_transactions (merchant_id, order_id, gateway, status, amount, payment_url, payment_no, qr_string, qr_image, expired_at, session_id, payment_ref, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
 		p.MerchantID, p.OrderID, p.Gateway, p.Status, p.Amount, nullIfEmpty(p.PaymentURL),
 		nullIfEmpty(p.PaymentNo), nullIfEmpty(p.QrString), nullIfEmpty(p.QrImage), nullIfEmpty(p.ExpiredAt),
-		nullIfEmpty(p.SessionID), nullIfEmpty(p.GatewayRef), nullIfEmpty(p.TransactionID), p.CreatedAt, p.UpdatedAt,
+		nullIfEmpty(p.SessionID), nullIfEmpty(p.PaymentRef), p.CreatedAt, p.UpdatedAt,
 	).Scan(&p.ID)
 }
 
@@ -52,22 +52,22 @@ func (r *PaymentRepository) UpdatePaymentURL(ctx context.Context, id int64, paym
 
 func (r *PaymentRepository) UpdateDetails(ctx context.Context, id int64, p *domain.PaymentTransaction) error {
 	_, err := r.pool.Exec(ctx,
-		`UPDATE payment_transactions SET payment_url = $1, payment_no = $2, qr_string = $3, qr_image = $4, expired_at = $5, session_id = $6, transaction_id = $7, updated_at = NOW() WHERE id = $8`,
+		`UPDATE payment_transactions SET payment_url = $1, payment_no = $2, qr_string = $3, qr_image = $4, expired_at = $5, session_id = $6, payment_ref = $7, updated_at = NOW() WHERE id = $8`,
 		nullIfEmpty(p.PaymentURL), nullIfEmpty(p.PaymentNo), nullIfEmpty(p.QrString), nullIfEmpty(p.QrImage),
-		nullIfEmpty(p.ExpiredAt), nullIfEmpty(p.SessionID), nullIfEmpty(p.TransactionID), id)
+		nullIfEmpty(p.ExpiredAt), nullIfEmpty(p.SessionID), nullIfEmpty(p.PaymentRef), id)
 	return err
 }
 
-func (r *PaymentRepository) GetByGatewayRef(ctx context.Context, gatewayRef string) (*domain.PaymentTransaction, error) {
+func (r *PaymentRepository) GetByPaymentRef(ctx context.Context, paymentRef string) (*domain.PaymentTransaction, error) {
 	row := r.pool.QueryRow(ctx,
-		`SELECT `+paymentCols+` FROM payment_transactions WHERE gateway_ref = $1`, gatewayRef)
+		`SELECT `+paymentCols+` FROM payment_transactions WHERE payment_ref = $1`, paymentRef)
 	return scanPayment(row)
 }
 
-func (r *PaymentRepository) MarkPaid(ctx context.Context, id int64, gatewayRef string) error {
+func (r *PaymentRepository) MarkPaid(ctx context.Context, id int64, paymentRef string) error {
 	_, err := r.pool.Exec(ctx,
-		`UPDATE payment_transactions SET status = 'paid', gateway_ref = COALESCE($1, gateway_ref), updated_at = NOW() WHERE id = $2`,
-		nullIfEmpty(gatewayRef), id)
+		`UPDATE payment_transactions SET status = 'paid', payment_ref = COALESCE($1, payment_ref), updated_at = NOW() WHERE id = $2`,
+		nullIfEmpty(paymentRef), id)
 	return err
 }
 
@@ -79,9 +79,9 @@ func (r *PaymentRepository) MarkExpired(ctx context.Context, id int64) error {
 
 func scanPayment(row pgx.Row) (*domain.PaymentTransaction, error) {
 	var p domain.PaymentTransaction
-	var paymentURL, paymentNo, qrString, qrImage, expiredAt, sessionID, gatewayRef, transactionID *string
+	var paymentURL, paymentNo, qrString, qrImage, expiredAt, sessionID, paymentRef *string
 	err := row.Scan(&p.ID, &p.MerchantID, &p.OrderID, &p.Gateway, &p.Status, &p.Amount,
-		&paymentURL, &paymentNo, &qrString, &qrImage, &expiredAt, &sessionID, &gatewayRef, &transactionID,
+		&paymentURL, &paymentNo, &qrString, &qrImage, &expiredAt, &sessionID, &paymentRef,
 		&p.CreatedAt, &p.UpdatedAt)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -95,8 +95,7 @@ func scanPayment(row pgx.Row) (*domain.PaymentTransaction, error) {
 	p.QrImage = deref(qrImage)
 	p.ExpiredAt = deref(expiredAt)
 	p.SessionID = deref(sessionID)
-	p.GatewayRef = deref(gatewayRef)
-	p.TransactionID = deref(transactionID)
+	p.PaymentRef = deref(paymentRef)
 	return &p, nil
 }
 

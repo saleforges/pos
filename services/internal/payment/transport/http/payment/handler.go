@@ -89,7 +89,7 @@ func (h *Handler) Callback(c echo.Context) error {
 		Status:      str(raw, "status"),
 		StatusCode:  statusCode(raw),
 		Amount:      str(raw, "amount"),
-		GatewayRef:  str(raw, "trx_id"),
+		PaymentRef:  str(raw, "trx_id"),
 		Via:         str(raw, "via"),
 		Channel:     str(raw, "channel"),
 		Signature:   signature,
