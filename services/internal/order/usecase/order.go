@@ -15,6 +15,7 @@ type OrderUsecase interface {
 	Cancel(ctx context.Context, id int64, merchantID int64) (*domain.Order, error)
 	AddPayment(ctx context.Context, params AddPaymentParams) (*domain.Order, error)
 	NotifyPaid(ctx context.Context, params NotifyPaidParams) error
+	SalesReport(ctx context.Context, merchantID, branchID int64, from, to *time.Time) (*domain.SalesReport, error)
 }
 
 // NotifyPaidParams is sent by the payment service when a gateway payment

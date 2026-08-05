@@ -222,6 +222,10 @@ func (uc *orderUsecase) AddPayment(ctx context.Context, params AddPaymentParams)
 	return uc.orderRepo.GetByID(ctx, order.ID, params.MerchantID)
 }
 
+func (uc *orderUsecase) SalesReport(ctx context.Context, merchantID, branchID int64, from, to *time.Time) (*domain.SalesReport, error) {
+	return uc.orderRepo.SalesReport(ctx, merchantID, branchID, from, to)
+}
+
 var _ OrderUsecase = (*orderUsecase)(nil)
 
 const defaultDueDays = 7

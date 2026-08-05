@@ -131,3 +131,26 @@ func (r *OrderRepository) AddPayment(_ context.Context, orderID int64, merchantI
 	o.PaymentStatus = o.ComputePaymentStatus()
 	return nil
 }
+
+func (r *OrderRepository) SalesReport(_ context.Context, merchantID, branchID int64, _ *time.Time, _ *time.Time) (*domain.SalesReport, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var report domain.SalesReport
+	for _, o := range r.orders {
+		if o.MerchantID != merchantID || o.Status != domain.OrderStatusCompleted {
+			continue
+		}
+		if branchID > 0 && o.BranchID != branchID {
+			continue
+		}
+		report.TotalOrders++
+		if o.PaymentStatus == domain.PaymentStatusPaid {
+			report.PaidOrders++
+			report.TotalRevenue += o.PaidAmount
+		} else {
+			report.DebtOrders++
+			report.Outstanding += o.Total - o.PaidAmount
+		}
+	}
+	return &report, nil
+}

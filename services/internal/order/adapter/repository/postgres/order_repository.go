@@ -2,6 +2,8 @@ package postgres
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/saleforge/pos/services/internal/order/domain"
@@ -211,6 +213,37 @@ func (r *OrderRepository) loadPayments(ctx context.Context, order *domain.Order)
 	}
 	order.Payments = payments
 	return nil
+}
+
+func (r *OrderRepository) SalesReport(ctx context.Context, merchantID, branchID int64, from, to *time.Time) (*domain.SalesReport, error) {
+	query := `SELECT
+		COALESCE(SUM(paid_amount), 0),
+		COUNT(*),
+		COUNT(*) FILTER (WHERE payment_status = 'paid'),
+		COUNT(*) FILTER (WHERE payment_status = 'unpaid'),
+		COALESCE(SUM(total - paid_amount) FILTER (WHERE payment_status = 'unpaid'), 0)
+	FROM orders WHERE merchant_id = $1 AND status = 'completed'`
+	args := []interface{}{merchantID}
+	if branchID > 0 {
+		query += ` AND branch_id = $2`
+		args = append(args, branchID)
+	}
+	if from != nil {
+		query += ` AND created_at >= $` + fmt.Sprint(len(args)+1)
+		args = append(args, *from)
+	}
+	if to != nil {
+		query += ` AND created_at <= $` + fmt.Sprint(len(args)+1)
+		args = append(args, *to)
+	}
+
+	var report domain.SalesReport
+	err := r.pool.QueryRow(ctx, query, args...).Scan(
+		&report.TotalRevenue, &report.TotalOrders, &report.PaidOrders, &report.DebtOrders, &report.Outstanding)
+	if err != nil {
+		return nil, err
+	}
+	return &report, nil
 }
 
 func scanOrder(row pgx.Row) (*domain.Order, error) {

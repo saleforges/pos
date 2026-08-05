@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/order/domain"
@@ -345,4 +346,8 @@ func TestAddPayment(t *testing.T) {
 			t.Errorf("expected 200, got %d", rec.Code)
 		}
 	})
+}
+
+func (m *mockOrderSvc) SalesReport(context.Context, int64, int64, *time.Time, *time.Time) (*domain.SalesReport, error) {
+	return &domain.SalesReport{}, nil
 }

@@ -46,6 +46,7 @@ func NewRouter(
 	orderGroup.PATCH("/:id", orderHandler.Update)
 	orderGroup.PATCH("/:id/status", orderHandler.Cancel)
 	orderGroup.POST("/:id/payments", orderHandler.AddPayment)
+	api.GET("/reports/sales", orderHandler.SalesReport, httputil.MerchantMiddleware())
 
 	customerGroup := api.Group("/customers", httputil.MerchantMiddleware())
 	customerGroup.POST("", customerHandler.Create)

@@ -244,3 +244,7 @@ func newMockCustomerRepo() *mockCustomerRepo {
 	repo.Create(context.Background(), &domain.Customer{MerchantID: 1, Name: "Pak Budi"})
 	return repo
 }
+
+func (m *mockOrderRepo) SalesReport(_ context.Context, _ int64, _ int64, _ *time.Time, _ *time.Time) (*domain.SalesReport, error) {
+	return &domain.SalesReport{}, nil
+}

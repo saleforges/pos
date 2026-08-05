@@ -61,6 +61,36 @@ func (h *Handler) Create(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusCreated, result)
 }
 
+func (h *Handler) SalesReport(c echo.Context) error {
+	merchantID := httputil.GetMerchantID(c)
+
+	var branchID int64
+	if raw := c.QueryParam("branchId"); raw != "" {
+		branchID, _ = strconv.ParseInt(raw, 10, 64)
+	}
+	var from, to *time.Time
+	if raw := c.QueryParam("from"); raw != "" {
+		t, err := time.Parse(time.RFC3339Nano, raw)
+		if err != nil {
+			return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+		}
+		from = &t
+	}
+	if raw := c.QueryParam("to"); raw != "" {
+		t, err := time.Parse(time.RFC3339Nano, raw)
+		if err != nil {
+			return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+		}
+		to = &t
+	}
+
+	result, err := h.uc.SalesReport(c.Request().Context(), merchantID, branchID, from, to)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, result)
+}
+
 func (h *Handler) GetByID(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {

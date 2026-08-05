@@ -112,3 +112,12 @@ type PaymentRecord struct {
 	PaidAt    time.Time     `json:"paidAt"`
 	CreatedAt time.Time     `json:"createdAt"`
 }
+
+// SalesReport is the per-branch sales aggregation.
+type SalesReport struct {
+	TotalRevenue float64 `json:"totalRevenue"`
+	TotalOrders  int64   `json:"totalOrders"`
+	PaidOrders   int64   `json:"paidOrders"`
+	DebtOrders   int64   `json:"debtOrders"`
+	Outstanding  float64 `json:"outstanding"`
+}
