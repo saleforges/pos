@@ -132,6 +132,9 @@ func RunMigrations(databaseURL string) error {
 	heal := `
 	ALTER TABLE product_component_items DROP COLUMN IF EXISTS conversion_factor;
 
+	DROP INDEX IF EXISTS idx_stocks_branch_product;
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_stocks_merchant_branch_product ON stocks(merchant_id, branch_id, product_item_id);
+
 	CREATE TABLE IF NOT EXISTS inventory_units (
 		id             BIGINT       PRIMARY KEY,
 		name           VARCHAR(50)  NOT NULL,
