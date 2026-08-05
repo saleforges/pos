@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -13,14 +14,16 @@ var _ repository.ProductItemRepository = (*ProductItemRepository)(nil)
 var _ repository.ProductItemBarcodeRepository = (*ProductItemBarcodeRepository)(nil)
 
 type ProductItemRepository struct {
-	mu    sync.RWMutex
-	items map[int64]*domain.ProductItem
-	seq   int64
+	mu           sync.RWMutex
+	items        map[int64]*domain.ProductItem
+	branchPrices map[string]domain.Price
+	seq          int64
 }
 
 func NewProductItemRepository() *ProductItemRepository {
 	return &ProductItemRepository{
-		items: make(map[int64]*domain.ProductItem),
+		items:        make(map[int64]*domain.ProductItem),
+		branchPrices: make(map[string]domain.Price),
 	}
 }
 
@@ -145,9 +148,9 @@ func (r *ProductItemRepository) ListUpdatedAfter(_ context.Context, merchantID i
 }
 
 type ProductItemBarcodeRepository struct {
-	mu        sync.RWMutex
-	barcodes  map[int64]*domain.ProductItemBarcode
-	seq       int64
+	mu       sync.RWMutex
+	barcodes map[int64]*domain.ProductItemBarcode
+	seq      int64
 }
 
 func NewProductItemBarcodeRepository() *ProductItemBarcodeRepository {
@@ -214,4 +217,22 @@ func (r *ProductItemBarcodeRepository) ListByMerchant(_ context.Context, merchan
 		return []domain.ProductItemBarcode{}, nil
 	}
 	return result, nil
+}
+
+func (r *ProductItemRepository) SetBranchPrice(_ context.Context, productItemID, branchID int64, amount float64, currency string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := fmt.Sprintf("%d-%d", productItemID, branchID)
+	if currency == "" {
+		currency = "IDR"
+	}
+	r.branchPrices[key] = domain.Price{Amount: amount, Currency: currency}
+	return nil
+}
+
+func (r *ProductItemRepository) DeleteBranchPrice(_ context.Context, productItemID, branchID int64) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	delete(r.branchPrices, fmt.Sprintf("%d-%d", productItemID, branchID))
+	return nil
 }

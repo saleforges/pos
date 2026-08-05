@@ -19,29 +19,55 @@ import (
 type mockCategoryRepo struct{}
 
 func (m *mockCategoryRepo) Create(_ context.Context, _ *domain.Category) error { return nil }
-func (m *mockCategoryRepo) GetByID(_ context.Context, id int64, _ int64) (*domain.Category, error) { return nil, domain.ErrCategoryNotFound }
-func (m *mockCategoryRepo) ListByMerchant(_ context.Context, _ int64) ([]domain.Category, error) { return nil, nil }
+func (m *mockCategoryRepo) GetByID(_ context.Context, id int64, _ int64) (*domain.Category, error) {
+	return nil, domain.ErrCategoryNotFound
+}
+func (m *mockCategoryRepo) ListByMerchant(_ context.Context, _ int64) ([]domain.Category, error) {
+	return nil, nil
+}
 func (m *mockCategoryRepo) Update(_ context.Context, _ *domain.Category) error { return nil }
-func (m *mockCategoryRepo) Delete(_ context.Context, _ int64, _ int64) error { return nil }
-func (m *mockCategoryRepo) Restore(_ context.Context, _ int64, _ int64) (*domain.Category, error) { return nil, nil }
-func (m *mockCategoryRepo) ListUpdatedAfter(_ context.Context, _ int64, _ time.Time) ([]domain.Category, error) { return nil, nil }
+func (m *mockCategoryRepo) Delete(_ context.Context, _ int64, _ int64) error   { return nil }
+func (m *mockCategoryRepo) Restore(_ context.Context, _ int64, _ int64) (*domain.Category, error) {
+	return nil, nil
+}
+func (m *mockCategoryRepo) ListUpdatedAfter(_ context.Context, _ int64, _ time.Time) ([]domain.Category, error) {
+	return nil, nil
+}
 
 type mockProductItemRepo struct{}
 
 func (m *mockProductItemRepo) Create(_ context.Context, _ *domain.ProductItem) error { return nil }
-func (m *mockProductItemRepo) GetByID(_ context.Context, _ int64, _ int64) (*domain.ProductItem, error) { return nil, domain.ErrProductItemNotFound }
-func (m *mockProductItemRepo) ListByProduct(_ context.Context, _ int64, _ int64) ([]domain.ProductItem, error) { return nil, nil }
-func (m *mockProductItemRepo) ListByMerchant(_ context.Context, _ int64) ([]domain.ProductItem, error) { return nil, nil }
+func (m *mockProductItemRepo) GetByID(_ context.Context, _ int64, _ int64) (*domain.ProductItem, error) {
+	return nil, domain.ErrProductItemNotFound
+}
+func (m *mockProductItemRepo) ListByProduct(_ context.Context, _ int64, _ int64) ([]domain.ProductItem, error) {
+	return nil, nil
+}
+func (m *mockProductItemRepo) ListByMerchant(_ context.Context, _ int64) ([]domain.ProductItem, error) {
+	return nil, nil
+}
 func (m *mockProductItemRepo) Update(_ context.Context, _ *domain.ProductItem) error { return nil }
-func (m *mockProductItemRepo) Delete(_ context.Context, _ int64, _ int64) error { return nil }
-func (m *mockProductItemRepo) Restore(_ context.Context, _ int64, _ int64) (*domain.ProductItem, error) { return nil, nil }
-func (m *mockProductItemRepo) ListUpdatedAfter(_ context.Context, _ int64, _ time.Time) ([]domain.ProductItem, error) { return nil, nil }
+func (m *mockProductItemRepo) Delete(_ context.Context, _ int64, _ int64) error      { return nil }
+func (m *mockProductItemRepo) Restore(_ context.Context, _ int64, _ int64) (*domain.ProductItem, error) {
+	return nil, nil
+}
+func (m *mockProductItemRepo) SetBranchPrice(_ context.Context, _, _ int64, _ float64, _ string) error {
+	return nil
+}
+func (m *mockProductItemRepo) DeleteBranchPrice(_ context.Context, _, _ int64) error { return nil }
+func (m *mockProductItemRepo) ListUpdatedAfter(_ context.Context, _ int64, _ time.Time) ([]domain.ProductItem, error) {
+	return nil, nil
+}
 
 type mockUnitRepo struct{}
 
 func (m *mockUnitRepo) GetAll(_ context.Context) ([]domain.Unit, error) { return nil, nil }
-func (m *mockUnitRepo) GetByID(_ context.Context, _ int64) (*domain.Unit, error) { return nil, domain.ErrUnitNotFound }
-func (m *mockUnitRepo) GetByCode(_ context.Context, _ string) (*domain.Unit, error) { return nil, domain.ErrUnitNotFound }
+func (m *mockUnitRepo) GetByID(_ context.Context, _ int64) (*domain.Unit, error) {
+	return nil, domain.ErrUnitNotFound
+}
+func (m *mockUnitRepo) GetByCode(_ context.Context, _ string) (*domain.Unit, error) {
+	return nil, domain.ErrUnitNotFound
+}
 
 type mockProductSvc struct {
 	createFn func(context.Context, usecase.CreateProductParams) (*domain.Product, error)

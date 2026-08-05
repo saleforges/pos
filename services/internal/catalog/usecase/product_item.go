@@ -130,4 +130,21 @@ func (uc *productItemUsecase) Restore(ctx context.Context, id int64, merchantID 
 	return uc.itemRepo.Restore(ctx, id, merchantID)
 }
 
+func (uc *productItemUsecase) SetBranchPrice(ctx context.Context, productItemID, branchID, merchantID int64, amount float64, currency string) error {
+	if _, err := uc.itemRepo.GetByID(ctx, productItemID, merchantID); err != nil {
+		return err
+	}
+	if branchID == 0 {
+		return domain.ErrInvalidProductItem
+	}
+	return uc.itemRepo.SetBranchPrice(ctx, productItemID, branchID, amount, currency)
+}
+
+func (uc *productItemUsecase) DeleteBranchPrice(ctx context.Context, productItemID, branchID, merchantID int64) error {
+	if _, err := uc.itemRepo.GetByID(ctx, productItemID, merchantID); err != nil {
+		return err
+	}
+	return uc.itemRepo.DeleteBranchPrice(ctx, productItemID, branchID)
+}
+
 var _ ProductItemUsecase = (*productItemUsecase)(nil)

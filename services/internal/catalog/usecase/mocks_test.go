@@ -362,3 +362,8 @@ func (m *mockUnitRepo) GetByCode(_ context.Context, code string) (*domain.Unit, 
 	}
 	return nil, domain.ErrUnitNotFound
 }
+
+func (m *mockProductItemRepo) SetBranchPrice(_ context.Context, _, _ int64, _ float64, _ string) error {
+	return nil
+}
+func (m *mockProductItemRepo) DeleteBranchPrice(_ context.Context, _, _ int64) error { return nil }

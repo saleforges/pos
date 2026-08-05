@@ -22,8 +22,8 @@ type CreateCategoryParams struct {
 }
 
 type UpdateCategoryParams struct {
-	ID        int64
+	ID         int64
 	MerchantID int64
-	Name      *string
-	ParentID  *int64
+	Name       *string
+	ParentID   *int64
 }

@@ -71,6 +71,39 @@ func (h *Handler) Create(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusCreated, result)
 }
 
+func (h *Handler) SetBranchPrice(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+	var req struct {
+		BranchID int64   `json:"branchId"`
+		Amount   float64 `json:"amount"`
+		Currency string  `json:"currency"`
+	}
+	if err := c.Bind(&req); err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+	merchantID := httputil.GetMerchantID(c)
+	if err := h.uc.SetBranchPrice(c.Request().Context(), id, req.BranchID, merchantID, req.Amount, req.Currency); err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func (h *Handler) DeleteBranchPrice(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+	branchID, _ := strconv.ParseInt(c.QueryParam("branchId"), 10, 64)
+	merchantID := httputil.GetMerchantID(c)
+	if err := h.uc.DeleteBranchPrice(c.Request().Context(), id, branchID, merchantID); err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, map[string]bool{"ok": true})
+}
+
 func (h *Handler) GetByID(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {

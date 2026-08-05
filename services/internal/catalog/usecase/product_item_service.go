@@ -14,6 +14,8 @@ type ProductItemUsecase interface {
 	Update(ctx context.Context, params UpdateProductItemParams) (*domain.ProductItem, error)
 	Delete(ctx context.Context, id int64, merchantID int64) error
 	Restore(ctx context.Context, id int64, merchantID int64) (*domain.ProductItem, error)
+	SetBranchPrice(ctx context.Context, productItemID, branchID, merchantID int64, amount float64, currency string) error
+	DeleteBranchPrice(ctx context.Context, productItemID, branchID, merchantID int64) error
 }
 
 type CreateProductItemParams struct {

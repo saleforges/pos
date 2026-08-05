@@ -15,11 +15,11 @@ import (
 )
 
 type mockCategorySvc struct {
-	createFn func(context.Context, usecase.CreateCategoryParams) (*domain.Category, error)
-	getFn    func(context.Context, int64, int64) (*domain.Category, error)
-	listFn   func(context.Context, int64) ([]domain.Category, error)
-	updateFn func(context.Context, usecase.UpdateCategoryParams) (*domain.Category, error)
-	deleteFn func(context.Context, int64, int64) error
+	createFn  func(context.Context, usecase.CreateCategoryParams) (*domain.Category, error)
+	getFn     func(context.Context, int64, int64) (*domain.Category, error)
+	listFn    func(context.Context, int64) ([]domain.Category, error)
+	updateFn  func(context.Context, usecase.UpdateCategoryParams) (*domain.Category, error)
+	deleteFn  func(context.Context, int64, int64) error
 	restoreFn func(context.Context, int64, int64) (*domain.Category, error)
 }
 

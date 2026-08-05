@@ -47,10 +47,10 @@ func New(cfg Config) (*App, error) {
 	}
 
 	var (
-		prodRepo   repository.ProductRepository
-		itemRepo   repository.ProductItemRepository
-		catRepo    repository.CategoryRepository
-		unitRepo   repository.UnitRepository
+		prodRepo    repository.ProductRepository
+		itemRepo    repository.ProductItemRepository
+		catRepo     repository.CategoryRepository
+		unitRepo    repository.UnitRepository
 		barcodeRepo repository.ProductItemBarcodeRepository
 	)
 

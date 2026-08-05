@@ -7,10 +7,10 @@ import (
 
 // Request DTO
 type syncReq struct {
-	LastSync   *string                        `json:"lastSync,omitempty"`
-	Products   []usecase.SyncProductChange    `json:"products,omitempty"`
-	Items      []usecase.SyncItemChange       `json:"items,omitempty"`
-	Categories []usecase.SyncCategoryChange   `json:"categories,omitempty"`
+	LastSync   *string                      `json:"lastSync,omitempty"`
+	Products   []usecase.SyncProductChange  `json:"products,omitempty"`
+	Items      []usecase.SyncItemChange     `json:"items,omitempty"`
+	Categories []usecase.SyncCategoryChange `json:"categories,omitempty"`
 }
 
 // Response DTO

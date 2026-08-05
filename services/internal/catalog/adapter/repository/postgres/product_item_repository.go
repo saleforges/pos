@@ -153,6 +153,34 @@ func (r *ProductItemRepository) getPrice(ctx context.Context, productItemID int6
 	return &p, nil
 }
 
+func (r *ProductItemRepository) getBranchPrice(ctx context.Context, productItemID, branchID int64) (*domain.Price, error) {
+	var p domain.Price
+	err := r.pool.QueryRow(ctx,
+		`SELECT amount, currency FROM branch_prices WHERE product_item_id = $1 AND branch_id = $2`, productItemID, branchID).Scan(&p.Amount, &p.Currency)
+	if err != nil {
+		return nil, nil
+	}
+	return &p, nil
+}
+
+func (r *ProductItemRepository) SetBranchPrice(ctx context.Context, productItemID, branchID int64, amount float64, currency string) error {
+	if currency == "" {
+		currency = "IDR"
+	}
+	_, err := r.pool.Exec(ctx,
+		`INSERT INTO branch_prices (product_item_id, branch_id, amount, currency, updated_at)
+		 VALUES ($1, $2, $3, $4, NOW())
+		 ON CONFLICT (product_item_id, branch_id) DO UPDATE SET amount = $3, currency = $4, updated_at = NOW()`,
+		productItemID, branchID, amount, currency)
+	return err
+}
+
+func (r *ProductItemRepository) DeleteBranchPrice(ctx context.Context, productItemID, branchID int64) error {
+	_, err := r.pool.Exec(ctx,
+		`DELETE FROM branch_prices WHERE product_item_id = $1 AND branch_id = $2`, productItemID, branchID)
+	return err
+}
+
 func (r *ProductItemRepository) loadPrices(ctx context.Context, items []domain.ProductItem) ([]domain.ProductItem, error) {
 	if len(items) == 0 {
 		return items, nil

@@ -247,13 +247,13 @@ func (h *Handler) List(c echo.Context) error {
 	}
 
 	type itemResp struct {
-		ID             int64      `json:"id"`
-		Name           string     `json:"name"`
-		SKU            string     `json:"sku,omitempty"`
-		Unit           *unitResp  `json:"unit,omitempty"`
-		Price          priceResp  `json:"price"`
-		TrackInventory bool       `json:"trackInventory"`
-		Status         string     `json:"status"`
+		ID             int64     `json:"id"`
+		Name           string    `json:"name"`
+		SKU            string    `json:"sku,omitempty"`
+		Unit           *unitResp `json:"unit,omitempty"`
+		Price          priceResp `json:"price"`
+		TrackInventory bool      `json:"trackInventory"`
+		Status         string    `json:"status"`
 	}
 
 	type categoryResp struct {

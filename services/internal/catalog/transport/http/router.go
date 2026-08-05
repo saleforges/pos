@@ -70,6 +70,8 @@ func NewRouter(
 	api.PATCH("/product-items/:id", itemHandler.Update)
 	api.PATCH("/product-items/:id/restore", itemHandler.Restore)
 	api.DELETE("/product-items/:id", itemHandler.Delete)
+	api.PUT("/product-items/:id/branch-price", itemHandler.SetBranchPrice)
+	api.DELETE("/product-items/:id/branch-price", itemHandler.DeleteBranchPrice)
 
 	// Image upload
 	if imgHandler != nil {

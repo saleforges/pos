@@ -56,10 +56,10 @@ func (uc *productUsecase) List(ctx context.Context, merchantID int64, search str
 		return nil, nil, err
 	}
 	meta := &pagination.Metadata{
-		Total:       int64(total),
-		Offset:      p.Offset,
-		Limit:       p.Limit,
-		Count:       len(data),
+		Total:  int64(total),
+		Offset: p.Offset,
+		Limit:  p.Limit,
+		Count:  len(data),
 	}
 	return data, meta, nil
 }

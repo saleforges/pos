@@ -15,13 +15,13 @@ import (
 )
 
 type mockItemSvc struct {
-	createFn func(context.Context, usecase.CreateProductItemParams) (*domain.ProductItem, error)
-	getFn    func(context.Context, int64, int64) (*domain.ProductItem, error)
-	listFn   func(context.Context, int64) ([]domain.ProductItem, error)
+	createFn   func(context.Context, usecase.CreateProductItemParams) (*domain.ProductItem, error)
+	getFn      func(context.Context, int64, int64) (*domain.ProductItem, error)
+	listFn     func(context.Context, int64) ([]domain.ProductItem, error)
 	listProdFn func(context.Context, int64, int64) ([]domain.ProductItem, error)
-	updateFn func(context.Context, usecase.UpdateProductItemParams) (*domain.ProductItem, error)
-	deleteFn func(context.Context, int64, int64) error
-	restoreFn func(context.Context, int64, int64) (*domain.ProductItem, error)
+	updateFn   func(context.Context, usecase.UpdateProductItemParams) (*domain.ProductItem, error)
+	deleteFn   func(context.Context, int64, int64) error
+	restoreFn  func(context.Context, int64, int64) (*domain.ProductItem, error)
 }
 
 func (m *mockItemSvc) Create(ctx context.Context, p usecase.CreateProductItemParams) (*domain.ProductItem, error) {
@@ -285,3 +285,8 @@ func TestDelete(t *testing.T) {
 		}
 	})
 }
+
+func (m *mockItemSvc) SetBranchPrice(ctx context.Context, _, _, _ int64, _ float64, _ string) error {
+	return nil
+}
+func (m *mockItemSvc) DeleteBranchPrice(ctx context.Context, _, _, _ int64) error { return nil }

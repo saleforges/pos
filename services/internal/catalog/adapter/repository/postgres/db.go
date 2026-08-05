@@ -139,6 +139,16 @@ func RunMigrations(databaseURL string) error {
 	ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;
 	ALTER TABLE products ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 	ALTER TABLE product_items ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
+	CREATE TABLE IF NOT EXISTS branch_prices (
+		product_item_id BIGINT       NOT NULL REFERENCES product_items(id) ON DELETE CASCADE,
+		branch_id       BIGINT       NOT NULL,
+		amount          NUMERIC(12,2) NOT NULL DEFAULT 0,
+		currency        VARCHAR(3)   NOT NULL DEFAULT 'IDR',
+		created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+		updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+		PRIMARY KEY (product_item_id, branch_id)
+	);
 	`
 	if _, err := pool.Exec(ctx, heal); err != nil {
 		return fmt.Errorf("catalog heal migration: %w", err)
