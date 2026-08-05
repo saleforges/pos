@@ -104,6 +104,30 @@ func (h *Handler) Receipt(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, result)
 }
 
+func (h *Handler) SyncOrders(c echo.Context) error {
+	merchantID := httputil.GetMerchantID(c)
+
+	var branchID int64
+	if raw := c.QueryParam("branchId"); raw != "" {
+		branchID, _ = strconv.ParseInt(raw, 10, 64)
+	}
+
+	var lastSync *time.Time
+	if raw := c.QueryParam("lastSync"); raw != "" {
+		t, err := time.Parse(time.RFC3339Nano, raw)
+		if err != nil {
+			return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+		}
+		lastSync = &t
+	}
+
+	result, err := h.uc.SyncOrders(c.Request().Context(), merchantID, branchID, lastSync)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, result)
+}
+
 func (h *Handler) GetByID(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {

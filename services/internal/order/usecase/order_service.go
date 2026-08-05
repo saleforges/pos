@@ -234,6 +234,20 @@ func (uc *orderUsecase) Receipt(ctx context.Context, id int64, merchantID int64)
 	return domain.BuildReceipt(order), nil
 }
 
+func (uc *orderUsecase) SyncOrders(ctx context.Context, merchantID, branchID int64, lastSync *time.Time) (*OrderSyncResult, error) {
+	orders, err := uc.orderRepo.ListChangedSince(ctx, merchantID, branchID, lastSync)
+	if err != nil {
+		return nil, err
+	}
+	if orders == nil {
+		orders = []domain.Order{}
+	}
+	return &OrderSyncResult{
+		Orders:    orders,
+		SyncToken: time.Now().UTC().Format(time.RFC3339Nano),
+	}, nil
+}
+
 var _ OrderUsecase = (*orderUsecase)(nil)
 
 const defaultDueDays = 7

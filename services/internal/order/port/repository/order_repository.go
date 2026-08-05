@@ -16,4 +16,5 @@ type OrderRepository interface {
 	UpdateStatus(ctx context.Context, id int64, merchantID int64, status domain.OrderStatus) (*domain.Order, error)
 	AddPayment(ctx context.Context, orderID int64, merchantID int64, payment *domain.PaymentRecord) error
 	SalesReport(ctx context.Context, merchantID, branchID int64, from, to *time.Time) (*domain.SalesReport, error)
+	ListChangedSince(ctx context.Context, merchantID, branchID int64, since *time.Time) ([]domain.Order, error)
 }

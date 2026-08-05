@@ -138,6 +138,38 @@ func (r *OrderRepository) List(ctx context.Context, merchantID int64, branchID *
 	return orders, nil
 }
 
+func (r *OrderRepository) ListChangedSince(ctx context.Context, merchantID, branchID int64, since *time.Time) ([]domain.Order, error) {
+	query := `SELECT ` + orderCols + ` FROM orders WHERE merchant_id = $1`
+	args := []interface{}{merchantID}
+	if branchID > 0 {
+		query += ` AND branch_id = $2`
+		args = append(args, branchID)
+	}
+	if since != nil {
+		query += ` AND updated_at > $` + itoa(len(args)+1)
+		args = append(args, *since)
+	}
+	query += ` ORDER BY id`
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	orders, err := scanOrders(rows)
+	if err != nil {
+		return nil, err
+	}
+	for i := range orders {
+		if err := r.loadItems(ctx, &orders[i]); err != nil {
+			return nil, err
+		}
+		orders[i].PaymentStatus = orders[i].ComputePaymentStatus()
+	}
+	return orders, nil
+}
+
 func (r *OrderRepository) Update(ctx context.Context, order *domain.Order) error {
 	_, err := r.pool.Exec(ctx,
 		`UPDATE orders SET due_date = $1, note = $2, updated_at = $3 WHERE id = $4 AND merchant_id = $5`,

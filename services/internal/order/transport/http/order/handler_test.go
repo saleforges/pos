@@ -355,3 +355,7 @@ func (m *mockOrderSvc) SalesReport(context.Context, int64, int64, *time.Time, *t
 func (m *mockOrderSvc) Receipt(ctx context.Context, id int64, merchantID int64) (*domain.Receipt, error) {
 	return &domain.Receipt{OrderID: id}, nil
 }
+
+func (m *mockOrderSvc) SyncOrders(context.Context, int64, int64, *time.Time) (*usecase.OrderSyncResult, error) {
+	return &usecase.OrderSyncResult{Orders: []domain.Order{}, SyncToken: "t"}, nil
+}

@@ -1,0 +1,14 @@
+meta {
+  name: Order Sync
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{base_url}}/v1/orders/sync?lastSync={{last_sync}}
+  body: none
+  auth: bearer
+  headers {
+    X-Merchant-Id: {{merchant_id}}
+  }
+}

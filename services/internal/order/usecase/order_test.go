@@ -565,3 +565,37 @@ func TestOrderUsecase_Idempotency(t *testing.T) {
 		}
 	})
 }
+
+func TestOrderUsecase_SyncOrders(t *testing.T) {
+	ctx := context.Background()
+	repo := &mockOrderRepo{}
+	uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+
+	order := &domain.Order{ID: 1, MerchantID: 1, BranchID: 1, Status: domain.OrderStatusCompleted, Total: 15000, PaidAmount: 15000, CreatedAt: time.Now(), UpdatedAt: time.Now()}
+	if err := repo.Create(ctx, order); err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	res, err := uc.SyncOrders(ctx, 1, 0, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res.Orders) != 1 {
+		t.Fatalf("expected 1 order, got %d", len(res.Orders))
+	}
+	if res.Orders[0].PaymentStatus != domain.PaymentStatusPaid {
+		t.Errorf("expected paid status, got %s", res.Orders[0].PaymentStatus)
+	}
+	if res.SyncToken == "" {
+		t.Error("expected sync token")
+	}
+
+	future := time.Now().Add(time.Hour)
+	res2, err := uc.SyncOrders(ctx, 1, 0, &future)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(res2.Orders) != 0 {
+		t.Errorf("expected 0 orders after future lastSync, got %d", len(res2.Orders))
+	}
+}

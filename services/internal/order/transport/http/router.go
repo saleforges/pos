@@ -42,6 +42,7 @@ func NewRouter(
 	orderGroup := api.Group("/orders", httputil.MerchantMiddleware())
 	orderGroup.POST("", orderHandler.Create)
 	orderGroup.GET("", orderHandler.List)
+	orderGroup.GET("/sync", orderHandler.SyncOrders)
 	orderGroup.GET("/:id", orderHandler.GetByID)
 	orderGroup.PATCH("/:id", orderHandler.Update)
 	orderGroup.PATCH("/:id/status", orderHandler.Cancel)

@@ -17,6 +17,13 @@ type OrderUsecase interface {
 	NotifyPaid(ctx context.Context, params NotifyPaidParams) error
 	SalesReport(ctx context.Context, merchantID, branchID int64, from, to *time.Time) (*domain.SalesReport, error)
 	Receipt(ctx context.Context, id int64, merchantID int64) (*domain.Receipt, error)
+	SyncOrders(ctx context.Context, merchantID, branchID int64, lastSync *time.Time) (*OrderSyncResult, error)
+}
+
+// OrderSyncResult is the incremental order payload for offline sync.
+type OrderSyncResult struct {
+	Orders    []domain.Order `json:"orders"`
+	SyncToken string         `json:"syncToken"`
 }
 
 // NotifyPaidParams is sent by the payment service when a gateway payment

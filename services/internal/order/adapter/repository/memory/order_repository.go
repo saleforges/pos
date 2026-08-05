@@ -154,3 +154,24 @@ func (r *OrderRepository) SalesReport(_ context.Context, merchantID, branchID in
 	}
 	return &report, nil
 }
+
+func (r *OrderRepository) ListChangedSince(_ context.Context, merchantID, branchID int64, since *time.Time) ([]domain.Order, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var result []domain.Order
+	for _, o := range r.orders {
+		if o.MerchantID != merchantID {
+			continue
+		}
+		if branchID > 0 && o.BranchID != branchID {
+			continue
+		}
+		if since != nil && !o.UpdatedAt.After(*since) {
+			continue
+		}
+		o.PaymentStatus = o.ComputePaymentStatus()
+		result = append(result, *o)
+	}
+	return result, nil
+}

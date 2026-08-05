@@ -248,3 +248,24 @@ func newMockCustomerRepo() *mockCustomerRepo {
 func (m *mockOrderRepo) SalesReport(_ context.Context, _ int64, _ int64, _ *time.Time, _ *time.Time) (*domain.SalesReport, error) {
 	return &domain.SalesReport{}, nil
 }
+
+func (m *mockOrderRepo) ListChangedSince(_ context.Context, merchantID, branchID int64, since *time.Time) ([]domain.Order, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	var result []domain.Order
+	for _, o := range m.orders {
+		if o.MerchantID != merchantID {
+			continue
+		}
+		if branchID > 0 && o.BranchID != branchID {
+			continue
+		}
+		if since != nil && !o.UpdatedAt.After(*since) {
+			continue
+		}
+		o.PaymentStatus = o.ComputePaymentStatus()
+		result = append(result, *o)
+	}
+	return result, nil
+}
