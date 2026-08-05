@@ -24,7 +24,7 @@ localhost {
         reverse_proxy localhost:{env.INVENTORY_PORT}
     }
 
-    @order path /api/v1/orders* /api/v1/customers*
+    @order path /api/v1/orders* /api/v1/customers* /api/v1/reports*
     handle @order {
         reverse_proxy localhost:{env.ORDER_PORT}
     }

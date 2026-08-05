@@ -21,7 +21,7 @@
         reverse_proxy inventory-service:8083
     }
 
-    @order path /v1/orders* /v1/customers*
+    @order path /v1/orders* /v1/customers* /v1/reports*
     handle @order {
         rewrite * /api{path}
         reverse_proxy order-service:8084
