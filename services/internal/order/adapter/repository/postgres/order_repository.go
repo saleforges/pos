@@ -219,9 +219,9 @@ func (r *OrderRepository) SalesReport(ctx context.Context, merchantID, branchID 
 	query := `SELECT
 		COALESCE(SUM(paid_amount), 0),
 		COUNT(*),
-		COUNT(*) FILTER (WHERE payment_status = 'paid'),
-		COUNT(*) FILTER (WHERE payment_status = 'unpaid'),
-		COALESCE(SUM(total - paid_amount) FILTER (WHERE payment_status = 'unpaid'), 0)
+		COUNT(*) FILTER (WHERE paid_amount >= total),
+		COUNT(*) FILTER (WHERE paid_amount < total),
+		COALESCE(SUM(total - paid_amount) FILTER (WHERE paid_amount < total), 0)
 	FROM orders WHERE merchant_id = $1 AND status = 'completed'`
 	args := []interface{}{merchantID}
 	if branchID > 0 {
