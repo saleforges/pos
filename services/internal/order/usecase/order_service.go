@@ -226,6 +226,14 @@ func (uc *orderUsecase) SalesReport(ctx context.Context, merchantID, branchID in
 	return uc.orderRepo.SalesReport(ctx, merchantID, branchID, from, to)
 }
 
+func (uc *orderUsecase) Receipt(ctx context.Context, id int64, merchantID int64) (*domain.Receipt, error) {
+	order, err := uc.orderRepo.GetByID(ctx, id, merchantID)
+	if err != nil {
+		return nil, err
+	}
+	return domain.BuildReceipt(order), nil
+}
+
 var _ OrderUsecase = (*orderUsecase)(nil)
 
 const defaultDueDays = 7

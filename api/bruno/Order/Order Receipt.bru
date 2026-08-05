@@ -1,0 +1,14 @@
+meta {
+  name: Order Receipt
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{base_url}}/v1/orders/{{order_id}}/receipt
+  body: none
+  auth: bearer
+  headers {
+    X-Merchant-Id: {{merchant_id}}
+  }
+}

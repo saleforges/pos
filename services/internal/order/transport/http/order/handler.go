@@ -91,6 +91,19 @@ func (h *Handler) SalesReport(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, result)
 }
 
+func (h *Handler) Receipt(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+	merchantID := httputil.GetMerchantID(c)
+	result, err := h.uc.Receipt(c.Request().Context(), id, merchantID)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, result)
+}
+
 func (h *Handler) GetByID(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {

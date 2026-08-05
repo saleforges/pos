@@ -351,3 +351,7 @@ func TestAddPayment(t *testing.T) {
 func (m *mockOrderSvc) SalesReport(context.Context, int64, int64, *time.Time, *time.Time) (*domain.SalesReport, error) {
 	return &domain.SalesReport{}, nil
 }
+
+func (m *mockOrderSvc) Receipt(ctx context.Context, id int64, merchantID int64) (*domain.Receipt, error) {
+	return &domain.Receipt{OrderID: id}, nil
+}
