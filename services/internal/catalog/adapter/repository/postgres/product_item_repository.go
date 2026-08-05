@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"time"
 
@@ -218,21 +219,33 @@ func (r *ProductItemRepository) loadPrices(ctx context.Context, items []domain.P
 }
 
 func scanProductItem(row pgx.Row) (*domain.ProductItem, error) {
-	var s domain.ProductItem
-	err := row.Scan(&s.ID, &s.ProductID, &s.MerchantID, &s.Name, &s.SKU, &s.UnitID, &s.TrackInventory, &s.ImageURL, &s.Status, &s.CreatedAt, &s.UpdatedAt, &s.DeletedAt)
+	var (
+		s        domain.ProductItem
+		sku      sql.NullString
+		imageURL sql.NullString
+	)
+	err := row.Scan(&s.ID, &s.ProductID, &s.MerchantID, &s.Name, &sku, &s.UnitID, &s.TrackInventory, &imageURL, &s.Status, &s.CreatedAt, &s.UpdatedAt, &s.DeletedAt)
 	if err != nil {
 		return nil, err
 	}
+	s.SKU = sku.String
+	s.ImageURL = imageURL.String
 	return &s, nil
 }
 
 func scanProductItems(rows pgx.Rows) ([]domain.ProductItem, error) {
 	var result []domain.ProductItem
 	for rows.Next() {
-		var s domain.ProductItem
-		if err := rows.Scan(&s.ID, &s.ProductID, &s.MerchantID, &s.Name, &s.SKU, &s.UnitID, &s.TrackInventory, &s.ImageURL, &s.Status, &s.CreatedAt, &s.UpdatedAt, &s.DeletedAt); err != nil {
+		var (
+			s        domain.ProductItem
+			sku      sql.NullString
+			imageURL sql.NullString
+		)
+		if err := rows.Scan(&s.ID, &s.ProductID, &s.MerchantID, &s.Name, &sku, &s.UnitID, &s.TrackInventory, &imageURL, &s.Status, &s.CreatedAt, &s.UpdatedAt, &s.DeletedAt); err != nil {
 			return nil, err
 		}
+		s.SKU = sku.String
+		s.ImageURL = imageURL.String
 		result = append(result, s)
 	}
 	return result, rows.Err()

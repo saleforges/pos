@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -102,21 +103,33 @@ func (r *ProductRepository) ListUpdatedAfter(ctx context.Context, merchantID int
 }
 
 func scanProduct(row pgx.Row) (*domain.Product, error) {
-	var p domain.Product
-	err := row.Scan(&p.ID, &p.MerchantID, &p.CategoryID, &p.Name, &p.Description, &p.ImageURL, &p.Status, &p.CreatedAt, &p.UpdatedAt, &p.DeletedAt)
+	var (
+		p           domain.Product
+		description sql.NullString
+		imageURL    sql.NullString
+	)
+	err := row.Scan(&p.ID, &p.MerchantID, &p.CategoryID, &p.Name, &description, &imageURL, &p.Status, &p.CreatedAt, &p.UpdatedAt, &p.DeletedAt)
 	if err != nil {
 		return nil, err
 	}
+	p.Description = description.String
+	p.ImageURL = imageURL.String
 	return &p, nil
 }
 
 func scanProducts(rows pgx.Rows) ([]domain.Product, error) {
 	var result []domain.Product
 	for rows.Next() {
-		var p domain.Product
-		if err := rows.Scan(&p.ID, &p.MerchantID, &p.CategoryID, &p.Name, &p.Description, &p.ImageURL, &p.Status, &p.CreatedAt, &p.UpdatedAt, &p.DeletedAt); err != nil {
+		var (
+			p           domain.Product
+			description sql.NullString
+			imageURL    sql.NullString
+		)
+		if err := rows.Scan(&p.ID, &p.MerchantID, &p.CategoryID, &p.Name, &description, &imageURL, &p.Status, &p.CreatedAt, &p.UpdatedAt, &p.DeletedAt); err != nil {
 			return nil, err
 		}
+		p.Description = description.String
+		p.ImageURL = imageURL.String
 		result = append(result, p)
 	}
 	return result, rows.Err()
