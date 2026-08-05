@@ -32,17 +32,22 @@ func New(cfg Config) repository.GatewayClient {
 }
 
 type createPaymentReq struct {
-	Product       []string `json:"product"`
-	Qty           []int    `json:"qty"`
-	Price         []int64  `json:"price"`
-	ReturnURL     string   `json:"returnUrl"`
-	CancelURL     string   `json:"cancelUrl"`
-	NotifyURL     string   `json:"notifyUrl"`
-	ReferenceID   string   `json:"referenceId"`
-	PaymentMethod string   `json:"paymentMethod,omitempty"`
-	BuyerName     string   `json:"buyerName,omitempty"`
-	BuyerEmail    string   `json:"buyerEmail,omitempty"`
-	BuyerPhone    string   `json:"buyerPhone,omitempty"`
+	Product        []string `json:"product,omitempty"`
+	Qty            []int    `json:"qty,omitempty"`
+	Price          []int64  `json:"price,omitempty"`
+	ReturnURL      string   `json:"returnUrl,omitempty"`
+	CancelURL      string   `json:"cancelUrl,omitempty"`
+	NotifyURL      string   `json:"notifyUrl,omitempty"`
+	ReferenceID    string   `json:"referenceId"`
+	PaymentMethod  string   `json:"paymentMethod,omitempty"`
+	PaymentChannel string   `json:"paymentChannel,omitempty"`
+	Amount         int64    `json:"amount,omitempty"`
+	Name           string   `json:"name,omitempty"`
+	Phone          string   `json:"phone,omitempty"`
+	Email          string   `json:"email,omitempty"`
+	BuyerName      string   `json:"buyerName,omitempty"`
+	BuyerEmail     string   `json:"buyerEmail,omitempty"`
+	BuyerPhone     string   `json:"buyerPhone,omitempty"`
 }
 
 func (c *client) CreatePayment(ctx context.Context, params repository.CreatePaymentParams) (*repository.PaymentResult, error) {
@@ -53,16 +58,18 @@ func (c *client) CreatePayment(ctx context.Context, params repository.CreatePaym
 	products := make([]string, len(params.Items))
 	qty := make([]int, len(params.Items))
 	prices := make([]int64, len(params.Items))
+	var total int64
 	for i, it := range params.Items {
 		products[i] = it.ItemName
 		qty[i] = int(it.Quantity)
 		prices[i] = int64(it.UnitPrice * it.Quantity)
+		total += prices[i]
 	}
 
-	body, err := json.Marshal(createPaymentReq{
-		Product:       products,
-		Qty:           qty,
-		Price:         prices,
+	// Direct mode (paymentMethod set) uses the v2 direct schema:
+	// amount + paymentChannel instead of product/qty/price. QRIS channel
+	// is "mpm". Hosted mode keeps product/qty/price.
+	payload := createPaymentReq{
 		ReturnURL:     c.cfg.ReturnURL,
 		CancelURL:     c.cfg.CancelURL,
 		NotifyURL:     c.cfg.NotifyURL,
@@ -71,7 +78,20 @@ func (c *client) CreatePayment(ctx context.Context, params repository.CreatePaym
 		BuyerName:     params.BuyerName,
 		BuyerEmail:    params.BuyerEmail,
 		BuyerPhone:    params.BuyerPhone,
-	})
+	}
+	if params.Method != "" {
+		payload.Amount = total
+		payload.PaymentChannel = paymentChannel(params.Method)
+		payload.Name = params.BuyerName
+		payload.Phone = params.BuyerPhone
+		payload.Email = params.BuyerEmail
+	} else {
+		payload.Product = products
+		payload.Qty = qty
+		payload.Price = prices
+	}
+
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}

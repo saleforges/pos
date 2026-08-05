@@ -25,6 +25,18 @@ func SignRequest(method, va, apiKey string, body []byte) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
+// paymentChannel maps our method names to iPaymu v2 direct channels.
+func paymentChannel(method string) string {
+	switch method {
+	case "qris":
+		return "mpm"
+	case "va":
+		return "bca"
+	default:
+		return ""
+	}
+}
+
 // Timestamp returns the iPaymu timestamp header format (YYYYMMDDHHmmss).
 func Timestamp() string {
 	return time.Now().UTC().Format("20060102150405")

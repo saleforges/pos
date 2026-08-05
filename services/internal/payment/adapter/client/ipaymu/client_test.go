@@ -59,8 +59,10 @@ func TestClient_CreatePayment(t *testing.T) {
 
 	t.Run("direct qris returns qr details", func(t *testing.T) {
 		var gotPath string
+		var gotBody map[string]interface{}
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			gotPath = r.URL.Path
+			json.NewDecoder(r.Body).Decode(&gotBody)
 			w.Header().Set("Content-Type", "application/json")
 			w.Write([]byte(`{"Status":200,"Success":true,"Message":"Success","Data":{"TransactionId":222706,"Via":"QRIS","PaymentNo":"IPAYMU-SANDBOX-DEMO","QrString":"QRIS-DEMO","QrImage":"https://sandbox.ipaymu.com/qris-basic/1","Expired":"2026-08-06 02:26:54"}}`))
 		}))
@@ -82,6 +84,15 @@ func TestClient_CreatePayment(t *testing.T) {
 		}
 		if result.Via != "QRIS" {
 			t.Errorf("expected via QRIS, got %s", result.Via)
+		}
+		if gotBody["amount"] != float64(15000) {
+			t.Errorf("expected amount 15000 in direct body, got %v", gotBody["amount"])
+		}
+		if gotBody["paymentChannel"] != "mpm" {
+			t.Errorf("expected paymentChannel mpm, got %v", gotBody["paymentChannel"])
+		}
+		if _, ok := gotBody["product"]; ok {
+			t.Error("direct mode must not send product/qty/price")
 		}
 	})
 
