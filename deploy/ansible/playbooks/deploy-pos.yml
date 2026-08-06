@@ -15,15 +15,15 @@
       when: ghcr_username != '' and ghcr_token != ''
       no_log: true
 
-    - name: Pull Backoffice image via CLI
-      shell: docker pull ghcr.io/saleforges/pos/backoffice:{{ image_tag }}
+    - name: Pull POS image via CLI
+      shell: docker pull {{ image_repository }}:{{ image_tag }}
       when: ghcr_username != '' and ghcr_token != ''
       changed_when: false
 
-    - name: Run Backoffice container
+    - name: Run POS container
       community.docker.docker_container:
-        name: backoffice
-        image: ghcr.io/saleforges/pos/backoffice:{{ image_tag }}
+        name: pos
+        image: "{{ image_repository }}:{{ image_tag }}"
         state: started
         restart_policy: always
         pull: false

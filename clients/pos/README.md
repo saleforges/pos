@@ -1,36 +1,51 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# POS (React + Vite)
+
+The POS terminal frontend, built with React + TypeScript + Vite. Currently a minimal landing page; the POS terminal UI will be developed on top of this stack.
+
+## Stack
+
+- React 19 + Vite 8 (Oxc-based)
+- Tailwind CSS v4 (`@tailwindcss/vite`)
+- react-router-dom v7 (available for upcoming pages)
+- i18next + react-i18next with the shared `@pos/i18n` package (client-only, cookie-driven locale)
+- oxlint
 
 ## Getting Started
 
-First, run the development server:
+From the `clients` workspace root:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
+bunx turbo run dev --filter=pos
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:5173](http://localhost:5173).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+The dev server proxies `/api/*` to `VITE_API_PROXY_TARGET` (see `.env.development`).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Scripts
 
-## Learn More
+| Command | Description |
+|---------|-------------|
+| `bunx turbo run dev --filter=pos` | Start Vite dev server |
+| `bunx turbo run lint --filter=pos` | Lint with oxlint |
+| `bunx turbo run build --filter=pos` | Type-check + build to `dist/` |
+| `bunx turbo run preview --filter=pos` | Preview the production build |
 
-To learn more about Next.js, take a look at the following resources:
+## Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+  main.tsx               React entry
+  App.tsx                App composition (i18n provider)
+  index.css              Tailwind + design tokens (@theme)
+  i18n/index.ts          Client-only i18n init
+  components/ui/         Reusable UI primitives
+  pages/                 Route pages
+  features/              (reserved) feature modules
+  lib/                   (reserved) shared helpers, api client
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deployment
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Built with the repo `Dockerfile` → static `dist/` served by Caddy (SPA fallback + `/api/*` proxy). CI/CD in `.github/workflows/pos.yml`.
