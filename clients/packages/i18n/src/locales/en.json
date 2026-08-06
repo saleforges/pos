@@ -1,0 +1,45 @@
+{
+  "common": {
+    "appName": "Saleforges",
+    "language": "Language",
+    "switchBranch": "Switch branch",
+    "logout": "Log out"
+  },
+  "pos": {
+    "tagline": "Point of Sale System"
+  },
+  "login": {
+    "heroTitle1": "Run your store,",
+    "heroTitle2": "not your spreadsheets.",
+    "heroSubtitle": "Manage products, staff, and orders from one place — built for teams who'd rather be on the floor than in the back office.",
+    "welcomeBack": "Welcome back",
+    "subtitle": "Log in to your back office account",
+    "username": "Username",
+    "password": "Password",
+    "logIn": "Log in",
+    "loggingIn": "Logging in...",
+    "invalidCredentials": "Invalid username or password",
+    "somethingWentWrong": "Something went wrong. Please try again.",
+    "footer": "© {{year}} SaleForges. Open source POS."
+  },
+  "branchSelect": {
+    "heroTitle1": "Pick a branch,",
+    "heroTitle2": "get to work.",
+    "heroSubtitle": "You have access to more than one branch. Select the store you want to manage right now.",
+    "title": "Select branch",
+    "signedInAs": "Signed in as",
+    "active": "Active",
+    "selectError": "Failed to select branch. Please try again.",
+    "loading": "Loading..."
+  },
+  "pages": {
+    "dashboard": "Dashboard",
+    "orders": "Orders",
+    "products": "Products",
+    "staff": "Staff",
+    "users": "Users",
+    "roles": "Roles",
+    "merchants": "Merchants",
+    "settings": "Settings"
+  }
+}

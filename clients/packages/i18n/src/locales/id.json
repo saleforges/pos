@@ -1,0 +1,45 @@
+{
+  "common": {
+    "appName": "Saleforges",
+    "language": "Bahasa",
+    "switchBranch": "Ganti cabang",
+    "logout": "Keluar"
+  },
+  "pos": {
+    "tagline": "Sistem Kasir Point of Sale"
+  },
+  "login": {
+    "heroTitle1": "Jalankan tokomu,",
+    "heroTitle2": "bukan spreadsheet-mu.",
+    "heroSubtitle": "Kelola produk, staf, dan pesanan dari satu tempat — dibuat untuk tim yang lebih suka berada di lantai toko daripada di belakang meja.",
+    "welcomeBack": "Selamat datang kembali",
+    "subtitle": "Masuk ke akun back office Anda",
+    "username": "Nama pengguna",
+    "password": "Kata sandi",
+    "logIn": "Masuk",
+    "loggingIn": "Masuk...",
+    "invalidCredentials": "Nama pengguna atau kata sandi salah",
+    "somethingWentWrong": "Terjadi kesalahan. Silakan coba lagi.",
+    "footer": "© {{year}} SaleForges. POS sumber terbuka."
+  },
+  "branchSelect": {
+    "heroTitle1": "Pilih cabang,",
+    "heroTitle2": "dan mulai bekerja.",
+    "heroSubtitle": "Anda memiliki akses ke lebih dari satu cabang. Pilih toko yang ingin Anda kelola sekarang.",
+    "title": "Pilih cabang",
+    "signedInAs": "Masuk sebagai",
+    "active": "Aktif",
+    "selectError": "Gagal memilih cabang. Silakan coba lagi.",
+    "loading": "Memuat..."
+  },
+  "pages": {
+    "dashboard": "Dasbor",
+    "orders": "Pesanan",
+    "products": "Produk",
+    "staff": "Staf",
+    "users": "Pengguna",
+    "roles": "Peran",
+    "merchants": "Merchant",
+    "settings": "Pengaturan"
+  }
+}

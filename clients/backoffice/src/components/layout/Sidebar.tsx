@@ -1,11 +1,13 @@
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Package, Settings, ShoppingCart, Building2, Shield, UserCog } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { hasRole } from '@/features/auth/api/authApi';
 import { Logo } from '@/components/ui/Logo';
 
 export function Sidebar() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const isSuperadmin = hasRole(user, 'superadmin');
 
   return (
@@ -22,7 +24,7 @@ export function Sidebar() {
           }
         >
           <LayoutDashboard size={18} />
-          Dashboard
+          {t('pages.dashboard')}
         </NavLink>
 
         <NavLink
@@ -32,7 +34,7 @@ export function Sidebar() {
           }
         >
           <ShoppingCart size={18} />
-          Orders
+          {t('pages.orders')}
         </NavLink>
 
         <NavLink
@@ -42,7 +44,7 @@ export function Sidebar() {
           }
         >
           <Package size={18} />
-          Products
+          {t('pages.products')}
         </NavLink>
 
         {isSuperadmin && (
@@ -54,7 +56,7 @@ export function Sidebar() {
               }
             >
               <Building2 size={18} />
-              Merchants
+              {t('pages.merchants')}
             </NavLink>
             <NavLink
               to="/users"
@@ -63,7 +65,7 @@ export function Sidebar() {
               }
             >
               <UserCog size={18} />
-              Users
+              {t('pages.users')}
             </NavLink>
             <NavLink
               to="/roles"
@@ -72,7 +74,7 @@ export function Sidebar() {
               }
             >
               <Shield size={18} />
-              Roles
+              {t('pages.roles')}
             </NavLink>
           </>
         )}
@@ -84,7 +86,7 @@ export function Sidebar() {
           }
         >
           <Settings size={18} />
-          Settings
+          {t('pages.settings')}
         </NavLink>
       </nav>
 
