@@ -86,6 +86,88 @@ func (r *CustomerRepository) Delete(ctx context.Context, id int64, merchantID in
 	return err
 }
 
+const customerPriceCols = `id, merchant_id, customer_id, product_item_id, price, currency, created_at, updated_at`
+
+func (r *CustomerRepository) UpsertPrices(ctx context.Context, merchantID, customerID int64, prices []domain.CustomerPrice) error {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx,
+		`DELETE FROM customer_prices WHERE customer_id = $1 AND merchant_id = $2`, customerID, merchantID); err != nil {
+		return err
+	}
+	for _, p := range prices {
+		if _, err := tx.Exec(ctx,
+			`INSERT INTO customer_prices (merchant_id, customer_id, product_item_id, price, currency, created_at, updated_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+			merchantID, customerID, p.ProductItemID, p.Price, p.Currency, p.CreatedAt, p.UpdatedAt); err != nil {
+			return err
+		}
+	}
+	return tx.Commit(ctx)
+}
+
+func (r *CustomerRepository) ListPrices(ctx context.Context, merchantID, customerID int64) ([]domain.CustomerPrice, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT `+customerPriceCols+` FROM customer_prices WHERE customer_id = $1 AND merchant_id = $2 ORDER BY product_item_id`,
+		customerID, merchantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanCustomerPrices(rows)
+}
+
+func (r *CustomerRepository) ListAllPrices(ctx context.Context, merchantID int64) ([]domain.CustomerPrice, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT `+customerPriceCols+` FROM customer_prices WHERE merchant_id = $1 ORDER BY customer_id, product_item_id`, merchantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanCustomerPrices(rows)
+}
+
+func (r *CustomerRepository) GetPriceMap(ctx context.Context, merchantID, customerID int64, productItemIDs []int64) (map[int64]float64, error) {
+	if len(productItemIDs) == 0 {
+		return map[int64]float64{}, nil
+	}
+	rows, err := r.pool.Query(ctx,
+		`SELECT product_item_id, price FROM customer_prices
+		 WHERE customer_id = $1 AND merchant_id = $2 AND product_item_id = ANY($3)`,
+		customerID, merchantID, productItemIDs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	prices := make(map[int64]float64)
+	for rows.Next() {
+		var id int64
+		var price float64
+		if err := rows.Scan(&id, &price); err != nil {
+			return nil, err
+		}
+		prices[id] = price
+	}
+	return prices, rows.Err()
+}
+
+func scanCustomerPrices(rows pgx.Rows) ([]domain.CustomerPrice, error) {
+	var result []domain.CustomerPrice
+	for rows.Next() {
+		var p domain.CustomerPrice
+		if err := rows.Scan(&p.ID, &p.MerchantID, &p.CustomerID, &p.ProductItemID, &p.Price, &p.Currency, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			return nil, err
+		}
+		result = append(result, p)
+	}
+	return result, rows.Err()
+}
+
 func scanCustomer(row pgx.Row) (*domain.Customer, error) {
 	var c domain.Customer
 	var phone, address, note *string

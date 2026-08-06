@@ -117,6 +117,19 @@ func RunMigrations(databaseURL string) error {
 	// Heal migrations — run on every startup so existing deployments get
 	// new columns without a full re-init. Idempotent by design.
 	heal := `
+	CREATE TABLE IF NOT EXISTS customer_prices (
+		id              BIGSERIAL    PRIMARY KEY,
+		merchant_id     BIGINT       NOT NULL,
+		customer_id     BIGINT       NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+		product_item_id BIGINT       NOT NULL,
+		price           NUMERIC(14,2) NOT NULL,
+		currency        VARCHAR(8)   NOT NULL DEFAULT 'IDR',
+		created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+		updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+	);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_prices_unique ON customer_prices(customer_id, product_item_id);
+	CREATE INDEX IF NOT EXISTS idx_customer_prices_customer ON customer_prices(customer_id);
+	CREATE INDEX IF NOT EXISTS idx_customer_prices_merchant ON customer_prices(merchant_id);
 	ALTER TABLE orders ADD COLUMN IF NOT EXISTS client_order_id VARCHAR(36);
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_client_order ON orders(client_order_id) WHERE client_order_id IS NOT NULL;
 	`

@@ -599,3 +599,66 @@ func TestOrderUsecase_SyncOrders(t *testing.T) {
 		t.Errorf("expected 0 orders after future lastSync, got %d", len(res2.Orders))
 	}
 }
+
+func TestOrderUsecase_Create_AppliesCustomerCustomPrice(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	repo := newMockCustomerRepo()
+	repo.prices = map[int64]float64{35: 12000}
+
+	uc := NewOrderUsecase(&mockOrderRepo{}, repo, &mockInventoryClient{})
+
+	customerID := int64(1)
+	order, err := uc.Create(ctx, CreateOrderParams{
+		MerchantID: 1,
+		BranchID:   1,
+		CreatedBy:  5,
+		CustomerID: &customerID,
+		Items: []CreateOrderItemParams{
+			{ProductItemID: 35, ItemName: "Es Teh Manis - Large", UnitPrice: 15000, Quantity: 2},
+			{ProductItemID: 36, ItemName: "Gula Pasir 250g", UnitPrice: 8000, Quantity: 1},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if order.Items[0].UnitPrice != 12000 {
+		t.Errorf("expected custom price 12000 for item 35, got %f", order.Items[0].UnitPrice)
+	}
+	if order.Items[0].LineTotal != 24000 {
+		t.Errorf("expected line total 24000, got %f", order.Items[0].LineTotal)
+	}
+	// Item 36 has no custom price — keeps client price.
+	if order.Items[1].UnitPrice != 8000 {
+		t.Errorf("expected default price 8000 for item 36, got %f", order.Items[1].UnitPrice)
+	}
+	if order.Subtotal != 32000 {
+		t.Errorf("expected subtotal 32000, got %f", order.Subtotal)
+	}
+}
+
+func TestOrderUsecase_Create_NoCustomerKeepsClientPrice(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{})
+
+	order, err := uc.Create(ctx, CreateOrderParams{
+		MerchantID: 1,
+		BranchID:   1,
+		CreatedBy:  5,
+		Items: []CreateOrderItemParams{
+			{ProductItemID: 35, ItemName: "Es Teh Manis - Large", UnitPrice: 15000, Quantity: 2},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if order.Items[0].UnitPrice != 15000 {
+		t.Errorf("expected client price 15000, got %f", order.Items[0].UnitPrice)
+	}
+	if order.Subtotal != 30000 {
+		t.Errorf("expected subtotal 30000, got %f", order.Subtotal)
+	}
+}

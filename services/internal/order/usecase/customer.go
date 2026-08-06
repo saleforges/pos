@@ -14,11 +14,25 @@ type CustomerUsecase interface {
 	Update(ctx context.Context, params UpdateCustomerParams) (*domain.Customer, error)
 	Delete(ctx context.Context, id int64, merchantID int64) error
 	Sync(ctx context.Context, merchantID int64, lastSync *time.Time) (*CustomerSyncResult, error)
+	SetPrices(ctx context.Context, params SetCustomerPricesParams) error
+	GetPrices(ctx context.Context, merchantID, customerID int64) ([]domain.CustomerPrice, error)
 }
 
 type CustomerSyncResult struct {
-	Customers []domain.Customer `json:"customers"`
-	SyncToken string            `json:"syncToken"`
+	Customers []domain.Customer      `json:"customers"`
+	Prices    []domain.CustomerPrice `json:"prices"`
+	SyncToken string                 `json:"syncToken"`
+}
+
+type PriceEntry struct {
+	ProductItemID int64   `json:"productItemId"`
+	Price         float64 `json:"price"`
+}
+
+type SetCustomerPricesParams struct {
+	MerchantID int64
+	CustomerID int64
+	Prices     []PriceEntry
 }
 
 type CreateCustomerParams struct {

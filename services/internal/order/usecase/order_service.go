@@ -49,6 +49,26 @@ func (uc *orderUsecase) Create(ctx context.Context, params CreateOrderParams) (*
 		subtotal += items[i].LineTotal
 	}
 
+	// Apply the customer's custom prices (server-side source of truth).
+	if params.CustomerID != nil {
+		ids := make([]int64, len(items))
+		for i := range items {
+			ids[i] = items[i].ProductItemID
+		}
+		prices, err := uc.customerRepo.GetPriceMap(ctx, params.MerchantID, *params.CustomerID, ids)
+		if err != nil {
+			return nil, err
+		}
+		subtotal = 0
+		for i := range items {
+			if price, ok := prices[items[i].ProductItemID]; ok {
+				items[i].UnitPrice = price
+				items[i].LineTotal = price * items[i].Quantity
+			}
+			subtotal += items[i].LineTotal
+		}
+	}
+
 	order := &domain.Order{
 		MerchantID:    params.MerchantID,
 		BranchID:      params.BranchID,

@@ -84,10 +84,51 @@ func (uc *customerUsecase) Sync(ctx context.Context, merchantID int64, lastSync 
 	if customers == nil {
 		customers = []domain.Customer{}
 	}
+	prices, err := uc.repo.ListAllPrices(ctx, merchantID)
+	if err != nil {
+		return nil, err
+	}
+	if prices == nil {
+		prices = []domain.CustomerPrice{}
+	}
 	return &CustomerSyncResult{
 		Customers: customers,
+		Prices:    prices,
 		SyncToken: time.Now().UTC().Format(time.RFC3339Nano),
 	}, nil
+}
+
+func (uc *customerUsecase) SetPrices(ctx context.Context, params SetCustomerPricesParams) error {
+	if params.CustomerID == 0 {
+		return domain.ErrInvalidCustomer
+	}
+	if _, err := uc.repo.GetByID(ctx, params.CustomerID, params.MerchantID); err != nil {
+		return err
+	}
+	now := time.Now().UTC()
+	prices := make([]domain.CustomerPrice, 0, len(params.Prices))
+	for _, p := range params.Prices {
+		if p.ProductItemID == 0 || p.Price <= 0 {
+			return domain.ErrInvalidCustomer
+		}
+		prices = append(prices, domain.CustomerPrice{
+			MerchantID:    params.MerchantID,
+			CustomerID:    params.CustomerID,
+			ProductItemID: p.ProductItemID,
+			Price:         p.Price,
+			Currency:      "IDR",
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		})
+	}
+	return uc.repo.UpsertPrices(ctx, params.MerchantID, params.CustomerID, prices)
+}
+
+func (uc *customerUsecase) GetPrices(ctx context.Context, merchantID, customerID int64) ([]domain.CustomerPrice, error) {
+	if _, err := uc.repo.GetByID(ctx, customerID, merchantID); err != nil {
+		return nil, err
+	}
+	return uc.repo.ListPrices(ctx, merchantID, customerID)
 }
 
 var _ CustomerUsecase = (*customerUsecase)(nil)

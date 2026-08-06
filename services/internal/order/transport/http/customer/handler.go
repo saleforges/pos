@@ -105,6 +105,51 @@ func (h *Handler) Delete(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, map[string]string{"message": "customer deleted"})
 }
 
+func (h *Handler) SetPrices(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+
+	var req setPricesReq
+	if err := c.Bind(&req); err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+
+	merchantID := httputil.GetMerchantID(c)
+	prices := make([]usecase.PriceEntry, 0, len(req.Items))
+	for _, it := range req.Items {
+		prices = append(prices, usecase.PriceEntry{ProductItemID: it.ProductItemID, Price: it.Price})
+	}
+	if err := h.uc.SetPrices(c.Request().Context(), usecase.SetCustomerPricesParams{
+		MerchantID: merchantID,
+		CustomerID: id,
+		Prices:     prices,
+	}); err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, map[string]string{"message": "prices saved"})
+}
+
+func (h *Handler) GetPrices(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+
+	merchantID := httputil.GetMerchantID(c)
+	items, err := h.uc.GetPrices(c.Request().Context(), merchantID, id)
+	if err != nil {
+		return mapError(c, err)
+	}
+	if items == nil {
+		items = []domain.CustomerPrice{}
+	}
+	return httputil.WriteJSON(c, http.StatusOK, map[string]interface{}{
+		"data": items,
+	})
+}
+
 func (h *Handler) Sync(c echo.Context) error {
 	merchantID := httputil.GetMerchantID(c)
 

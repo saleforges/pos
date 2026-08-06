@@ -153,6 +153,7 @@ type mockCustomerRepo struct {
 	customers map[int64]*domain.Customer
 	seq       int64
 	err       error
+	prices    map[int64]float64
 }
 
 func (m *mockCustomerRepo) Create(_ context.Context, c *domain.Customer) error {
@@ -237,6 +238,31 @@ func (m *mockCustomerRepo) Delete(_ context.Context, id int64, merchantID int64)
 	}
 	delete(m.customers, id)
 	return nil
+}
+
+func (m *mockCustomerRepo) UpsertPrices(_ context.Context, merchantID, customerID int64, prices []domain.CustomerPrice) error {
+	return nil
+}
+
+func (m *mockCustomerRepo) ListPrices(_ context.Context, merchantID, customerID int64) ([]domain.CustomerPrice, error) {
+	return []domain.CustomerPrice{}, nil
+}
+
+func (m *mockCustomerRepo) ListAllPrices(_ context.Context, merchantID int64) ([]domain.CustomerPrice, error) {
+	return []domain.CustomerPrice{}, nil
+}
+
+func (m *mockCustomerRepo) GetPriceMap(_ context.Context, merchantID, customerID int64, productItemIDs []int64) (map[int64]float64, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	result := map[int64]float64{}
+	for _, id := range productItemIDs {
+		if p, ok := m.prices[id]; ok {
+			result[id] = p
+		}
+	}
+	return result, nil
 }
 
 func newMockCustomerRepo() *mockCustomerRepo {

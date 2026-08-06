@@ -13,3 +13,12 @@ type updateCustomerReq struct {
 	Address *string `json:"address,omitempty"`
 	Note    *string `json:"note,omitempty"`
 }
+
+type setPricesReq struct {
+	Items []priceEntryReq `json:"items"`
+}
+
+type priceEntryReq struct {
+	ProductItemID int64   `json:"productItemId"`
+	Price         float64 `json:"price"`
+}

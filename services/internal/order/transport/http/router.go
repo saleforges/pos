@@ -52,11 +52,13 @@ func NewRouter(
 
 	customerGroup := api.Group("/customers", httputil.MerchantMiddleware())
 	customerGroup.POST("", customerHandler.Create)
-	customerGroup.GET("", customerHandler.List)
 	customerGroup.GET("/sync", customerHandler.Sync)
 	customerGroup.GET("/:id", customerHandler.GetByID)
+	customerGroup.GET("", customerHandler.List)
 	customerGroup.PATCH("/:id", customerHandler.Update)
 	customerGroup.DELETE("/:id", customerHandler.Delete)
+	customerGroup.PUT("/:id/prices", customerHandler.SetPrices)
+	customerGroup.GET("/:id/prices", customerHandler.GetPrices)
 
 	return e
 }

@@ -61,6 +61,14 @@ func (m *mockCustomerSvc) Sync(ctx context.Context, merchantID int64, lastSync *
 	return &usecase.CustomerSyncResult{Customers: []domain.Customer{}, SyncToken: "2026-08-03T00:00:00Z"}, nil
 }
 
+func (m *mockCustomerSvc) SetPrices(ctx context.Context, params usecase.SetCustomerPricesParams) error {
+	return nil
+}
+
+func (m *mockCustomerSvc) GetPrices(ctx context.Context, merchantID, customerID int64) ([]domain.CustomerPrice, error) {
+	return []domain.CustomerPrice{}, nil
+}
+
 func withMerchant(c echo.Context) echo.Context {
 	c.Set(httputil.ContextKeyMerchantID, int64(1))
 	return c

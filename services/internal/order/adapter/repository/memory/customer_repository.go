@@ -111,3 +111,19 @@ func (r *CustomerRepository) Delete(_ context.Context, id int64, merchantID int6
 	delete(r.customers, id)
 	return nil
 }
+
+func (r *CustomerRepository) UpsertPrices(_ context.Context, merchantID, customerID int64, prices []domain.CustomerPrice) error {
+	return nil
+}
+
+func (r *CustomerRepository) ListPrices(_ context.Context, merchantID, customerID int64) ([]domain.CustomerPrice, error) {
+	return []domain.CustomerPrice{}, nil
+}
+
+func (r *CustomerRepository) ListAllPrices(_ context.Context, merchantID int64) ([]domain.CustomerPrice, error) {
+	return []domain.CustomerPrice{}, nil
+}
+
+func (r *CustomerRepository) GetPriceMap(_ context.Context, merchantID, customerID int64, productItemIDs []int64) (map[int64]float64, error) {
+	return map[int64]float64{}, nil
+}
