@@ -56,6 +56,26 @@ func (h *Handler) Create(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, result)
 }
 
+func (h *Handler) ConfirmCash(c echo.Context) error {
+	var req createPaymentReq
+	if err := c.Bind(&req); err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, domain.ErrInvalidPayment)
+	}
+	if req.OrderID == 0 {
+		return httputil.WriteError(c, http.StatusBadRequest, domain.ErrInvalidPayment)
+	}
+
+	merchantID := httputil.GetMerchantID(c)
+	result, err := h.uc.ConfirmCash(c.Request().Context(), usecase.CreatePaymentParams{
+		MerchantID: merchantID,
+		OrderID:    req.OrderID,
+	})
+	if err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, result)
+}
+
 // GetByID returns one payment transaction for the merchant (auth required).
 func (h *Handler) GetByID(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)

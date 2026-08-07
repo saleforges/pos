@@ -30,6 +30,7 @@ func NewRouter(paymentHandler *payment.Handler, verifier *jwks.Verifier) *echo.E
 	api := e.Group("/api/v1", middleware.Auth(verifier))
 	paymentGroup := api.Group("/payments", httputil.MerchantMiddleware())
 	paymentGroup.POST("", paymentHandler.Create)
+	paymentGroup.POST("/cash", paymentHandler.ConfirmCash)
 	paymentGroup.GET("/sync", paymentHandler.Sync)
 	paymentGroup.GET("/qr-static", paymentHandler.GetStaticQR)
 	paymentGroup.PUT("/qr-static", paymentHandler.UpdateStaticQR)

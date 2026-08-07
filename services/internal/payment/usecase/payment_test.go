@@ -283,3 +283,37 @@ func TestPaymentUsecase_GetByIDExpired(t *testing.T) {
 		t.Error("expected repo state also expired")
 	}
 }
+
+func TestPaymentUsecase_ConfirmCash(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("settles order without gateway", func(t *testing.T) {
+		uc := NewPaymentUsecase(newMockPaymentRepo(), &mockGateway{}, &mockOrderClient{
+			order: &repository.OrderInfo{ID: 5, MerchantID: 1, Status: "completed", Total: 30000},
+		})
+		result, err := uc.ConfirmCash(ctx, CreatePaymentParams{MerchantID: 1, OrderID: 5})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Status != domain.PaymentStatusPaid {
+			t.Errorf("expected paid status, got %s", result.Status)
+		}
+		if result.Gateway != "cash" {
+			t.Errorf("expected cash gateway, got %s", result.Gateway)
+		}
+		if result.Amount != 30000 {
+			t.Errorf("expected amount 30000, got %f", result.Amount)
+		}
+	})
+
+	t.Run("already paid order rejected", func(t *testing.T) {
+		uc := NewPaymentUsecase(newMockPaymentRepo(), &mockGateway{}, &mockOrderClient{
+			order: &repository.OrderInfo{ID: 5, MerchantID: 1, Status: "completed", Total: 30000, PaidAmount: 30000},
+		})
+		_, err := uc.ConfirmCash(ctx, CreatePaymentParams{MerchantID: 1, OrderID: 5})
+		if err != domain.ErrAlreadyPaid {
+			t.Errorf("expected ErrAlreadyPaid, got %v", err)
+		}
+	})
+}

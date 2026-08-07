@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -121,6 +122,43 @@ func (uc *paymentUsecase) HandleCallback(ctx context.Context, params CallbackPar
 	}
 
 	return uc.orderClient.NotifyPaid(ctx, orderID, payment.MerchantID, amount, gatewayMethod(params.Via, params.Channel))
+}
+
+func (uc *paymentUsecase) ConfirmCash(ctx context.Context, params CreatePaymentParams) (*domain.PaymentTransaction, error) {
+	order, err := uc.orderClient.GetOrder(ctx, params.OrderID, params.MerchantID)
+	if err != nil {
+		return nil, err
+	}
+	if order.Status != "completed" {
+		return nil, domain.ErrOrderNotPayable
+	}
+	remaining := order.Total - order.PaidAmount
+	if remaining <= 0 {
+		return nil, domain.ErrAlreadyPaid
+	}
+
+	now := time.Now().UTC()
+	payment := &domain.PaymentTransaction{
+		MerchantID: params.MerchantID,
+		BranchID:   order.BranchID,
+		OrderID:    params.OrderID,
+		Gateway:    "cash",
+		Status:     domain.PaymentStatusPaid,
+		Amount:     remaining,
+		PaymentRef: fmt.Sprintf("cash-%d", now.Unix()),
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}
+	if err := payment.Validate(); err != nil {
+		return nil, err
+	}
+	if err := uc.paymentRepo.Create(ctx, payment); err != nil {
+		return nil, err
+	}
+	if err := uc.orderClient.NotifyPaid(ctx, order.ID, params.MerchantID, remaining, "cash"); err != nil {
+		return nil, err
+	}
+	return payment, nil
 }
 
 // gatewayMethod maps gateway 'via' values to our payment method enum.
