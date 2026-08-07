@@ -29,6 +29,7 @@ type CreatePaymentParams struct {
 	MerchantID int64
 	OrderID    int64
 	Method     string
+	Amount     int64
 	BuyerName  string
 	BuyerEmail string
 	BuyerPhone string

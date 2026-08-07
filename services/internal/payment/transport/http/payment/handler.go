@@ -27,6 +27,7 @@ func NewHandler(uc usecase.PaymentUsecase, va string) *Handler {
 type createPaymentReq struct {
 	OrderID    int64  `json:"orderId"`
 	Method     string `json:"method,omitempty"`
+	Amount     int64  `json:"amount,omitempty"`
 	BuyerName  string `json:"buyerName,omitempty"`
 	BuyerEmail string `json:"buyerEmail,omitempty"`
 	BuyerPhone string `json:"buyerPhone,omitempty"`
@@ -69,6 +70,7 @@ func (h *Handler) ConfirmCash(c echo.Context) error {
 	result, err := h.uc.ConfirmCash(c.Request().Context(), usecase.CreatePaymentParams{
 		MerchantID: merchantID,
 		OrderID:    req.OrderID,
+		Amount:     req.Amount,
 	})
 	if err != nil {
 		return mapError(c, err)

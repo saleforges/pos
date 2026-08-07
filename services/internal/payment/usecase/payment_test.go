@@ -316,4 +316,30 @@ func TestPaymentUsecase_ConfirmCash(t *testing.T) {
 			t.Errorf("expected ErrAlreadyPaid, got %v", err)
 		}
 	})
+
+	t.Run("partial amount settles only requested portion", func(t *testing.T) {
+		uc := NewPaymentUsecase(newMockPaymentRepo(), &mockGateway{}, &mockOrderClient{
+			order: &repository.OrderInfo{ID: 5, MerchantID: 1, Status: "completed", Total: 30000, PaidAmount: 10000},
+		})
+		result, err := uc.ConfirmCash(ctx, CreatePaymentParams{MerchantID: 1, OrderID: 5, Amount: 5000})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Amount != 5000 {
+			t.Errorf("expected amount 5000, got %f", result.Amount)
+		}
+	})
+
+	t.Run("amount exceeding remaining clamps to remaining", func(t *testing.T) {
+		uc := NewPaymentUsecase(newMockPaymentRepo(), &mockGateway{}, &mockOrderClient{
+			order: &repository.OrderInfo{ID: 5, MerchantID: 1, Status: "completed", Total: 30000},
+		})
+		result, err := uc.ConfirmCash(ctx, CreatePaymentParams{MerchantID: 1, OrderID: 5, Amount: 999999})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Amount != 30000 {
+			t.Errorf("expected clamped amount 30000, got %f", result.Amount)
+		}
+	})
 }

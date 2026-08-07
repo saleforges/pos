@@ -136,6 +136,10 @@ func (uc *paymentUsecase) ConfirmCash(ctx context.Context, params CreatePaymentP
 	if remaining <= 0 {
 		return nil, domain.ErrAlreadyPaid
 	}
+	amount := float64(params.Amount)
+	if amount <= 0 || amount > remaining {
+		amount = remaining
+	}
 
 	now := time.Now().UTC()
 	payment := &domain.PaymentTransaction{
@@ -144,7 +148,7 @@ func (uc *paymentUsecase) ConfirmCash(ctx context.Context, params CreatePaymentP
 		OrderID:    params.OrderID,
 		Gateway:    "cash",
 		Status:     domain.PaymentStatusPaid,
-		Amount:     remaining,
+		Amount:     amount,
 		PaymentRef: fmt.Sprintf("cash-%d", now.Unix()),
 		CreatedAt:  now,
 		UpdatedAt:  now,
@@ -155,7 +159,7 @@ func (uc *paymentUsecase) ConfirmCash(ctx context.Context, params CreatePaymentP
 	if err := uc.paymentRepo.Create(ctx, payment); err != nil {
 		return nil, err
 	}
-	if err := uc.orderClient.NotifyPaid(ctx, order.ID, params.MerchantID, remaining, "cash"); err != nil {
+	if err := uc.orderClient.NotifyPaid(ctx, order.ID, params.MerchantID, amount, "cash"); err != nil {
 		return nil, err
 	}
 	return payment, nil
