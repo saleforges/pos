@@ -99,6 +99,7 @@ jobs:
           ansible-playbook -i deploy/ansible/inventory/development/hosts.yml \
             deploy/ansible/playbooks/deploy-payment.yml \
             --extra-vars "@/tmp/vault-extra.yml" \
+            --ssh-common-args="-o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o ConnectTimeout=30" \
             -e image_tag=${{ inputs.image_tag || github.sha }}
         env:
           ANSIBLE_HOST_KEY_CHECKING: "False"
