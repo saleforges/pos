@@ -96,12 +96,25 @@ jobs:
           EOV
       - name: Deploy Payment service
         run: |
-          ansible-playbook -i deploy/ansible/inventory/development/hosts.yml \
-            deploy/ansible/playbooks/deploy-payment.yml \
-            --extra-vars "@/tmp/vault-extra.yml" \
-            --ssh-common-args="-o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o ConnectTimeout=30" \
-            -e image_tag=${{ inputs.image_tag || github.sha }}
+          IMAGE=ghcr.io/saleforges/pos/payment-service:${{ inputs.image_tag || github.sha }}
+          echo "$GHCR_TOKEN" | ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=30 -o ConnectTimeout=30 \
+            "${{ secrets.DEV_SERVER_USER }}@${{ secrets.DEV_SERVER_IP }}" \
+            "docker login ghcr.io -u ${{ github.actor }} --password-stdin && \
+             docker pull $IMAGE && \
+             docker rm -f payment-service; \
+             docker run -d --name payment-service --network pos --restart unless-stopped \
+               -e PAYMENT_PORT=:8085 \
+               -e 'DATABASE_URL=postgres://pos:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/pos?sslmode=disable' \
+               -e IAM_BASE_URL=http://iam-service:8080 \
+               -e INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY || 'dev-internal-key' }} \
+               -e ORDER_BASE_URL=http://order-service:8084 \
+               -e IPAYMU_BASE_URL=https://sandbox.ipaymu.com \
+               -e IPAYMU_VA=${{ secrets.IPAYMU_VA }} \
+               -e IPAYMU_API_KEY=${{ secrets.IPAYMU_API_KEY }} \
+               -e IPAYMU_RETURN_URL=${{ secrets.IPAYMU_RETURN_URL }} \
+               -e IPAYMU_CANCEL_URL=${{ secrets.IPAYMU_CANCEL_URL }} \
+               -e IPAYMU_NOTIFY_URL=${{ secrets.IPAYMU_NOTIFY_URL }} \
+               -e OTEL_EXPORTER_OTLP_ENDPOINT=tempo:4317 \
+               $IMAGE"
         env:
-          ANSIBLE_HOST_KEY_CHECKING: "False"
-          ANSIBLE_INVENTORY_ENABLED: "yaml"
-          ANSIBLE_ROLES_PATH: "deploy/ansible/roles"
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
