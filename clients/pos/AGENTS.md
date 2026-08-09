@@ -1,5 +1,8 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# POS frontend (React + Vite)
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+This app uses React + TypeScript + Vite with Tailwind CSS v4 and oxlint.
+
+- Run lint with `bunx turbo run lint --filter=pos` (oxlint)
+- Type-check + build with `bunx turbo run build --filter=pos` (`tsc -b && vite build`)
+- Use `@/*` for imports into `src/`
+- Follow the structure and conventions of `clients/backoffice` (feature modules under `src/features/`, api client under `src/lib/`)

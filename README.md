@@ -90,7 +90,8 @@ API collections available in [`api/bruno/`](./api/bruno) (Bruno API client).
 │   ├── cmd/            # Entry points (iam, merchant, catalog)
 │   └── internal/       # Domain logic (hexagonal)
 ├── clients/            # Frontend apps
-│   └── backoffice/     # React + Vite (WIP)
+│   ├── backoffice/     # React + Vite
+│   └── pos/            # React + Vite (POS terminal)
 ├── deploy/             # Infrastructure
 │   ├── caddy/          # Caddy reverse proxy
 │   ├── dnsmasq/        # Local DNS config
