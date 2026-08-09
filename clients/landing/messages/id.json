@@ -1,0 +1,184 @@
+{
+  "meta": {
+    "title": "SaleForges — Platform Commerce All-in-One",
+    "description": "Satu ekosistem untuk POS, inventory, payment, automation, dan analytics. SaleForges menyatukan operasional bisnismu dalam satu platform."
+  },
+  "nav": {
+    "features": "Fitur",
+    "pricing": "Harga",
+    "testimonials": "Testimoni",
+    "faq": "FAQ",
+    "signin": "Masuk",
+    "demo": "Book a Demo"
+  },
+  "hero": {
+    "badge": "All-in-One Commerce Platform",
+    "titleA": "Jalankan seluruh bisnismu dari",
+    "titleHighlight": "satu ekosistem terpadu",
+    "subtitle": "SaleForges menyatukan POS, inventory, payment gateway, automation, dan analytics — supaya kamu berhenti melompat antar tools dan mulai fokus tumbuh.",
+    "ctaPrimary": "Book a Demo",
+    "ctaSecondary": "Lihat Fitur",
+    "note": "No credit card required · Setup dalam hitungan menit"
+  },
+  "dashboard": {
+    "url": "app.saleforges.com/dashboard",
+    "nav": {
+      "dashboard": "Dashboard",
+      "pos": "POS",
+      "inventory": "Inventory",
+      "payments": "Payments",
+      "customers": "Customers",
+      "analytics": "Analytics"
+    },
+    "kpi": {
+      "revenue": "Revenue Hari Ini",
+      "revenueChange": "▲ 12.4%",
+      "transactions": "Transaksi",
+      "transactionsChange": "▲ 8.1%",
+      "stock": "Stok Alert",
+      "stockNote": "item menipis"
+    },
+    "chartTitle": "Penjualan 7 Hari",
+    "chartLive": "Live · updated 2m ago"
+  },
+  "trust": {
+    "label": "Dipercaya bisnis dari berbagai skala"
+  },
+  "features": {
+    "tag": "Satu Platform, Semua Kebutuhan",
+    "title": "Semua alat operasional, terhubung sempurna",
+    "subtitle": "Berhenti membayar 6 langganan berbeda yang tidak saling bicara. SaleForges menyatukannya jadi satu.",
+    "items": {
+      "pos": {
+        "title": "Point of Sale",
+        "desc": "POS cepat yang jalan di tablet, HP, atau desktop. Offline-ready, sinkron otomatis begitu online kembali."
+      },
+      "inventory": {
+        "title": "Inventory Management",
+        "desc": "Stok real-time lintas cabang, auto-reorder saat menipis, dan pelacakan batch tanpa spreadsheet."
+      },
+      "payment": {
+        "title": "Payment Gateway",
+        "desc": "Terima QRIS, kartu, e-wallet, dan transfer dalam satu checkout. Settlement transparan, biaya jelas."
+      },
+      "customers": {
+        "title": "Customer Management",
+        "desc": "Profil pelanggan, riwayat pembelian, dan program loyalti dalam satu tempat — kenali pelanggan terbaikmu."
+      },
+      "automation": {
+        "title": "Business Automation",
+        "desc": "Rangkai alur kerja: invoice otomatis, reminder pembayaran, hingga notifikasi tim tanpa satu klik pun."
+      },
+      "analytics": {
+        "title": "Analytics",
+        "desc": "Dashboard yang menjawab \"produk mana yang paling untung?\" — bukan sekadar angka mentah."
+      }
+    }
+  },
+  "pricing": {
+    "tag": "Harga Transparan",
+    "title": "Pilih paket yang tumbuh bersamamu",
+    "subtitle": "Tanpa biaya tersembunyi. Ganti paket kapan saja. Semua paket sudah termasuk update fitur.",
+    "popular": "Paling Populer",
+    "plans": {
+      "starter": {
+        "name": "Starter",
+        "desc": "Untuk usaha baru & satu outlet yang ingin rapi sejak awal.",
+        "price": "Rp 149rb",
+        "per": "/bulan · per outlet",
+        "cta": "Mulai Sekarang",
+        "features": ["POS + 1 outlet", "Inventory dasar", "QRIS & e-wallet", "Laporan harian", "Email support"]
+      },
+      "growth": {
+        "name": "Growth",
+        "desc": "Untuk bisnis berkembang dengan beberapa cabang & tim.",
+        "price": "Rp 449rb",
+        "per": "/bulan · hingga 5 outlet",
+        "cta": "Book a Demo",
+        "features": ["Semua di Starter", "Multi-outlet & multi-user", "Business automation", "Analytics lanjutan", "Priority support"]
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "desc": "Untuk jaringan retail & kebutuhan skala besar.",
+        "price": "Custom",
+        "per": "bicara dengan tim kami",
+        "cta": "Hubungi Sales",
+        "features": ["Outlet tak terbatas", "API & integrasi khusus", "SLA & dedicated manager", "Onboarding on-site"]
+      }
+    }
+  },
+  "testimonials": {
+    "tag": "Kata Mereka",
+    "title": "Bisnis nyata, hasil nyata",
+    "subtitle": "Dari kafe kecil sampai jaringan retail — begini pengalaman mereka pindah ke SaleForges.",
+    "items": {
+      "one": {
+        "quote": "Dulu saya pakai 4 aplikasi berbeda buat kasir, stok, dan laporan. Sekarang semua di satu layar — dan laporannya otomatis muncul tiap pagi tanpa saya rekap manual.",
+        "name": "Rina Anggraini",
+        "role": "Owner, Kopi Nusa"
+      },
+      "two": {
+        "quote": "Auto-reorder inventory nyelametin kami dari kehabisan stok pas weekend. Margin naik karena kami akhirnya tahu produk mana yang benar-benar untung.",
+        "name": "Denny Pratama",
+        "role": "Ops Manager, RetailX"
+      },
+      "three": {
+        "quote": "Setup-nya kurang dari sehari untuk 3 cabang salon kami. Report otomatis tiap pagi bikin saya nggak perlu buka spreadsheet lagi. Worth every rupiah.",
+        "name": "Sari Wijaya",
+        "role": "Founder, Salon Aura"
+      }
+    }
+  },
+  "faq": {
+    "tag": "FAQ",
+    "title": "Pertanyaan yang sering ditanya",
+    "items": {
+      "offline": {
+        "q": "Apakah SaleForges bisa dipakai tanpa internet?",
+        "a": "Bisa. Mode POS offline tetap mencatat transaksi saat koneksi putus, lalu menyinkronkan semuanya secara otomatis begitu kembali online — jadi kasir tidak pernah berhenti."
+      },
+      "setup": {
+        "q": "Berapa lama proses setup dan migrasi data?",
+        "a": "Mayoritas bisnis single-outlet aktif di hari yang sama. Untuk multi-cabang, tim onboarding kami membantu impor data produk, stok, dan pelanggan — biasanya 1–3 hari kerja."
+      },
+      "multi": {
+        "q": "Apakah bisa mengelola banyak cabang sekaligus?",
+        "a": "Bisa. Kelola stok, penjualan, dan laporan seluruh cabang dari satu dashboard. Setiap outlet punya data sendiri, tapi kamu tetap melihat gambaran besarnya secara real-time."
+      },
+      "payment": {
+        "q": "Metode pembayaran apa saja yang didukung?",
+        "a": "QRIS, kartu debit/kredit, e-wallet populer, dan transfer bank — semua dalam satu alur checkout dengan settlement yang transparan."
+      },
+      "security": {
+        "q": "Apakah data bisnis saya aman?",
+        "a": "Data dienkripsi saat transit maupun tersimpan, dengan kontrol akses berbasis peran. Paket Enterprise mendapat SLA khusus dan opsi lokasi penyimpanan data."
+      },
+      "switch": {
+        "q": "Bisakah pindah paket atau berhenti kapan saja?",
+        "a": "Tentu. Upgrade, downgrade, atau berhenti kapan pun tanpa penalti. Tidak ada kontrak mengikat di paket Starter dan Growth."
+      }
+    }
+  },
+  "cta": {
+    "title": "Siap menyatukan bisnismu?",
+    "subtitle": "Book demo 20 menit dan lihat sendiri bagaimana SaleForges menyederhanakan operasional harianmu.",
+    "primary": "Book a Demo",
+    "secondary": "Coba Gratis 14 Hari"
+  },
+  "footer": {
+    "desc": "Platform commerce all-in-one yang menyatukan POS, inventory, payment, automation, dan analytics dalam satu ekosistem.",
+    "product": "Produk",
+    "productLinks": ["POS", "Inventory", "Payments", "Automation", "Analytics"],
+    "company": "Perusahaan",
+    "companyLinks": ["Tentang", "Blog", "Karier", "Partner"],
+    "contact": "Kontak",
+    "location": "Jakarta, Indonesia",
+    "demo": "Book a Demo",
+    "rights": "© 2026 SaleForges. All rights reserved."
+  },
+  "lang": {
+    "label": "Bahasa",
+    "id": "Indonesia",
+    "en": "English"
+  }
+}

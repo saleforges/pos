@@ -1,0 +1,184 @@
+{
+  "meta": {
+    "title": "SaleForges — All-in-One Commerce Platform",
+    "description": "One ecosystem for POS, inventory, payments, automation, and analytics. SaleForges unifies your entire business operation in a single platform."
+  },
+  "nav": {
+    "features": "Features",
+    "pricing": "Pricing",
+    "testimonials": "Testimonials",
+    "faq": "FAQ",
+    "signin": "Sign in",
+    "demo": "Book a Demo"
+  },
+  "hero": {
+    "badge": "All-in-One Commerce Platform",
+    "titleA": "Run your entire business from",
+    "titleHighlight": "one unified ecosystem",
+    "subtitle": "SaleForges brings POS, inventory, payment gateway, automation, and analytics together — so you stop juggling tools and start focusing on growth.",
+    "ctaPrimary": "Book a Demo",
+    "ctaSecondary": "See Features",
+    "note": "No credit card required · Set up in minutes"
+  },
+  "dashboard": {
+    "url": "app.saleforges.com/dashboard",
+    "nav": {
+      "dashboard": "Dashboard",
+      "pos": "POS",
+      "inventory": "Inventory",
+      "payments": "Payments",
+      "customers": "Customers",
+      "analytics": "Analytics"
+    },
+    "kpi": {
+      "revenue": "Revenue Today",
+      "revenueChange": "▲ 12.4%",
+      "transactions": "Transactions",
+      "transactionsChange": "▲ 8.1%",
+      "stock": "Stock Alerts",
+      "stockNote": "items low"
+    },
+    "chartTitle": "7-Day Sales",
+    "chartLive": "Live · updated 2m ago"
+  },
+  "trust": {
+    "label": "Trusted by businesses of every size"
+  },
+  "features": {
+    "tag": "One Platform, Every Need",
+    "title": "Every operational tool, perfectly connected",
+    "subtitle": "Stop paying for 6 separate subscriptions that don't talk to each other. SaleForges brings them into one.",
+    "items": {
+      "pos": {
+        "title": "Point of Sale",
+        "desc": "A fast POS that runs on tablet, phone, or desktop. Offline-ready and syncs automatically the moment you're back online."
+      },
+      "inventory": {
+        "title": "Inventory Management",
+        "desc": "Real-time stock across branches, auto-reorder when running low, and batch tracking without a single spreadsheet."
+      },
+      "payment": {
+        "title": "Payment Gateway",
+        "desc": "Accept QRIS, cards, e-wallets, and transfers in one checkout. Transparent settlement, clear fees."
+      },
+      "customers": {
+        "title": "Customer Management",
+        "desc": "Customer profiles, purchase history, and loyalty programs in one place — know your best customers."
+      },
+      "automation": {
+        "title": "Business Automation",
+        "desc": "Chain your workflows: automatic invoices, payment reminders, and team notifications without lifting a finger."
+      },
+      "analytics": {
+        "title": "Analytics",
+        "desc": "A dashboard that answers \"which product is actually most profitable?\" — not just raw numbers."
+      }
+    }
+  },
+  "pricing": {
+    "tag": "Transparent Pricing",
+    "title": "Pick a plan that grows with you",
+    "subtitle": "No hidden fees. Switch plans anytime. Every plan includes feature updates.",
+    "popular": "Most Popular",
+    "plans": {
+      "starter": {
+        "name": "Starter",
+        "desc": "For new businesses and a single outlet that wants to stay organized from day one.",
+        "price": "Rp 149k",
+        "per": "/month · per outlet",
+        "cta": "Get Started",
+        "features": ["POS + 1 outlet", "Basic inventory", "QRIS & e-wallet", "Daily reports", "Email support"]
+      },
+      "growth": {
+        "name": "Growth",
+        "desc": "For growing businesses with multiple branches and teams.",
+        "price": "Rp 449k",
+        "per": "/month · up to 5 outlets",
+        "cta": "Book a Demo",
+        "features": ["Everything in Starter", "Multi-outlet & multi-user", "Business automation", "Advanced analytics", "Priority support"]
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "desc": "For retail chains and large-scale needs.",
+        "price": "Custom",
+        "per": "talk to our team",
+        "cta": "Contact Sales",
+        "features": ["Unlimited outlets", "Custom API & integrations", "SLA & dedicated manager", "On-site onboarding"]
+      }
+    }
+  },
+  "testimonials": {
+    "tag": "What They Say",
+    "title": "Real businesses, real results",
+    "subtitle": "From small cafes to retail chains — here's what switching to SaleForges felt like.",
+    "items": {
+      "one": {
+        "quote": "I used to run 4 different apps for checkout, stock, and reporting. Now it's all on one screen — and the reports show up automatically every morning without any manual work.",
+        "name": "Rina Anggraini",
+        "role": "Owner, Kopi Nusa"
+      },
+      "two": {
+        "quote": "Inventory auto-reorder saved us from running out of stock over the weekend. Margins went up because we finally knew which products were actually profitable.",
+        "name": "Denny Pratama",
+        "role": "Ops Manager, RetailX"
+      },
+      "three": {
+        "quote": "Setup took less than a day for our 3 salon branches. Automatic morning reports mean I never open a spreadsheet again. Worth every rupiah.",
+        "name": "Sari Wijaya",
+        "role": "Founder, Salon Aura"
+      }
+    }
+  },
+  "faq": {
+    "tag": "FAQ",
+    "title": "Frequently asked questions",
+    "items": {
+      "offline": {
+        "q": "Can SaleForges work without internet?",
+        "a": "Yes. Offline POS mode keeps recording transactions when the connection drops, then syncs everything automatically once you're back online — so checkout never stops."
+      },
+      "setup": {
+        "q": "How long does setup and data migration take?",
+        "a": "Most single-outlet businesses go live the same day. For multi-branch setups, our onboarding team helps import product, stock, and customer data — usually 1–3 business days."
+      },
+      "multi": {
+        "q": "Can I manage multiple branches at once?",
+        "a": "Yes. Manage stock, sales, and reports across every branch from one dashboard. Each outlet has its own data, but you still see the big picture in real time."
+      },
+      "payment": {
+        "q": "Which payment methods are supported?",
+        "a": "QRIS, debit/credit cards, popular e-wallets, and bank transfers — all in one checkout flow with transparent settlement."
+      },
+      "security": {
+        "q": "Is my business data safe?",
+        "a": "Data is encrypted both in transit and at rest, with role-based access control. Enterprise plans get a dedicated SLA and data residency options."
+      },
+      "switch": {
+        "q": "Can I switch plans or cancel anytime?",
+        "a": "Absolutely. Upgrade, downgrade, or cancel anytime with no penalty. No binding contracts on Starter and Growth plans."
+      }
+    }
+  },
+  "cta": {
+    "title": "Ready to unify your business?",
+    "subtitle": "Book a 20-minute demo and see for yourself how SaleForges simplifies your day-to-day operations.",
+    "primary": "Book a Demo",
+    "secondary": "Try Free for 14 Days"
+  },
+  "footer": {
+    "desc": "An all-in-one commerce platform that unifies POS, inventory, payments, automation, and analytics in a single ecosystem.",
+    "product": "Product",
+    "productLinks": ["POS", "Inventory", "Payments", "Automation", "Analytics"],
+    "company": "Company",
+    "companyLinks": ["About", "Blog", "Careers", "Partners"],
+    "contact": "Contact",
+    "location": "Jakarta, Indonesia",
+    "demo": "Book a Demo",
+    "rights": "© 2026 SaleForges. All rights reserved."
+  },
+  "lang": {
+    "label": "Language",
+    "id": "Indonesia",
+    "en": "English"
+  }
+}
