@@ -33,19 +33,22 @@ func NewRouter(
 
 	api := e.Group("/api/v1", middleware.Auth(verifier))
 
+	requireWrite := httputil.RequirePermission(httputil.PermInventoryWrite)
+	requireAdjust := httputil.RequirePermission(httputil.PermInventoryAdjust)
+
 	// Stock endpoints
 	stockGroup := api.Group("/stocks", httputil.MerchantMiddleware())
-	stockGroup.POST("", stockHandler.Create)
+	stockGroup.POST("", stockHandler.Create, requireWrite)
 	stockGroup.GET("", stockHandler.List)
-	stockGroup.POST("/transfer", stockHandler.Transfer)
+	stockGroup.POST("/transfer", stockHandler.Transfer, requireWrite)
 	stockGroup.GET("/sync", stockHandler.Sync)
 	stockGroup.GET("/:id", stockHandler.GetByID)
-	stockGroup.PUT("/:id", stockHandler.Update)
+	stockGroup.PUT("/:id", stockHandler.Update, requireAdjust)
 
 	// Product component endpoints
 	componentGroup := api.Group("/product-items", httputil.MerchantMiddleware())
 	componentGroup.GET("/:productItemId/components", componentHandler.GetByProductItem)
-	componentGroup.PUT("/:productItemId/components", componentHandler.CreateOrUpdate)
+	componentGroup.PUT("/:productItemId/components", componentHandler.CreateOrUpdate, requireWrite)
 
 	// Internal service-to-service endpoints (not exposed via Caddy)
 	internal := e.Group("/internal", middleware.InternalAuth(internalKey))

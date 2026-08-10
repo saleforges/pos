@@ -16,14 +16,15 @@ import (
 )
 
 type Claims struct {
-	Subject    string `json:"sub"`
-	SessionID  string `json:"sid"`
-	RoleID     int64  `json:"rid"`
-	MerchantID int64  `json:"mid"`
-	BranchID   int64  `json:"bid"`
-	UserID     int64  `json:"user_id"`
-	UserType   string `json:"user_type"`
-	Type       string `json:"type"`
+	Subject     string   `json:"sub"`
+	SessionID   string   `json:"sid"`
+	RoleID      int64    `json:"rid"`
+	MerchantID  int64    `json:"mid"`
+	BranchID    int64    `json:"bid"`
+	UserID      int64    `json:"user_id"`
+	UserType    string   `json:"user_type"`
+	Permissions []string `json:"permissions,omitempty"`
+	Type        string   `json:"type"`
 	jwt.RegisteredClaims
 }
 

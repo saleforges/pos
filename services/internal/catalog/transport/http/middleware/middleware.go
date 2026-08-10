@@ -24,6 +24,7 @@ func Auth(verifier *jwks.Verifier) echo.MiddlewareFunc {
 
 			c.Set(httputil.ContextKeyMerchantID, claims.MerchantID)
 			c.Set(httputil.ContextKeyUserType, claims.UserType)
+			c.Set(httputil.ContextKeyPermissions, claims.Permissions)
 			return next(c)
 		}
 	}

@@ -42,41 +42,45 @@ func NewRouter(
 
 	api.GET("/units", unitHandler.List)
 
+	requireCreate := httputil.RequirePermission(httputil.PermCatalogCreate)
+	requireUpdate := httputil.RequirePermission(httputil.PermCatalogUpdate)
+	requireDelete := httputil.RequirePermission(httputil.PermCatalogDelete)
+
 	cat := api.Group("/categories", httputil.MerchantMiddleware())
-	cat.POST("", catHandler.Create)
+	cat.POST("", catHandler.Create, requireCreate)
 	cat.GET("", catHandler.List)
 	cat.GET("/:id", catHandler.Get)
-	cat.PATCH("/:id", catHandler.Update)
-	cat.PATCH("/:id/restore", catHandler.Restore)
-	cat.DELETE("/:id", catHandler.Delete)
+	cat.PATCH("/:id", catHandler.Update, requireUpdate)
+	cat.PATCH("/:id/restore", catHandler.Restore, requireUpdate)
+	cat.DELETE("/:id", catHandler.Delete, requireDelete)
 
 	prod := api.Group("/products", httputil.MerchantMiddleware())
-	prod.POST("", productHandler.Create)
-	prod.POST("/bulk", productHandler.BulkCreate)
-	prod.PATCH("/bulk/:id", productHandler.BulkUpdate)
-	prod.PATCH("/:id/restore", productHandler.Restore)
+	prod.POST("", productHandler.Create, requireCreate)
+	prod.POST("/bulk", productHandler.BulkCreate, requireCreate)
+	prod.PATCH("/bulk/:id", productHandler.BulkUpdate, requireUpdate)
+	prod.PATCH("/:id/restore", productHandler.Restore, requireUpdate)
 	prod.GET("", productHandler.List)
 	prod.GET("/:id", productHandler.Get)
-	prod.PATCH("/:id", productHandler.Update)
-	prod.DELETE("/:id", productHandler.Delete)
+	prod.PATCH("/:id", productHandler.Update, requireUpdate)
+	prod.DELETE("/:id", productHandler.Delete, requireDelete)
 
 	// Product items nested under product
-	prod.POST("/:productId/items", itemHandler.Create)
+	prod.POST("/:productId/items", itemHandler.Create, requireCreate)
 	prod.GET("/:productId/items", itemHandler.ListByProduct)
 
 	// Standalone product-item endpoints
 	api.GET("/product-items", itemHandler.ListByMerchant)
 	api.GET("/product-items/:id", itemHandler.GetByID)
-	api.PATCH("/product-items/:id", itemHandler.Update)
-	api.PATCH("/product-items/:id/restore", itemHandler.Restore)
-	api.DELETE("/product-items/:id", itemHandler.Delete)
-	api.PUT("/product-items/:id/branch-price", itemHandler.SetBranchPrice)
-	api.DELETE("/product-items/:id/branch-price", itemHandler.DeleteBranchPrice)
+	api.PATCH("/product-items/:id", itemHandler.Update, requireUpdate)
+	api.PATCH("/product-items/:id/restore", itemHandler.Restore, requireUpdate)
+	api.DELETE("/product-items/:id", itemHandler.Delete, requireDelete)
+	api.PUT("/product-items/:id/branch-price", itemHandler.SetBranchPrice, requireUpdate)
+	api.DELETE("/product-items/:id/branch-price", itemHandler.DeleteBranchPrice, requireUpdate)
 
 	// Image upload
 	if imgHandler != nil {
 		img := api.Group("/images", httputil.MerchantMiddleware())
-		img.POST("", imgHandler.Upload)
+		img.POST("", imgHandler.Upload, requireUpdate)
 	}
 
 	// Mobile sync endpoint

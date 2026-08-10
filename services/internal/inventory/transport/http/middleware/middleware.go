@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v4"
+	"github.com/saleforge/pos/services/pkg/httputil"
 	"github.com/saleforge/pos/services/pkg/jwks"
 )
 
@@ -30,6 +31,7 @@ func Auth(verifier *jwks.Verifier) echo.MiddlewareFunc {
 			c.Set(ContextKeyUserID, claims.UserID)
 			c.Set(ContextKeyUserType, claims.UserType)
 			c.Set(ContextKeyMerchantID, claims.MerchantID)
+			c.Set(httputil.ContextKeyPermissions, claims.Permissions)
 
 			return next(c)
 		}
