@@ -1,26 +1,39 @@
-api.saleforges.test {
-    tls internal
-
-    @iam path /v1/auth /v1/auth/* /v1/users /v1/users/* /v1/roles /v1/roles/* /v1/permissions /v1/permissions/*
+:80 {
+    @iam path /v1/auth/* /v1/users/* /v1/roles/* /v1/permissions/* /v1/audit/*
     handle @iam {
         rewrite * /api{path}
         reverse_proxy localhost:{env.IAM_PORT}
     }
 
-    @merchant path /v1/merchants/* /v1/branches/* /v1/staff/* /v1/me/*
+    @merchant path /v1/merchants* /v1/branches* /v1/staff* /v1/me/*
     handle @merchant {
         rewrite * /api{path}
         reverse_proxy localhost:{env.MERCHANT_PORT}
     }
 
-    @catalog path /v1/categories/* /v1/products/* /v1/images/*
+    @catalog path /v1/categories* /v1/products* /v1/product-items* /v1/sync* /v1/units* /v1/images*
     handle @catalog {
         rewrite * /api{path}
         reverse_proxy localhost:{env.CATALOG_PORT}
     }
-}
 
-router.saleforges.test {
-    tls internal
-    reverse_proxy localhost:20128
+    @inventory path /v1/stocks* /v1/product-components* /v1/internal/*
+    handle @inventory {
+        rewrite * /api{path}
+        reverse_proxy localhost:{env.INVENTORY_PORT}
+    }
+
+    @order path /v1/orders* /v1/customers* /v1/reports*
+    handle @order {
+        rewrite * /api{path}
+        reverse_proxy localhost:{env.ORDER_PORT}
+    }
+
+    @payment path /v1/payments*
+    handle @payment {
+        rewrite * /api{path}
+        reverse_proxy localhost:{env.PAYMENT_PORT}
+    }
+
+    respond 404
 }
