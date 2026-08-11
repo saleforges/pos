@@ -9,15 +9,16 @@ import (
 	redisadapter "github.com/saleforge/pos/services/internal/iam/adapter/cache/redis"
 	"github.com/saleforge/pos/services/internal/iam/adapter/repository/memory"
 	"github.com/saleforge/pos/services/internal/iam/adapter/repository/postgres"
+	"github.com/saleforge/pos/services/internal/iam/adapter/security"
 	sessionmem "github.com/saleforge/pos/services/internal/iam/adapter/session/memory"
 	sessionredis "github.com/saleforge/pos/services/internal/iam/adapter/session/redis"
-	"github.com/saleforge/pos/services/internal/iam/adapter/security"
 	"github.com/saleforge/pos/services/internal/iam/port"
 	"github.com/saleforge/pos/services/internal/iam/port/repository"
+	httptransport "github.com/saleforge/pos/services/internal/iam/transport/http"
 	httpauth "github.com/saleforge/pos/services/internal/iam/transport/http/auth"
+	httpaudit "github.com/saleforge/pos/services/internal/iam/transport/http/audit"
 	httpperm "github.com/saleforge/pos/services/internal/iam/transport/http/permission"
 	httprole "github.com/saleforge/pos/services/internal/iam/transport/http/role"
-	httptransport "github.com/saleforge/pos/services/internal/iam/transport/http"
 	httpuser "github.com/saleforge/pos/services/internal/iam/transport/http/user"
 	"github.com/saleforge/pos/services/internal/iam/usecase"
 	"github.com/saleforge/pos/services/pkg/logger"
@@ -32,11 +33,10 @@ type Config struct {
 	RedisAddr         string
 	TokenHasherSecret string
 	SecureCookies     bool
-	// AllowedOrigins controls CORS. nil or empty = no cross-origin access allowed.
-	AllowedOrigins    []string
-	LoginRateLimit    int
-	LoginRateWindow   time.Duration
-	RefreshRateLimit  int
+	AllowedOrigins   []string
+	LoginRateLimit   int
+	LoginRateWindow  time.Duration
+	RefreshRateLimit int
 }
 
 type App struct {
@@ -51,7 +51,6 @@ func (n *noopEventPublisher) Publish(_ context.Context, eventName string, _ inte
 	return nil
 }
 
-// poolTxBeginner adapts *otel.TracedPool to port.TxBeginner.
 type poolTxBeginner struct {
 	pool *otel.TracedPool
 }
@@ -80,12 +79,12 @@ func New(cfg Config) (*App, error) {
 	eventPublisher := &noopEventPublisher{}
 
 	var (
-		userRepo         repository.UserRepository
-		roleRepo         repository.RoleRepository
-		permissionRepo   repository.PermissionRepository
-		loginAuditRepo   repository.LoginAuditRepository
-		staffRepo        repository.StaffRepository
-		pool             *otel.TracedPool
+		userRepo       repository.UserRepository
+		roleRepo       repository.RoleRepository
+		permissionRepo repository.PermissionRepository
+		loginAuditRepo repository.LoginAuditRepository
+		staffRepo      repository.StaffRepository
+		pool           *otel.TracedPool
 	)
 
 	if cfg.DatabaseURL != "" {
@@ -146,7 +145,6 @@ func New(cfg Config) (*App, error) {
 		return nil, err
 	}
 
-	// Focused services (split from the old god authUsecase)
 	var txBeginner port.TxBeginner
 	if cfg.DatabaseURL != "" {
 		txBeginner = &poolTxBeginner{pool: pool}
@@ -180,7 +178,8 @@ func New(cfg Config) (*App, error) {
 	userHandler := httpuser.NewHandler(authUsecase, userUsecase)
 	roleHandler := httprole.NewHandler(roleUsecase)
 	permHandler := httpperm.NewHandler(permUsecase)
-	router := httptransport.NewRouter(authHandler, userHandler, roleHandler, permHandler, authUsecase, authUsecase.HasPermission, tokenSigner, cfg.AllowedOrigins, httptransport.RateLimitConfig{
+	auditHandler := httpaudit.NewHandler(authUsecase)
+	router := httptransport.NewRouter(authHandler, userHandler, roleHandler, permHandler, auditHandler, authUsecase, authUsecase.HasPermission, tokenSigner, cfg.AllowedOrigins, httptransport.RateLimitConfig{
 		LoginLimit:   cfg.LoginRateLimit,
 		LoginWindow:  cfg.LoginRateWindow,
 		RefreshLimit: cfg.RefreshRateLimit,

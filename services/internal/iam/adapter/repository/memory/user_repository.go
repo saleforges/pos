@@ -337,23 +337,34 @@ func (r *LoginAuditRepository) Create(_ context.Context, audit *domain.LoginAudi
 	return nil
 }
 
-func (r *LoginAuditRepository) List(_ context.Context, offset, limit int) ([]domain.LoginAudit, int64, error) {
+func (r *LoginAuditRepository) List(_ context.Context, userIDs []int64, offset, limit int) ([]domain.LoginAudit, int64, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	total := int64(len(r.audits))
+	idSet := make(map[int64]bool, len(userIDs))
+	for _, id := range userIDs {
+		idSet[id] = true
+	}
+	filtered := []domain.LoginAudit{}
+	for _, a := range r.audits {
+		if idSet[a.UserID] {
+			filtered = append(filtered, a)
+		}
+	}
+
+	total := int64(len(filtered))
 
 	if limit == -1 {
-		limit = len(r.audits)
+		limit = len(filtered)
 		offset = 0
 	}
 
-	if offset >= len(r.audits) {
+	if offset >= len(filtered) {
 		return []domain.LoginAudit{}, total, nil
 	}
 	end := offset + limit
-	if end > len(r.audits) {
-		end = len(r.audits)
+	if end > len(filtered) {
+		end = len(filtered)
 	}
-	return r.audits[offset:end], total, nil
+	return filtered[offset:end], total, nil
 }

@@ -24,9 +24,9 @@ func (r *LoginAuditRepository) Create(ctx context.Context, audit *domain.LoginAu
 	return err
 }
 
-func (r *LoginAuditRepository) List(ctx context.Context, offset, limit int) ([]domain.LoginAudit, int64, error) {
+func (r *LoginAuditRepository) List(ctx context.Context, userIDs []int64, offset, limit int) ([]domain.LoginAudit, int64, error) {
 	var total int64
-	if err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM login_audits`).Scan(&total); err != nil {
+	if err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM login_audits WHERE user_id = ANY($1)`, userIDs).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
@@ -37,15 +37,15 @@ func (r *LoginAuditRepository) List(ctx context.Context, offset, limit int) ([]d
 	}
 
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, user_id, email, success, ip_address, user_agent, reason, created_at FROM login_audits ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
-		limit, offset,
+		`SELECT id, user_id, email, success, ip_address, user_agent, reason, created_at FROM login_audits WHERE user_id = ANY($1) ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+		userIDs, limit, offset,
 	)
 	if err != nil {
 		return nil, 0, err
 	}
 	defer rows.Close()
 
-	var audits []domain.LoginAudit
+	audits := []domain.LoginAudit{}
 	for rows.Next() {
 		var a domain.LoginAudit
 		if err := rows.Scan(&a.ID, &a.UserID, &a.Email, &a.Success, &a.IPAddress, &a.UserAgent, &a.Reason, &a.CreatedAt); err != nil {

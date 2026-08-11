@@ -5,9 +5,9 @@ import (
 
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port"
+	"github.com/saleforge/pos/services/pkg/pagination"
 )
 
-// AuthUsecase defines authentication-related operations.
 type AuthUsecase interface {
 	Register(ctx context.Context, params RegisterParams) (*AuthResult, error)
 	Login(ctx context.Context, params LoginParams) (*LoginResult, error)
@@ -18,4 +18,5 @@ type AuthUsecase interface {
 	Introspect(ctx context.Context, tokenString string) (*IntrospectResult, error)
 	ValidateToken(ctx context.Context, tokenString string) (*port.TokenClaims, error)
 	HasPermission(claims *port.TokenClaims, required domain.Permission) bool
+	ListLoginAudits(ctx context.Context, userIDs []int64, p pagination.Params) ([]domain.LoginAudit, *pagination.Metadata, error)
 }

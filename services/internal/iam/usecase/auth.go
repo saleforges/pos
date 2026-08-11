@@ -12,6 +12,7 @@ import (
 	"github.com/saleforge/pos/services/internal/iam/port/repository"
 	"github.com/saleforge/pos/services/pkg/logger"
 	"github.com/saleforge/pos/services/pkg/otel"
+	"github.com/saleforge/pos/services/pkg/pagination"
 )
 
 type RegisterParams struct {
@@ -26,6 +27,7 @@ type RegisterParams struct {
 
 type AuthResult struct {
 	port.TokenPair
+	UserID int64
 }
 
 type LoginParams struct {
@@ -121,7 +123,6 @@ func (uc *authUsecase) Register(ctx context.Context, input RegisterParams) (*Aut
 		input.Roles = []string{"viewer"}
 	}
 
-	// Validate roles before touching the DB.
 	for _, role := range input.Roles {
 		if _, ok := domain.DefaultRoles[role]; !ok {
 			_, err := uc.roleRepo.GetByName(ctx, role)
@@ -174,13 +175,6 @@ func (uc *authUsecase) Register(ctx context.Context, input RegisterParams) (*Aut
 		UpdatedAt: now,
 	}
 
-	// WIP: Transaction boundaries — see ticket 86eyc73vm. The userRepo.Create
-	// already wraps its INSERT in a local tx (single-statement atomicity).
-	// Cross-repo UoW (user+roles+session+audit in one pg tx) requires
-	// propagating a *TracedTx through repositories. Postgres repos currently
-	// own their pool; wiring a shared tx requires repository.WithTx() methods.
-	// ponytail: cross-repo UoW, add when Register/Login become multi-repo
-	// writes that must roll back together.
 	if err := uc.userRepo.Create(ctx, user); err != nil {
 		logger.Error("register: create user failed", "error", err.Error())
 		return nil, domain.ErrInternal
@@ -258,6 +252,7 @@ func (uc *authUsecase) Register(ctx context.Context, input RegisterParams) (*Aut
 			RefreshToken: refreshTokenStr,
 			ExpiresIn:    3600,
 		},
+		UserID: user.ID,
 	}, nil
 }
 
@@ -616,7 +611,20 @@ func (uc *authUsecase) HasPermission(claims *port.TokenClaims, required domain.P
 	return false
 }
 
-// collectPermissions retrieves permissions for the given role name.
+func (uc *authUsecase) ListLoginAudits(ctx context.Context, userIDs []int64, p pagination.Params) ([]domain.LoginAudit, *pagination.Metadata, error) {
+	data, total, err := uc.loginAuditRepo.List(ctx, userIDs, p.Offset, p.Limit)
+	if err != nil {
+		return nil, nil, err
+	}
+	meta := &pagination.Metadata{
+		Total:  total,
+		Offset: p.Offset,
+		Limit:  p.Limit,
+		Count:  len(data),
+	}
+	return data, meta, nil
+}
+
 func (uc *authUsecase) collectPermissions(ctx context.Context, roleName string) ([]domain.Permission, error) {
 	if roleName == "" {
 		return nil, nil
@@ -628,7 +636,6 @@ func (uc *authUsecase) collectPermissions(ctx context.Context, roleName string) 
 	return role.Permissions, nil
 }
 
-// resolveActiveRole finds the user's active role, returning roleID, merchantID, and branchID.
 func (uc *authUsecase) resolveActiveRole(ctx context.Context, userID int64) (roleID, merchantID, branchID int64) {
 	user, err := uc.userRepo.GetByID(ctx, userID)
 	if err != nil || len(user.Roles) == 0 {

@@ -19,6 +19,7 @@ type authResponse struct {
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken,omitempty"`
 	ExpiresIn    int    `json:"expiresIn"`
+	UserID       int64  `json:"userId,omitempty"`
 }
 
 type switchContextRequest struct {

@@ -70,6 +70,7 @@ func (h *Handler) CreateUser(c echo.Context) error {
 		AccessToken:  result.AccessToken,
 		RefreshToken: result.RefreshToken,
 		ExpiresIn:    result.ExpiresIn,
+		UserID:       result.UserID,
 	})
 }
 

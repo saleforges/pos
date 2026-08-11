@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port"
+	"github.com/saleforge/pos/services/internal/iam/transport/http/audit"
 	"github.com/saleforge/pos/services/internal/iam/transport/http/auth"
 	"github.com/saleforge/pos/services/internal/iam/transport/http/permission"
 	"github.com/saleforge/pos/services/internal/iam/transport/http/role"
@@ -19,7 +20,6 @@ import (
 	"github.com/saleforge/pos/services/pkg/pagination"
 )
 
-// mockUserRepo implements repository.UserRepository with context.Context
 type mockUserRepo struct {
 	existing map[string]bool
 }
@@ -46,9 +46,9 @@ func (m *mockUserRepo) GetByEmail(_ context.Context, email string) (*domain.User
 func (m *mockUserRepo) List(_ context.Context, offset, limit int) ([]domain.User, int64, error) {
 	return []domain.User{}, 0, nil
 }
-func (m *mockUserRepo) Update(_ context.Context, user *domain.User) error          { return nil }
-func (m *mockUserRepo) Delete(_ context.Context, id int64) error                    { return nil }
-func (m *mockUserRepo) AddRole(_ context.Context, userID int64, roleName string) error  { return nil }
+func (m *mockUserRepo) Update(_ context.Context, user *domain.User) error                 { return nil }
+func (m *mockUserRepo) Delete(_ context.Context, id int64) error                          { return nil }
+func (m *mockUserRepo) AddRole(_ context.Context, userID int64, roleName string) error    { return nil }
 func (m *mockUserRepo) RemoveRole(_ context.Context, userID int64, roleName string) error { return nil }
 
 type mockRoleRepo struct{}
@@ -63,9 +63,9 @@ func (m *mockRoleRepo) GetByID(_ context.Context, id int64) (*domain.Role, error
 func (m *mockRoleRepo) GetByName(_ context.Context, name string) (*domain.Role, error) {
 	return &domain.Role{ID: 1, Name: name, Permissions: []domain.Permission{domain.UserRead}}, nil
 }
-func (m *mockRoleRepo) List(_ context.Context, _ *int64) ([]domain.Role, error)    { return nil, nil }
-func (m *mockRoleRepo) Update(_ context.Context, role *domain.Role) error          { return nil }
-func (m *mockRoleRepo) Delete(_ context.Context, id int64) error                    { return nil }
+func (m *mockRoleRepo) List(_ context.Context, _ *int64) ([]domain.Role, error) { return nil, nil }
+func (m *mockRoleRepo) Update(_ context.Context, role *domain.Role) error       { return nil }
+func (m *mockRoleRepo) Delete(_ context.Context, id int64) error                { return nil }
 func (m *mockRoleRepo) AddPermission(_ context.Context, roleID int64, permission domain.Permission) error {
 	return nil
 }
@@ -85,7 +85,7 @@ func (m *mockPermissionRepo) Delete(_ context.Context, p domain.Permission) erro
 type mockLoginAuditRepo struct{}
 
 func (m *mockLoginAuditRepo) Create(_ context.Context, audit *domain.LoginAudit) error { return nil }
-func (m *mockLoginAuditRepo) List(_ context.Context, offset, limit int) ([]domain.LoginAudit, int64, error) {
+func (m *mockLoginAuditRepo) List(_ context.Context, userIDs []int64, offset, limit int) ([]domain.LoginAudit, int64, error) {
 	return nil, 0, nil
 }
 
@@ -108,6 +108,7 @@ func TestHTTPRouterSmoke(t *testing.T) {
 		user.NewHandler(&mockAuthUsecase{}, &mockUserUsecase{}),
 		role.NewHandler(&mockRoleUsecase{}),
 		permission.NewHandler(&mockPermissionUsecase{}),
+		audit.NewHandler(&mockAuthUsecase{}),
 		&mockAuthUsecase{},
 		mockPermissionCheck,
 		&mockJWKSProvider{},
@@ -127,7 +128,6 @@ func TestHTTPRouterSmoke(t *testing.T) {
 	})
 }
 
-// --- reusable mocks ---
 
 type mockAuthUsecase struct{}
 
@@ -151,7 +151,12 @@ func (m *mockAuthUsecase) Introspect(ctx context.Context, tokenString string) (*
 func (m *mockAuthUsecase) ValidateToken(ctx context.Context, tokenString string) (*port.TokenClaims, error) {
 	return &port.TokenClaims{UserID: 1, SessionID: "sess"}, nil
 }
-func (m *mockAuthUsecase) HasPermission(claims *port.TokenClaims, required domain.Permission) bool { return true }
+func (m *mockAuthUsecase) HasPermission(claims *port.TokenClaims, required domain.Permission) bool {
+	return true
+}
+func (m *mockAuthUsecase) ListLoginAudits(ctx context.Context, userIDs []int64, p pagination.Params) ([]domain.LoginAudit, *pagination.Metadata, error) {
+	return nil, &pagination.Metadata{}, nil
+}
 
 type mockUserUsecase struct{}
 
@@ -171,7 +176,9 @@ func (m *mockUserUsecase) ListStaff(ctx context.Context, userID int64) ([]domain
 
 type mockRoleUsecase struct{}
 
-func (m *mockRoleUsecase) ListRoles(ctx context.Context, merchantID *int64) ([]domain.Role, error) { return nil, nil }
+func (m *mockRoleUsecase) ListRoles(ctx context.Context, merchantID *int64) ([]domain.Role, error) {
+	return nil, nil
+}
 func (m *mockRoleUsecase) CreateRole(ctx context.Context, params usecase.CreateRoleParams) (*domain.Role, error) {
 	return &domain.Role{ID: 1, Name: params.Name}, nil
 }
@@ -182,8 +189,12 @@ func (m *mockRoleUsecase) UpdateRole(ctx context.Context, params usecase.UpdateR
 	return &domain.Role{ID: params.ID}, nil
 }
 func (m *mockRoleUsecase) DeleteRole(ctx context.Context, id int64) error { return nil }
-func (m *mockRoleUsecase) AssignRole(ctx context.Context, userID int64, roleName string) error { return nil }
-func (m *mockRoleUsecase) RemoveRole(ctx context.Context, userID int64, roleName string) error { return nil }
+func (m *mockRoleUsecase) AssignRole(ctx context.Context, userID int64, roleName string) error {
+	return nil
+}
+func (m *mockRoleUsecase) RemoveRole(ctx context.Context, userID int64, roleName string) error {
+	return nil
+}
 func (m *mockRoleUsecase) AssignPermission(ctx context.Context, roleID int64, permission domain.Permission) error {
 	return nil
 }
@@ -193,7 +204,9 @@ func (m *mockRoleUsecase) RemovePermission(ctx context.Context, roleID int64, pe
 
 type mockPermissionUsecase struct{}
 
-func (m *mockPermissionUsecase) ListPermissions(ctx context.Context) ([]domain.Permission, error) { return nil, nil }
+func (m *mockPermissionUsecase) ListPermissions(ctx context.Context) ([]domain.Permission, error) {
+	return nil, nil
+}
 func (m *mockPermissionUsecase) CreatePermission(ctx context.Context, permission domain.Permission) error {
 	return nil
 }

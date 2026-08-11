@@ -8,6 +8,7 @@ import (
 
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port"
+	"github.com/saleforge/pos/services/pkg/pagination"
 )
 
 func TestAuthUsecase_Register(t *testing.T) {
@@ -310,4 +311,33 @@ func TestAuthUsecase_Register_PasswordValidation(t *testing.T) {
 			t.Errorf("expected password policy error, got %v", err)
 		}
 	})
+}
+
+func TestAuthUsecase_ListLoginAudits(t *testing.T) {
+	t.Parallel()
+
+	loginAuditRepo := &mockLoginAuditRepo{
+		listResult: []domain.LoginAudit{
+			{ID: 1, UserID: 5, Email: "cashier1@test.com", Success: true},
+		},
+	}
+	uc := NewAuthUsecase(
+		&mockUserRepo{}, &mockRoleRepo{}, &mockPermissionRepo{}, loginAuditRepo,
+		&mockStaffRepo{}, &mockSessionStore{}, &mockEventPublisher{},
+		&mockPasswordHasher{}, &mockTokenSigner{}, &mockTokenHasher{}, nil, nil,
+	)
+
+	result, meta, err := uc.ListLoginAudits(context.Background(), []int64{5}, pagination.Params{Offset: 0, Limit: 20})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 || result[0].UserID != 5 {
+		t.Errorf("unexpected result: %+v", result)
+	}
+	if meta.Count != 1 {
+		t.Errorf("expected count 1, got %d", meta.Count)
+	}
+	if len(loginAuditRepo.listUserIDs) != 1 || loginAuditRepo.listUserIDs[0] != 5 {
+		t.Errorf("expected repo to be called with userIDs [5], got %v", loginAuditRepo.listUserIDs)
+	}
 }

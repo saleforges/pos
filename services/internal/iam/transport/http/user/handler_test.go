@@ -16,11 +16,13 @@ import (
 )
 
 type mockAuthSvc struct {
-	registerFn   func(ctx context.Context, params usecase.RegisterParams) (*usecase.AuthResult, error)
+	registerFn func(ctx context.Context, params usecase.RegisterParams) (*usecase.AuthResult, error)
 }
 
 func (m *mockAuthSvc) Register(ctx context.Context, params usecase.RegisterParams) (*usecase.AuthResult, error) {
-	if m.registerFn != nil { return m.registerFn(ctx, params) }
+	if m.registerFn != nil {
+		return m.registerFn(ctx, params)
+	}
 	return &usecase.AuthResult{TokenPair: port.TokenPair{AccessToken: "at", RefreshToken: "rt", ExpiresIn: 3600}}, nil
 }
 func (m *mockAuthSvc) Login(ctx context.Context, params usecase.LoginParams) (*usecase.LoginResult, error) {
@@ -40,7 +42,12 @@ func (m *mockAuthSvc) Introspect(ctx context.Context, tokenString string) (*usec
 func (m *mockAuthSvc) ValidateToken(ctx context.Context, tokenString string) (*port.TokenClaims, error) {
 	return &port.TokenClaims{UserID: 1, SessionID: "sess"}, nil
 }
-func (m *mockAuthSvc) HasPermission(claims *port.TokenClaims, required domain.Permission) bool { return true }
+func (m *mockAuthSvc) HasPermission(claims *port.TokenClaims, required domain.Permission) bool {
+	return true
+}
+func (m *mockAuthSvc) ListLoginAudits(ctx context.Context, userIDs []int64, p pagination.Params) ([]domain.LoginAudit, *pagination.Metadata, error) {
+	return nil, &pagination.Metadata{}, nil
+}
 
 type mockUserSvc struct {
 	listUsersFn  func(ctx context.Context, p pagination.Params) ([]domain.User, *pagination.Metadata, error)
@@ -50,22 +57,32 @@ type mockUserSvc struct {
 }
 
 func (m *mockUserSvc) ListUsers(ctx context.Context, p pagination.Params) ([]domain.User, *pagination.Metadata, error) {
-	if m.listUsersFn != nil { return m.listUsersFn(ctx, p) }
+	if m.listUsersFn != nil {
+		return m.listUsersFn(ctx, p)
+	}
 	return []domain.User{{ID: 1, Username: "u1"}, {ID: 2, Username: "u2"}}, &pagination.Metadata{Total: 2, Offset: 0, Limit: 20, Count: 2}, nil
 }
 func (m *mockUserSvc) GetUser(ctx context.Context, id int64) (*domain.User, error) {
-	if m.getUserFn != nil { return m.getUserFn(ctx, id) }
+	if m.getUserFn != nil {
+		return m.getUserFn(ctx, id)
+	}
 	return &domain.User{ID: id, Username: "test", Email: "t@t.com", Status: domain.UserStatusActive}, nil
 }
 func (m *mockUserSvc) UpdateUser(ctx context.Context, params usecase.UpdateUserParams) (*domain.User, error) {
-	if m.updateUserFn != nil { return m.updateUserFn(ctx, params) }
+	if m.updateUserFn != nil {
+		return m.updateUserFn(ctx, params)
+	}
 	return &domain.User{ID: params.ID, Username: *params.Username}, nil
 }
 func (m *mockUserSvc) DeleteUser(ctx context.Context, id int64) error {
-	if m.deleteUserFn != nil { return m.deleteUserFn(ctx, id) }
+	if m.deleteUserFn != nil {
+		return m.deleteUserFn(ctx, id)
+	}
 	return nil
 }
-func (m *mockUserSvc) ListStaff(ctx context.Context, userID int64) ([]domain.UserRoleAssignment, error) { return nil, nil }
+func (m *mockUserSvc) ListStaff(ctx context.Context, userID int64) ([]domain.UserRoleAssignment, error) {
+	return nil, nil
+}
 
 func newTestHandler(us usecase.UserUsecase) *Handler {
 	return NewHandler(&mockAuthSvc{}, us)
@@ -82,17 +99,23 @@ func TestListUsers(t *testing.T) {
 	c.SetPath("/users")
 
 	h.ListUsers(c)
-	if rec.Code != http.StatusOK { t.Errorf("expected 200, got %d", rec.Code) }
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
 
 	var wrapped struct {
-		Data       []domain.User   `json:"data"`
+		Data       []domain.User       `json:"data"`
 		Pagination pagination.Metadata `json:"pagination"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &wrapped); err != nil {
 		t.Fatalf("bad response: %v", err)
 	}
-	if len(wrapped.Data) != 2 { t.Errorf("expected 2 users, got %d", len(wrapped.Data)) }
-	if wrapped.Pagination.Total != 2 { t.Errorf("expected total 2, got %d", wrapped.Pagination.Total) }
+	if len(wrapped.Data) != 2 {
+		t.Errorf("expected 2 users, got %d", len(wrapped.Data))
+	}
+	if wrapped.Pagination.Total != 2 {
+		t.Errorf("expected total 2, got %d", wrapped.Pagination.Total)
+	}
 }
 
 func TestGetUser(t *testing.T) {
@@ -109,7 +132,9 @@ func TestGetUser(t *testing.T) {
 		c.SetParamValues("1")
 
 		h.GetUser(c)
-		if rec.Code != http.StatusOK { t.Errorf("expected 200, got %d", rec.Code) }
+		if rec.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rec.Code)
+		}
 	})
 
 	t.Run("non-existent user returns 404", func(t *testing.T) {
@@ -126,7 +151,9 @@ func TestGetUser(t *testing.T) {
 		c.SetParamValues("999")
 
 		h.GetUser(c)
-		if rec.Code != http.StatusNotFound { t.Errorf("expected 404, got %d", rec.Code) }
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("expected 404, got %d", rec.Code)
+		}
 	})
 
 	t.Run("invalid id returns 400", func(t *testing.T) {
@@ -140,7 +167,9 @@ func TestGetUser(t *testing.T) {
 		c.SetParamValues("abc")
 
 		h.GetUser(c)
-		if rec.Code != http.StatusBadRequest { t.Errorf("expected 400, got %d", rec.Code) }
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", rec.Code)
+		}
 	})
 }
 
@@ -158,7 +187,9 @@ func TestCreateUser(t *testing.T) {
 		c.SetPath("/users")
 
 		h.CreateUser(c)
-		if rec.Code != http.StatusCreated { t.Errorf("expected 201, got %d: %s", rec.Code, rec.Body.String()) }
+		if rec.Code != http.StatusCreated {
+			t.Errorf("expected 201, got %d: %s", rec.Code, rec.Body.String())
+		}
 	})
 
 	t.Run("password policy error maps to 400", func(t *testing.T) {
@@ -174,7 +205,9 @@ func TestCreateUser(t *testing.T) {
 		c.SetPath("/users")
 
 		h.CreateUser(c)
-		if rec.Code != http.StatusBadRequest { t.Errorf("expected 400, got %d", rec.Code) }
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", rec.Code)
+		}
 	})
 
 	t.Run("duplicate user maps to 409", func(t *testing.T) {
@@ -190,7 +223,9 @@ func TestCreateUser(t *testing.T) {
 		c.SetPath("/users")
 
 		h.CreateUser(c)
-		if rec.Code != http.StatusConflict { t.Errorf("expected 409, got %d", rec.Code) }
+		if rec.Code != http.StatusConflict {
+			t.Errorf("expected 409, got %d", rec.Code)
+		}
 	})
 }
 
@@ -210,7 +245,9 @@ func TestUpdateUser(t *testing.T) {
 		c.SetParamValues("1")
 
 		h.UpdateUser(c)
-		if rec.Code != http.StatusOK { t.Errorf("expected 200, got %d", rec.Code) }
+		if rec.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rec.Code)
+		}
 	})
 
 	t.Run("user not found maps to 404", func(t *testing.T) {
@@ -229,7 +266,9 @@ func TestUpdateUser(t *testing.T) {
 		c.SetParamValues("999")
 
 		h.UpdateUser(c)
-		if rec.Code != http.StatusNotFound { t.Errorf("expected 404, got %d", rec.Code) }
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("expected 404, got %d", rec.Code)
+		}
 	})
 }
 
@@ -247,6 +286,8 @@ func TestDeleteUser(t *testing.T) {
 		c.SetParamValues("1")
 
 		h.DeleteUser(c)
-		if rec.Code != http.StatusOK { t.Errorf("expected 200, got %d", rec.Code) }
+		if rec.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rec.Code)
+		}
 	})
 }

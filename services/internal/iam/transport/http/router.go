@@ -8,6 +8,7 @@ import (
 	echomw "github.com/labstack/echo/v4/middleware"
 	"github.com/saleforge/pos/services/internal/iam/domain"
 	"github.com/saleforge/pos/services/internal/iam/port"
+	httpaudit "github.com/saleforge/pos/services/internal/iam/transport/http/audit"
 	httpauth "github.com/saleforge/pos/services/internal/iam/transport/http/auth"
 	"github.com/saleforge/pos/services/internal/iam/transport/http/middleware"
 	httpperm "github.com/saleforge/pos/services/internal/iam/transport/http/permission"
@@ -29,6 +30,7 @@ func NewRouter(
 	userHandler *httpuser.Handler,
 	roleHandler *httprole.Handler,
 	permHandler *httpperm.Handler,
+	auditHandler *httpaudit.Handler,
 	authService usecase.AuthUsecase,
 	hasPermissionFunc func(*port.TokenClaims, domain.Permission) bool,
 	jwksProvider port.JWKSProvider,
@@ -101,6 +103,9 @@ func NewRouter(
 		middleware.RBACMiddleware(domain.PermissionAssign, hasPermissionFunc))
 	api.DELETE("/roles/:id/permissions/:permissionId", roleHandler.RemovePermission, protected,
 		middleware.RBACMiddleware(domain.PermissionAssign, hasPermissionFunc))
+
+	api.GET("/audit/logins", auditHandler.ListLogins, protected,
+		middleware.RBACMiddleware(domain.AuditView, hasPermissionFunc))
 
 	permManage := middleware.RBACMiddleware(domain.PermissionRead, hasPermissionFunc)
 	api.GET("/permissions", permHandler.ListPermissions, protected, permManage)

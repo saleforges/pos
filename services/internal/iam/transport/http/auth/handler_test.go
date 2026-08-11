@@ -16,17 +16,16 @@ import (
 	"github.com/saleforge/pos/services/pkg/pagination"
 )
 
-// mockAuthService implements usecase.AuthService
 type mockAuthService struct {
-	registerFn    func(ctx context.Context, params usecase.RegisterParams) (*usecase.AuthResult, error)
-	loginFn       func(ctx context.Context, params usecase.LoginParams) (*usecase.LoginResult, error)
-	refreshFn     func(ctx context.Context, params usecase.RefreshTokenParams) (*usecase.LoginResult, error)
-	logoutFn      func(ctx context.Context, params usecase.LogoutParams) error
-	switchCtxFn   func(ctx context.Context, sessionID string, userRoleID int64) (*usecase.AuthResult, error)
-	setDefaultFn  func(ctx context.Context, userID, roleID int64) error
-	introspectFn  func(ctx context.Context, tokenString string) (*usecase.IntrospectResult, error)
-	validateFn    func(ctx context.Context, tokenString string) (*port.TokenClaims, error)
-	hasPermFn     func(claims *port.TokenClaims, required domain.Permission) bool
+	registerFn   func(ctx context.Context, params usecase.RegisterParams) (*usecase.AuthResult, error)
+	loginFn      func(ctx context.Context, params usecase.LoginParams) (*usecase.LoginResult, error)
+	refreshFn    func(ctx context.Context, params usecase.RefreshTokenParams) (*usecase.LoginResult, error)
+	logoutFn     func(ctx context.Context, params usecase.LogoutParams) error
+	switchCtxFn  func(ctx context.Context, sessionID string, userRoleID int64) (*usecase.AuthResult, error)
+	setDefaultFn func(ctx context.Context, userID, roleID int64) error
+	introspectFn func(ctx context.Context, tokenString string) (*usecase.IntrospectResult, error)
+	validateFn   func(ctx context.Context, tokenString string) (*port.TokenClaims, error)
+	hasPermFn    func(claims *port.TokenClaims, required domain.Permission) bool
 }
 
 func (m *mockAuthService) Register(ctx context.Context, params usecase.RegisterParams) (*usecase.AuthResult, error) {
@@ -36,36 +35,55 @@ func (m *mockAuthService) Register(ctx context.Context, params usecase.RegisterP
 	return &usecase.AuthResult{TokenPair: port.TokenPair{AccessToken: "at", RefreshToken: "rt", ExpiresIn: 3600}}, nil
 }
 func (m *mockAuthService) Login(ctx context.Context, params usecase.LoginParams) (*usecase.LoginResult, error) {
-	if m.loginFn != nil { return m.loginFn(ctx, params) }
+	if m.loginFn != nil {
+		return m.loginFn(ctx, params)
+	}
 	return &usecase.LoginResult{TokenPair: port.TokenPair{AccessToken: "at", RefreshToken: "rt", ExpiresIn: 3600}}, nil
 }
 func (m *mockAuthService) RefreshToken(ctx context.Context, params usecase.RefreshTokenParams) (*usecase.LoginResult, error) {
-	if m.refreshFn != nil { return m.refreshFn(ctx, params) }
+	if m.refreshFn != nil {
+		return m.refreshFn(ctx, params)
+	}
 	return &usecase.LoginResult{TokenPair: port.TokenPair{AccessToken: "at", RefreshToken: "rt", ExpiresIn: 3600}}, nil
 }
 func (m *mockAuthService) Logout(ctx context.Context, params usecase.LogoutParams) error {
-	if m.logoutFn != nil { return m.logoutFn(ctx, params) }
+	if m.logoutFn != nil {
+		return m.logoutFn(ctx, params)
+	}
 	return nil
 }
 func (m *mockAuthService) SwitchContext(ctx context.Context, sessionID string, userRoleID int64) (*usecase.AuthResult, error) {
-	if m.switchCtxFn != nil { return m.switchCtxFn(ctx, sessionID, userRoleID) }
+	if m.switchCtxFn != nil {
+		return m.switchCtxFn(ctx, sessionID, userRoleID)
+	}
 	return &usecase.AuthResult{TokenPair: port.TokenPair{AccessToken: "at", ExpiresIn: 3600}}, nil
 }
 func (m *mockAuthService) SetDefaultRole(ctx context.Context, userID, roleID int64) error {
-	if m.setDefaultFn != nil { return m.setDefaultFn(ctx, userID, roleID) }
+	if m.setDefaultFn != nil {
+		return m.setDefaultFn(ctx, userID, roleID)
+	}
 	return nil
 }
 func (m *mockAuthService) Introspect(ctx context.Context, tokenString string) (*usecase.IntrospectResult, error) {
-	if m.introspectFn != nil { return m.introspectFn(ctx, tokenString) }
+	if m.introspectFn != nil {
+		return m.introspectFn(ctx, tokenString)
+	}
 	return &usecase.IntrospectResult{Active: true, UserID: 1}, nil
 }
 func (m *mockAuthService) ValidateToken(ctx context.Context, tokenString string) (*port.TokenClaims, error) {
-	if m.validateFn != nil { return m.validateFn(ctx, tokenString) }
+	if m.validateFn != nil {
+		return m.validateFn(ctx, tokenString)
+	}
 	return &port.TokenClaims{UserID: 1, SessionID: "sess"}, nil
 }
 func (m *mockAuthService) HasPermission(claims *port.TokenClaims, required domain.Permission) bool {
-	if m.hasPermFn != nil { return m.hasPermFn(claims, required) }
+	if m.hasPermFn != nil {
+		return m.hasPermFn(claims, required)
+	}
 	return true
+}
+func (m *mockAuthService) ListLoginAudits(ctx context.Context, userIDs []int64, p pagination.Params) ([]domain.LoginAudit, *pagination.Metadata, error) {
+	return nil, &pagination.Metadata{}, nil
 }
 
 type mockUserService struct {
@@ -75,23 +93,37 @@ type mockUserService struct {
 func (m *mockUserService) Register(ctx context.Context, params usecase.RegisterParams) (*usecase.AuthResult, error) {
 	return &usecase.AuthResult{TokenPair: port.TokenPair{AccessToken: "at", RefreshToken: "rt", ExpiresIn: 3600}}, nil
 }
-func (m *mockUserService) ListUsers(ctx context.Context, p pagination.Params) ([]domain.User, *pagination.Metadata, error) { return nil, nil, nil }
+func (m *mockUserService) ListUsers(ctx context.Context, p pagination.Params) ([]domain.User, *pagination.Metadata, error) {
+	return nil, nil, nil
+}
 func (m *mockUserService) GetUser(ctx context.Context, id int64) (*domain.User, error) {
-	if m.getUserFn != nil { return m.getUserFn(ctx, id) }
+	if m.getUserFn != nil {
+		return m.getUserFn(ctx, id)
+	}
 	return &domain.User{ID: id, Username: "test", Email: "t@t.com", Status: domain.UserStatusActive}, nil
 }
 func (m *mockUserService) UpdateUser(ctx context.Context, params usecase.UpdateUserParams) (*domain.User, error) {
 	return &domain.User{ID: params.ID}, nil
 }
 func (m *mockUserService) DeleteUser(ctx context.Context, id int64) error { return nil }
-func (m *mockUserService) AssignRole(ctx context.Context, userID int64, roleName string) error { return nil }
-func (m *mockUserService) RemoveRole(ctx context.Context, userID int64, roleName string) error { return nil }
-func (m *mockUserService) ListStaff(ctx context.Context, userID int64) ([]domain.UserRoleAssignment, error) { return nil, nil }
+func (m *mockUserService) AssignRole(ctx context.Context, userID int64, roleName string) error {
+	return nil
+}
+func (m *mockUserService) RemoveRole(ctx context.Context, userID int64, roleName string) error {
+	return nil
+}
+func (m *mockUserService) ListStaff(ctx context.Context, userID int64) ([]domain.UserRoleAssignment, error) {
+	return nil, nil
+}
 
 func setupTest(t *testing.T, as *mockAuthService, us *mockUserService) (*Handler, echo.Context, *httptest.ResponseRecorder) {
 	t.Helper()
-	if as == nil { as = &mockAuthService{} }
-	if us == nil { us = &mockUserService{} }
+	if as == nil {
+		as = &mockAuthService{}
+	}
+	if us == nil {
+		us = &mockUserService{}
+	}
 	return NewHandler(as, us, true), echo.New().NewContext(nil, nil), httptest.NewRecorder()
 }
 
@@ -115,14 +147,22 @@ func TestRegister(t *testing.T) {
 		c.SetPath("/auth/register")
 
 		err := h.Register(c)
-		if err != nil { t.Fatalf("unexpected error: %v", err) }
-		if rec.Code != http.StatusCreated { t.Errorf("expected 201, got %d", rec.Code) }
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if rec.Code != http.StatusCreated {
+			t.Errorf("expected 201, got %d", rec.Code)
+		}
 
-		var wrapped struct { Data authResponse `json:"data"` }
+		var wrapped struct {
+			Data authResponse `json:"data"`
+		}
 		if err := json.Unmarshal(rec.Body.Bytes(), &wrapped); err != nil {
 			t.Fatalf("bad response: %v", err)
 		}
-		if wrapped.Data.AccessToken == "" { t.Error("expected access token") }
+		if wrapped.Data.AccessToken == "" {
+			t.Error("expected access token")
+		}
 	})
 
 	t.Run("empty body returns 400", func(t *testing.T) {
@@ -131,7 +171,9 @@ func TestRegister(t *testing.T) {
 		c.SetPath("/auth/register")
 
 		h.Register(c)
-		if rec.Code != http.StatusBadRequest { t.Errorf("expected 400, got %d", rec.Code) }
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", rec.Code)
+		}
 	})
 
 	t.Run("missing fields returns 400", func(t *testing.T) {
@@ -140,7 +182,9 @@ func TestRegister(t *testing.T) {
 		c.SetPath("/auth/register")
 
 		h.Register(c)
-		if rec.Code != http.StatusBadRequest { t.Errorf("expected 400, got %d", rec.Code) }
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", rec.Code)
+		}
 	})
 
 	t.Run("password policy error maps to 400", func(t *testing.T) {
@@ -152,7 +196,9 @@ func TestRegister(t *testing.T) {
 		c.SetPath("/auth/register")
 
 		h.Register(c)
-		if rec.Code != http.StatusBadRequest { t.Errorf("expected 400, got %d", rec.Code) }
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", rec.Code)
+		}
 	})
 
 	t.Run("duplicate user maps to 409", func(t *testing.T) {
@@ -164,7 +210,9 @@ func TestRegister(t *testing.T) {
 		c.SetPath("/auth/register")
 
 		h.Register(c)
-		if rec.Code != http.StatusConflict { t.Errorf("expected 409, got %d", rec.Code) }
+		if rec.Code != http.StatusConflict {
+			t.Errorf("expected 409, got %d", rec.Code)
+		}
 	})
 
 	t.Run("internal error maps to 500", func(t *testing.T) {
@@ -176,7 +224,9 @@ func TestRegister(t *testing.T) {
 		c.SetPath("/auth/register")
 
 		h.Register(c)
-		if rec.Code != http.StatusInternalServerError { t.Errorf("expected 500, got %d", rec.Code) }
+		if rec.Code != http.StatusInternalServerError {
+			t.Errorf("expected 500, got %d", rec.Code)
+		}
 	})
 }
 
@@ -189,7 +239,9 @@ func TestLogin(t *testing.T) {
 		c.SetPath("/auth/login")
 
 		h.Login(c)
-		if rec.Code != http.StatusOK { t.Errorf("expected 200, got %d", rec.Code) }
+		if rec.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rec.Code)
+		}
 	})
 
 	t.Run("missing fields returns 400", func(t *testing.T) {
@@ -198,7 +250,9 @@ func TestLogin(t *testing.T) {
 		c.SetPath("/auth/login")
 
 		h.Login(c)
-		if rec.Code != http.StatusBadRequest { t.Errorf("expected 400, got %d", rec.Code) }
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", rec.Code)
+		}
 	})
 
 	t.Run("invalid credentials maps to 401", func(t *testing.T) {
@@ -210,7 +264,9 @@ func TestLogin(t *testing.T) {
 		c.SetPath("/auth/login")
 
 		h.Login(c)
-		if rec.Code != http.StatusUnauthorized { t.Errorf("expected 401, got %d", rec.Code) }
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("expected 401, got %d", rec.Code)
+		}
 	})
 
 	t.Run("disabled user maps to 401", func(t *testing.T) {
@@ -222,7 +278,9 @@ func TestLogin(t *testing.T) {
 		c.SetPath("/auth/login")
 
 		h.Login(c)
-		if rec.Code != http.StatusUnauthorized { t.Errorf("expected 401, got %d", rec.Code) }
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("expected 401, got %d", rec.Code)
+		}
 	})
 }
 
@@ -235,7 +293,9 @@ func TestRefresh(t *testing.T) {
 		c.SetPath("/auth/refresh")
 
 		h.Refresh(c)
-		if rec.Code != http.StatusOK { t.Errorf("expected 200, got %d", rec.Code) }
+		if rec.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rec.Code)
+		}
 	})
 
 	t.Run("missing refresh_token returns 400", func(t *testing.T) {
@@ -244,7 +304,9 @@ func TestRefresh(t *testing.T) {
 		c.SetPath("/auth/refresh")
 
 		h.Refresh(c)
-		if rec.Code != http.StatusBadRequest { t.Errorf("expected 400, got %d", rec.Code) }
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", rec.Code)
+		}
 	})
 
 	t.Run("invalid token maps to 401", func(t *testing.T) {
@@ -256,7 +318,9 @@ func TestRefresh(t *testing.T) {
 		c.SetPath("/auth/refresh")
 
 		h.Refresh(c)
-		if rec.Code != http.StatusUnauthorized { t.Errorf("expected 401, got %d", rec.Code) }
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("expected 401, got %d", rec.Code)
+		}
 	})
 
 	t.Run("disabled user maps to 403", func(t *testing.T) {
@@ -268,7 +332,9 @@ func TestRefresh(t *testing.T) {
 		c.SetPath("/auth/refresh")
 
 		h.Refresh(c)
-		if rec.Code != http.StatusForbidden { t.Errorf("expected 403, got %d", rec.Code) }
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("expected 403, got %d", rec.Code)
+		}
 	})
 }
 
@@ -282,7 +348,9 @@ func TestLogout(t *testing.T) {
 		withClaims(c)
 
 		h.Logout(c)
-		if rec.Code != http.StatusOK { t.Errorf("expected 200, got %d", rec.Code) }
+		if rec.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rec.Code)
+		}
 	})
 
 	t.Run("service error returns 500", func(t *testing.T) {
@@ -295,7 +363,9 @@ func TestLogout(t *testing.T) {
 		withClaims(c)
 
 		h.Logout(c)
-		if rec.Code != http.StatusInternalServerError { t.Errorf("expected 500, got %d", rec.Code) }
+		if rec.Code != http.StatusInternalServerError {
+			t.Errorf("expected 500, got %d", rec.Code)
+		}
 	})
 }
 
@@ -309,7 +379,9 @@ func TestSwitchContext(t *testing.T) {
 		withClaims(c)
 
 		h.SwitchContext(c)
-		if rec.Code != http.StatusOK { t.Errorf("expected 200, got %d", rec.Code) }
+		if rec.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rec.Code)
+		}
 	})
 
 	t.Run("session not found maps to 403", func(t *testing.T) {
@@ -322,7 +394,9 @@ func TestSwitchContext(t *testing.T) {
 		withClaims(c)
 
 		h.SwitchContext(c)
-		if rec.Code != http.StatusForbidden { t.Errorf("expected 403, got %d", rec.Code) }
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("expected 403, got %d", rec.Code)
+		}
 	})
 }
 
@@ -335,7 +409,9 @@ func TestSetDefaultRole(t *testing.T) {
 	withClaims(c)
 
 	h.SetDefaultRole(c)
-	if rec.Code != http.StatusOK { t.Errorf("expected 200, got %d", rec.Code) }
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
 }
 
 func TestIntrospect(t *testing.T) {
@@ -347,13 +423,19 @@ func TestIntrospect(t *testing.T) {
 		c.SetPath("/auth/introspect")
 
 		h.Introspect(c)
-		if rec.Code != http.StatusOK { t.Errorf("expected 200, got %d", rec.Code) }
+		if rec.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rec.Code)
+		}
 
-		var wrapped struct { Data *usecase.IntrospectResult `json:"data"` }
+		var wrapped struct {
+			Data *usecase.IntrospectResult `json:"data"`
+		}
 		if err := json.Unmarshal(rec.Body.Bytes(), &wrapped); err != nil {
 			t.Fatalf("bad response: %v", err)
 		}
-		if wrapped.Data == nil || !wrapped.Data.Active { t.Error("expected active result") }
+		if wrapped.Data == nil || !wrapped.Data.Active {
+			t.Error("expected active result")
+		}
 	})
 
 	t.Run("service error returns 500", func(t *testing.T) {
@@ -365,7 +447,9 @@ func TestIntrospect(t *testing.T) {
 		c.SetPath("/auth/introspect")
 
 		h.Introspect(c)
-		if rec.Code != http.StatusInternalServerError { t.Errorf("expected 500, got %d", rec.Code) }
+		if rec.Code != http.StatusInternalServerError {
+			t.Errorf("expected 500, got %d", rec.Code)
+		}
 	})
 }
 
@@ -379,7 +463,9 @@ func TestMe(t *testing.T) {
 		withClaims(c)
 
 		h.Me(c)
-		if rec.Code != http.StatusOK { t.Errorf("expected 200, got %d", rec.Code) }
+		if rec.Code != http.StatusOK {
+			t.Errorf("expected 200, got %d", rec.Code)
+		}
 	})
 
 	t.Run("no claims returns 401", func(t *testing.T) {
@@ -388,7 +474,9 @@ func TestMe(t *testing.T) {
 		c.SetPath("/auth/me")
 
 		h.Me(c)
-		if rec.Code != http.StatusUnauthorized { t.Errorf("expected 401, got %d", rec.Code) }
+		if rec.Code != http.StatusUnauthorized {
+			t.Errorf("expected 401, got %d", rec.Code)
+		}
 	})
 
 	t.Run("user not found returns 404", func(t *testing.T) {
@@ -401,6 +489,8 @@ func TestMe(t *testing.T) {
 		withClaims(c)
 
 		h.Me(c)
-		if rec.Code != http.StatusNotFound { t.Errorf("expected 404, got %d", rec.Code) }
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("expected 404, got %d", rec.Code)
+		}
 	})
 }

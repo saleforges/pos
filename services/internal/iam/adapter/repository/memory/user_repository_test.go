@@ -260,7 +260,6 @@ func TestRoleRepository_List(t *testing.T) {
 		t.Error("expected at least 1 role")
 	}
 
-	// Filter by merchant
 	roles, err = repo.List(context.Background(), int64Ptr(100))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -273,7 +272,6 @@ func TestRoleRepository_Update(t *testing.T) {
 	repo := NewRoleRepository()
 	repo.Create(context.Background(), &domain.Role{Name: "update_role", Description: "old"})
 
-	// Get the created role (should be ID 7+)
 	role, _ := repo.GetByName(context.Background(), "update_role")
 	role.Description = "updated"
 	err := repo.Update(context.Background(), role)
@@ -351,7 +349,7 @@ func TestLoginAuditRepository(t *testing.T) {
 			t.Fatalf("Create failed: %v", err)
 		}
 
-		audits, _, err := repo.List(ctx, 0, 10)
+		audits, _, err := repo.List(ctx, []int64{1}, 0, 10)
 		if err != nil {
 			t.Fatalf("List failed: %v", err)
 		}
@@ -361,12 +359,28 @@ func TestLoginAuditRepository(t *testing.T) {
 	})
 
 	t.Run("list with offset past end returns empty", func(t *testing.T) {
-		audits, _, err := repo.List(ctx, 100, 10)
+		audits, _, err := repo.List(ctx, []int64{1}, 100, 10)
 		if err != nil {
 			t.Fatalf("List failed: %v", err)
 		}
 		if len(audits) != 0 {
 			t.Errorf("expected 0 audits, got %d", len(audits))
+		}
+	})
+
+	t.Run("list filters out audits for other users", func(t *testing.T) {
+		if err := repo.Create(ctx, &domain.LoginAudit{UserID: 2, Email: "other@t.com", Success: true}); err != nil {
+			t.Fatalf("Create failed: %v", err)
+		}
+		audits, total, err := repo.List(ctx, []int64{1}, 0, 10)
+		if err != nil {
+			t.Fatalf("List failed: %v", err)
+		}
+		if total != 1 || len(audits) != 1 {
+			t.Fatalf("expected 1 audit scoped to user 1, got %d (total %d)", len(audits), total)
+		}
+		if audits[0].UserID != 1 {
+			t.Errorf("expected audit for user 1, got user %d", audits[0].UserID)
 		}
 	})
 }
@@ -382,7 +396,6 @@ func TestStaffRepository(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ListByUserID failed: %v", err)
 		}
-		// Mock returns nil, which is acceptable
 		_ = staff
 	})
 
