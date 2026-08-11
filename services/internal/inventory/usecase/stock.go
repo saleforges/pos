@@ -14,6 +14,8 @@ type StockUsecase interface {
 	Update(ctx context.Context, params UpdateStockParams) (*domain.Stock, error)
 	Deduct(ctx context.Context, params AdjustStockParams) error
 	Restore(ctx context.Context, params AdjustStockParams) error
+	Produce(ctx context.Context, params ProduceParams) (*domain.Stock, error)
+	Opname(ctx context.Context, params OpnameParams) (*domain.Stock, error)
 	Transfer(ctx context.Context, params TransferStockParams) error
 	Sync(ctx context.Context, merchantID, branchID int64, lastSync *time.Time) (*StockSyncResult, error)
 }
@@ -36,8 +38,6 @@ type UpdateStockParams struct {
 	Available  int64
 }
 
-// AdjustStockParams is a batch stock change with movement provenance
-// (reference_type/reference_id, e.g. order/42). Used by the order flow.
 type AdjustStockParams struct {
 	MerchantID    int64
 	BranchID      int64
@@ -49,6 +49,21 @@ type AdjustStockParams struct {
 type AdjustStockItem struct {
 	ProductItemID int64 `json:"productItemId"`
 	Quantity      int64 `json:"quantity"`
+}
+
+type ProduceParams struct {
+	MerchantID    int64
+	BranchID      int64
+	ProductItemID int64
+	Quantity      int64
+}
+
+type OpnameParams struct {
+	MerchantID     int64
+	BranchID       int64
+	ProductItemID  int64
+	ActualQuantity int64
+	Reason         string
 }
 
 type TransferStockParams struct {

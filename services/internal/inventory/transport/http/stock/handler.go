@@ -113,6 +113,47 @@ func (h *Handler) Transfer(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, map[string]bool{"ok": true})
 }
 
+func (h *Handler) Produce(c echo.Context) error {
+	var req produceStockReq
+	if err := c.Bind(&req); err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+
+	merchantID := httputil.GetMerchantID(c)
+
+	result, err := h.uc.Produce(c.Request().Context(), usecase.ProduceParams{
+		MerchantID:    merchantID,
+		BranchID:      req.BranchID,
+		ProductItemID: req.ProductItemID,
+		Quantity:      req.Quantity,
+	})
+	if err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusCreated, result)
+}
+
+func (h *Handler) Opname(c echo.Context) error {
+	var req opnameStockReq
+	if err := c.Bind(&req); err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+
+	merchantID := httputil.GetMerchantID(c)
+
+	result, err := h.uc.Opname(c.Request().Context(), usecase.OpnameParams{
+		MerchantID:     merchantID,
+		BranchID:       req.BranchID,
+		ProductItemID:  req.ProductItemID,
+		ActualQuantity: req.ActualQuantity,
+		Reason:         req.Reason,
+	})
+	if err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, result)
+}
+
 func (h *Handler) Sync(c echo.Context) error {
 	merchantID := httputil.GetMerchantID(c)
 
@@ -187,7 +228,7 @@ func mapError(c echo.Context, err error) error {
 	switch err {
 	case domain.ErrStockNotFound:
 		return httputil.WriteError(c, http.StatusNotFound, err)
-	case domain.ErrInvalidStock, domain.ErrNegativeAvailable, domain.ErrInsufficientStock:
+	case domain.ErrInvalidStock, domain.ErrNegativeAvailable, domain.ErrInsufficientStock, domain.ErrProductComponentNotFound:
 		return httputil.WriteError(c, http.StatusBadRequest, err)
 	default:
 		logger.Error("stock handler error", "error", err.Error())

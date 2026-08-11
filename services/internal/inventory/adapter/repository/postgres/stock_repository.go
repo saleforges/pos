@@ -47,8 +47,6 @@ func (r *StockRepository) List(ctx context.Context, merchantID int64) ([]domain.
 	return scanStocks(rows)
 }
 
-// ListChangedSince returns stocks updated after the given time — the
-// incremental payload for mobile stock sync.
 func (r *StockRepository) ListChangedSince(ctx context.Context, merchantID int64, since *time.Time) ([]domain.Stock, error) {
 	return r.listChangedSince(ctx, merchantID, 0, since)
 }
@@ -84,15 +82,10 @@ func (r *StockRepository) Update(ctx context.Context, stock *domain.Stock) error
 	return err
 }
 
-// Deduct applies a batch of stock deductions atomically and records a
-// stock_out movement per line. Fails the whole batch if any item has
-// insufficient available stock.
 func (r *StockRepository) Deduct(ctx context.Context, merchantID, branchID int64, referenceType string, referenceID int64, items []repository.StockAdjustmentItem) error {
 	return r.adjust(ctx, merchantID, branchID, referenceType, referenceID, items, domain.MovementTypeStockOut, -1)
 }
 
-// Restore applies a batch of stock restores atomically and records a
-// stock_in movement per line (e.g. when an order is cancelled).
 func (r *StockRepository) Restore(ctx context.Context, merchantID, branchID int64, referenceType string, referenceID int64, items []repository.StockAdjustmentItem) error {
 	return r.adjust(ctx, merchantID, branchID, referenceType, referenceID, items, domain.MovementTypeStockIn, 1)
 }
@@ -108,13 +101,15 @@ func (r *StockRepository) adjust(ctx context.Context, merchantID, branchID int64
 		if it.ProductItemID == 0 || it.Quantity <= 0 {
 			return domain.ErrInvalidStock
 		}
-		// Lock the stock row for this branch+item.
 		var available int64
 		err := tx.QueryRow(ctx,
 			`SELECT available FROM stocks WHERE merchant_id=$1 AND branch_id=$2 AND product_item_id=$3 FOR UPDATE`,
 			merchantID, branchID, it.ProductItemID).Scan(&available)
+		if err == pgx.ErrNoRows {
+			continue
+		}
 		if err != nil {
-			return domain.ErrStockNotFound
+			return err
 		}
 		if sign < 0 && available < it.Quantity {
 			return domain.ErrInsufficientStock
@@ -139,10 +134,6 @@ func (r *StockRepository) adjust(ctx context.Context, merchantID, branchID int64
 	return tx.Commit(ctx)
 }
 
-// Transfer moves stock between branches atomically: deducts from the
-// source branch, adds to the destination, records two movements
-// (stock_out on source, stock_in on destination) with reference type
-// "transfer".
 func (r *StockRepository) Transfer(ctx context.Context, merchantID, fromBranchID, toBranchID int64, items []repository.StockAdjustmentItem) error {
 	if fromBranchID == toBranchID || fromBranchID == 0 || toBranchID == 0 {
 		return domain.ErrInvalidStock

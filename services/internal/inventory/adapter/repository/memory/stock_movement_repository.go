@@ -2,7 +2,9 @@ package memory
 
 import (
 	"context"
+	"sort"
 	"sync"
+	"time"
 
 	"github.com/saleforge/pos/services/internal/inventory/domain"
 	"github.com/saleforge/pos/services/internal/inventory/port/repository"
@@ -45,5 +47,29 @@ func (r *StockMovementRepository) ListByProductItem(_ context.Context, productIt
 	if result == nil {
 		return []domain.StockMovement{}, nil
 	}
+	return result, nil
+}
+
+func (r *StockMovementRepository) List(_ context.Context, merchantID, branchID int64, productItemID *int64, from, to *time.Time) ([]domain.StockMovement, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	result := []domain.StockMovement{}
+	for _, m := range r.movements {
+		if m.MerchantID != merchantID || m.BranchID != branchID {
+			continue
+		}
+		if productItemID != nil && m.ProductItemID != *productItemID {
+			continue
+		}
+		if from != nil && m.CreatedAt.Before(*from) {
+			continue
+		}
+		if to != nil && m.CreatedAt.After(*to) {
+			continue
+		}
+		result = append(result, *m)
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].CreatedAt.After(result[j].CreatedAt) })
 	return result, nil
 }

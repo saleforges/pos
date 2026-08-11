@@ -105,15 +105,10 @@ func (r *StockRepository) Update(_ context.Context, stock *domain.Stock) error {
 	return nil
 }
 
-// Deduct applies a batch of stock deductions atomically and records a
-// stock_out movement per line. Fails the whole batch if any item has
-// insufficient available stock.
 func (r *StockRepository) Deduct(_ context.Context, merchantID, branchID int64, referenceType string, referenceID int64, items []repository.StockAdjustmentItem) error {
 	return r.adjust(merchantID, branchID, referenceType, referenceID, items, domain.MovementTypeStockOut, -1)
 }
 
-// Restore applies a batch of stock restores atomically and records a
-// stock_in movement per line (e.g. when an order is cancelled).
 func (r *StockRepository) Restore(_ context.Context, merchantID, branchID int64, referenceType string, referenceID int64, items []repository.StockAdjustmentItem) error {
 	return r.adjust(merchantID, branchID, referenceType, referenceID, items, domain.MovementTypeStockIn, 1)
 }
@@ -171,7 +166,6 @@ func (r *StockRepository) adjust(merchantID, branchID int64, referenceType strin
 		if it.ProductItemID == 0 || it.Quantity <= 0 {
 			return domain.ErrInvalidStock
 		}
-		// find stock row for branch+item
 		var stock *domain.Stock
 		for _, s := range r.stocks {
 			if s.MerchantID == merchantID && s.BranchID == branchID && s.ProductItemID == it.ProductItemID {
@@ -180,7 +174,7 @@ func (r *StockRepository) adjust(merchantID, branchID int64, referenceType strin
 			}
 		}
 		if stock == nil {
-			return domain.ErrStockNotFound
+			continue
 		}
 		if sign < 0 && stock.Available < it.Quantity {
 			return domain.ErrInsufficientStock

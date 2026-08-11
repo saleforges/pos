@@ -91,13 +91,122 @@ func (uc *stockUsecase) Restore(ctx context.Context, params AdjustStockParams) e
 	return uc.adjustmentRepo.Restore(ctx, params.MerchantID, params.BranchID, params.ReferenceType, params.ReferenceID, items)
 }
 
-// expandComponents resolves product components for every sold item and
-// merges component raw-material quantities so the adjustment batch is flat.
-// E.g. selling 2x Es Teh (component: 1x Gula each) produces a batch of
-// [EsTeh:2, Gula:2]. Each component quantity is normalized to the raw
-// material's base stock unit via the unit's factor-to-base (e.g. 0.5 kg →
-// 500 g) BEFORE merging, so items sharing a raw material in different units
-// sum correctly. Fractional results are rounded up to never undersell.
+func (uc *stockUsecase) Produce(ctx context.Context, params ProduceParams) (*domain.Stock, error) {
+	if params.BranchID == 0 || params.ProductItemID == 0 || params.Quantity <= 0 {
+		return nil, domain.ErrInvalidStock
+	}
+
+	expanded, err := uc.expandComponents(ctx, params.MerchantID, []AdjustStockItem{
+		{ProductItemID: params.ProductItemID, Quantity: params.Quantity},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	rawMaterials := make([]repository.StockAdjustmentItem, 0, len(expanded))
+	for _, item := range expanded {
+		if item.ProductItemID == params.ProductItemID {
+			continue
+		}
+		rawMaterials = append(rawMaterials, item)
+	}
+	if len(rawMaterials) == 0 {
+		return nil, domain.ErrProductComponentNotFound
+	}
+
+	if err := uc.adjustmentRepo.Deduct(ctx, params.MerchantID, params.BranchID, "production", 0, rawMaterials); err != nil {
+		return nil, err
+	}
+
+	existing, err := uc.findStock(ctx, params.MerchantID, params.BranchID, params.ProductItemID)
+	if err != nil {
+		return nil, err
+	}
+
+	var produced *domain.Stock
+	if existing == nil {
+		produced, err = uc.Create(ctx, CreateStockParams{
+			MerchantID:    params.MerchantID,
+			BranchID:      params.BranchID,
+			ProductItemID: params.ProductItemID,
+			Available:     params.Quantity,
+		})
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		if err := uc.adjustmentRepo.Restore(ctx, params.MerchantID, params.BranchID, "production", 0, []repository.StockAdjustmentItem{
+			{ProductItemID: params.ProductItemID, Quantity: params.Quantity},
+		}); err != nil {
+			return nil, err
+		}
+		produced, err = uc.repo.GetByID(ctx, existing.ID, params.MerchantID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if comp, err := uc.componentRepo.GetByProductItem(ctx, params.ProductItemID, params.MerchantID); err == nil {
+		_ = uc.componentRepo.Delete(ctx, comp.ID, params.MerchantID)
+	}
+
+	return produced, nil
+}
+
+func (uc *stockUsecase) Opname(ctx context.Context, params OpnameParams) (*domain.Stock, error) {
+	if params.BranchID == 0 || params.ProductItemID == 0 || params.ActualQuantity < 0 {
+		return nil, domain.ErrInvalidStock
+	}
+	referenceType := params.Reason
+	if referenceType == "" {
+		referenceType = "opname"
+	}
+
+	existing, err := uc.findStock(ctx, params.MerchantID, params.BranchID, params.ProductItemID)
+	if err != nil {
+		return nil, err
+	}
+	if existing == nil {
+		return uc.Create(ctx, CreateStockParams{
+			MerchantID:    params.MerchantID,
+			BranchID:      params.BranchID,
+			ProductItemID: params.ProductItemID,
+			Available:     params.ActualQuantity,
+		})
+	}
+
+	delta := params.ActualQuantity - existing.Available
+	switch {
+	case delta > 0:
+		if err := uc.adjustmentRepo.Restore(ctx, params.MerchantID, params.BranchID, referenceType, 0, []repository.StockAdjustmentItem{
+			{ProductItemID: params.ProductItemID, Quantity: delta},
+		}); err != nil {
+			return nil, err
+		}
+	case delta < 0:
+		if err := uc.adjustmentRepo.Deduct(ctx, params.MerchantID, params.BranchID, referenceType, 0, []repository.StockAdjustmentItem{
+			{ProductItemID: params.ProductItemID, Quantity: -delta},
+		}); err != nil {
+			return nil, err
+		}
+	}
+
+	return uc.repo.GetByID(ctx, existing.ID, params.MerchantID)
+}
+
+func (uc *stockUsecase) findStock(ctx context.Context, merchantID, branchID, productItemID int64) (*domain.Stock, error) {
+	stocks, err := uc.repo.List(ctx, merchantID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range stocks {
+		if stocks[i].BranchID == branchID && stocks[i].ProductItemID == productItemID {
+			return &stocks[i], nil
+		}
+	}
+	return nil, nil
+}
+
 func (uc *stockUsecase) expandComponents(ctx context.Context, merchantID int64, items []AdjustStockItem) ([]repository.StockAdjustmentItem, error) {
 	merged := make(map[int64]float64, len(items))
 	for _, it := range items {
@@ -111,8 +220,6 @@ func (uc *stockUsecase) expandComponents(ctx context.Context, merchantID int64, 
 			return nil, err
 		}
 		for _, ci := range comp.Items {
-			// Normalize component quantity to base stock unit. Unknown
-			// units fall back to factor 1 (already in base unit).
 			factor := 1.0
 			if u, err := uc.unitRepo.GetByID(ctx, ci.UnitID); err == nil && u != nil {
 				factor = u.FactorToBase
@@ -157,7 +264,6 @@ func (uc *stockUsecase) Sync(ctx context.Context, merchantID, branchID int64, la
 	if stocks == nil {
 		stocks = []domain.Stock{}
 	}
-	// Server time becomes the next sync token.
 	return &StockSyncResult{
 		Stocks:    stocks,
 		SyncToken: time.Now().UTC().Format(time.RFC3339Nano),

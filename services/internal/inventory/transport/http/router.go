@@ -3,6 +3,7 @@ package httptransport
 import (
 	"github.com/labstack/echo/v4"
 	"github.com/saleforge/pos/services/internal/inventory/transport/http/middleware"
+	"github.com/saleforge/pos/services/internal/inventory/transport/http/movement"
 	productcomponent "github.com/saleforge/pos/services/internal/inventory/transport/http/product_component"
 	"github.com/saleforge/pos/services/internal/inventory/transport/http/stock"
 	"github.com/saleforge/pos/services/pkg/httputil"
@@ -14,6 +15,7 @@ import (
 func NewRouter(
 	stockHandler *stock.Handler,
 	componentHandler *productcomponent.Handler,
+	movementHandler *movement.Handler,
 	verifier *jwks.Verifier,
 	internalKey string,
 ) *echo.Echo {
@@ -36,21 +38,21 @@ func NewRouter(
 	requireWrite := httputil.RequirePermission(httputil.PermInventoryWrite)
 	requireAdjust := httputil.RequirePermission(httputil.PermInventoryAdjust)
 
-	// Stock endpoints
 	stockGroup := api.Group("/stocks", httputil.MerchantMiddleware())
 	stockGroup.POST("", stockHandler.Create, requireWrite)
 	stockGroup.GET("", stockHandler.List)
 	stockGroup.POST("/transfer", stockHandler.Transfer, requireWrite)
+	stockGroup.POST("/produce", stockHandler.Produce, requireWrite)
+	stockGroup.POST("/opname", stockHandler.Opname, requireAdjust)
 	stockGroup.GET("/sync", stockHandler.Sync)
+	stockGroup.GET("/movements", movementHandler.List)
 	stockGroup.GET("/:id", stockHandler.GetByID)
 	stockGroup.PUT("/:id", stockHandler.Update, requireAdjust)
 
-	// Product component endpoints
 	componentGroup := api.Group("/product-items", httputil.MerchantMiddleware())
 	componentGroup.GET("/:productItemId/components", componentHandler.GetByProductItem)
 	componentGroup.PUT("/:productItemId/components", componentHandler.CreateOrUpdate, requireWrite)
 
-	// Internal service-to-service endpoints (not exposed via Caddy)
 	internal := e.Group("/internal", middleware.InternalAuth(internalKey))
 	internal.POST("/stocks/deduct", stockHandler.Deduct)
 	internal.POST("/stocks/restore", stockHandler.Restore)

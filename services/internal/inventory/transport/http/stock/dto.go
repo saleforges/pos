@@ -22,3 +22,16 @@ type adjustStockItem struct {
 	ProductItemID int64 `json:"productItemId"`
 	Quantity      int64 `json:"quantity"`
 }
+
+type produceStockReq struct {
+	BranchID      int64 `json:"branchId"`
+	ProductItemID int64 `json:"productItemId"`
+	Quantity      int64 `json:"quantity"`
+}
+
+type opnameStockReq struct {
+	BranchID       int64  `json:"branchId"`
+	ProductItemID  int64  `json:"productItemId"`
+	ActualQuantity int64  `json:"actualQuantity"`
+	Reason         string `json:"reason"`
+}

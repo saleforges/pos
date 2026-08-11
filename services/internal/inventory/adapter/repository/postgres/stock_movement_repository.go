@@ -2,6 +2,8 @@ package postgres
 
 import (
 	"context"
+	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/saleforge/pos/services/internal/inventory/domain"
@@ -40,6 +42,31 @@ func (r *StockMovementRepository) ListByProductItem(ctx context.Context, product
 	return scanStockMovements(rows)
 }
 
+func (r *StockMovementRepository) List(ctx context.Context, merchantID, branchID int64, productItemID *int64, from, to *time.Time) ([]domain.StockMovement, error) {
+	query := `SELECT ` + smCols + ` FROM stock_movements WHERE merchant_id = $1 AND branch_id = $2`
+	args := []interface{}{merchantID, branchID}
+	if productItemID != nil {
+		args = append(args, *productItemID)
+		query += ` AND product_item_id = $` + fmt.Sprint(len(args))
+	}
+	if from != nil {
+		args = append(args, *from)
+		query += ` AND created_at >= $` + fmt.Sprint(len(args))
+	}
+	if to != nil {
+		args = append(args, *to)
+		query += ` AND created_at <= $` + fmt.Sprint(len(args))
+	}
+	query += ` ORDER BY created_at DESC LIMIT 200`
+
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanStockMovements(rows)
+}
+
 func scanStockMovement(row pgx.Row) (*domain.StockMovement, error) {
 	var m domain.StockMovement
 	err := row.Scan(&m.ID, &m.MerchantID, &m.BranchID, &m.ProductItemID, &m.Type, &m.Quantity, &m.ReferenceType, &m.ReferenceID, &m.Note, &m.CreatedAt)
@@ -50,7 +77,7 @@ func scanStockMovement(row pgx.Row) (*domain.StockMovement, error) {
 }
 
 func scanStockMovements(rows pgx.Rows) ([]domain.StockMovement, error) {
-	var result []domain.StockMovement
+	result := []domain.StockMovement{}
 	for rows.Next() {
 		var m domain.StockMovement
 		if err := rows.Scan(&m.ID, &m.MerchantID, &m.BranchID, &m.ProductItemID, &m.Type, &m.Quantity, &m.ReferenceType, &m.ReferenceID, &m.Note, &m.CreatedAt); err != nil {

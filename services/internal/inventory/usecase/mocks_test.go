@@ -8,8 +8,6 @@ import (
 	"github.com/saleforge/pos/services/internal/inventory/port/repository"
 )
 
-// Mock repositories for usecase tests
-
 type mockStockRepo struct {
 	stocks map[int64]*domain.Stock
 	err    error
@@ -104,7 +102,7 @@ func (m *mockStockRepo) Deduct(_ context.Context, merchantID, branchID int64, _ 
 	for _, it := range items {
 		stock := m.find(merchantID, branchID, it.ProductItemID)
 		if stock == nil {
-			return domain.ErrStockNotFound
+			continue
 		}
 		if stock.Available < it.Quantity {
 			return domain.ErrInsufficientStock
@@ -121,7 +119,7 @@ func (m *mockStockRepo) Restore(_ context.Context, merchantID, branchID int64, _
 	for _, it := range items {
 		stock := m.find(merchantID, branchID, it.ProductItemID)
 		if stock == nil {
-			return domain.ErrStockNotFound
+			continue
 		}
 		stock.Available += it.Quantity
 	}
@@ -240,8 +238,6 @@ func (m *mockComponentRepo) Delete(_ context.Context, id int64, merchantID int64
 	delete(m.components, id)
 	return nil
 }
-
-// Test helpers
 
 func int64Ptr(v int64) *int64 { return &v }
 

@@ -9,6 +9,7 @@ import (
 	"github.com/saleforge/pos/services/internal/inventory/adapter/repository/postgres"
 	por "github.com/saleforge/pos/services/internal/inventory/port/repository"
 	httptransport "github.com/saleforge/pos/services/internal/inventory/transport/http"
+	"github.com/saleforge/pos/services/internal/inventory/transport/http/movement"
 	productcomponent "github.com/saleforge/pos/services/internal/inventory/transport/http/product_component"
 	"github.com/saleforge/pos/services/internal/inventory/transport/http/stock"
 	"github.com/saleforge/pos/services/internal/inventory/usecase"
@@ -53,6 +54,7 @@ func New(cfg Config) (*App, error) {
 		stockAdjustRepo por.StockAdjustmentRepository
 		componentRepo   por.ProductComponentRepository
 		unitRepo        por.UnitRepository
+		movementRepo    por.StockMovementRepository
 	)
 
 	if cfg.DatabaseURL != "" {
@@ -68,22 +70,26 @@ func New(cfg Config) (*App, error) {
 		stockAdjustRepo = postgres.NewStockRepository(pool)
 		componentRepo = postgres.NewProductComponentRepository(pool)
 		unitRepo = postgres.NewUnitRepository(pool)
+		movementRepo = postgres.NewStockMovementRepository(pool)
 		logger.Info("using postgres storage")
 	} else {
 		stockRepo = memory.NewStockRepository()
 		stockAdjustRepo = memory.NewStockRepository()
 		componentRepo = memory.NewProductComponentRepository()
 		unitRepo = memory.NewUnitRepository()
+		movementRepo = memory.NewStockMovementRepository()
 		logger.Info("using in-memory storage")
 	}
 
 	stockUC := usecase.NewStockUsecase(stockRepo, stockAdjustRepo, componentRepo, unitRepo)
 	componentUC := usecase.NewProductComponentUsecase(componentRepo)
+	movementUC := usecase.NewStockMovementUsecase(movementRepo)
 
 	stockHandler := stock.NewHandler(stockUC)
 	componentHandler := productcomponent.NewHandler(componentUC)
+	movementHandler := movement.NewHandler(movementUC)
 
-	e := httptransport.NewRouter(stockHandler, componentHandler, verifier, cfg.InternalKey)
+	e := httptransport.NewRouter(stockHandler, componentHandler, movementHandler, verifier, cfg.InternalKey)
 
 	return &App{router: e, otelShutdown: otelShutdown}, nil
 }
