@@ -12,7 +12,7 @@ type OrderUsecase interface {
 	GetByID(ctx context.Context, id int64, merchantID int64) (*domain.Order, error)
 	List(ctx context.Context, merchantID int64, branchID *int64, status *domain.OrderStatus, paymentStatus *domain.PaymentStatus) ([]domain.Order, error)
 	Update(ctx context.Context, params UpdateOrderParams) (*domain.Order, error)
-	Cancel(ctx context.Context, id int64, merchantID int64) (*domain.Order, error)
+	Cancel(ctx context.Context, params CancelOrderParams) (*domain.Order, error)
 	AddPayment(ctx context.Context, params AddPaymentParams) (*domain.Order, error)
 	NotifyPaid(ctx context.Context, params NotifyPaidParams) error
 	SalesReport(ctx context.Context, merchantID, branchID int64, from, to *time.Time) (*domain.SalesReport, error)
@@ -20,14 +20,11 @@ type OrderUsecase interface {
 	SyncOrders(ctx context.Context, merchantID, branchID int64, lastSync *time.Time) (*OrderSyncResult, error)
 }
 
-// OrderSyncResult is the incremental order payload for offline sync.
 type OrderSyncResult struct {
 	Orders    []domain.Order `json:"orders"`
 	SyncToken string         `json:"syncToken"`
 }
 
-// NotifyPaidParams is sent by the payment service when a gateway payment
-// succeeds, so the order can record the payment.
 type NotifyPaidParams struct {
 	OrderID    int64
 	MerchantID int64
@@ -43,6 +40,7 @@ type CreateOrderParams struct {
 	ClientOrderID string
 	DueDate       *time.Time
 	Note          string
+	Discount      float64
 	Items         []CreateOrderItemParams
 }
 
@@ -60,6 +58,12 @@ type AddPaymentParams struct {
 	Amount     float64
 	Method     domain.PaymentMethod
 	PaidAt     time.Time
+}
+
+type CancelOrderParams struct {
+	OrderID     int64
+	MerchantID  int64
+	CancelledBy int64
 }
 
 type UpdateOrderParams struct {

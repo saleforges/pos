@@ -21,7 +21,7 @@ type mockOrderSvc struct {
 	getFn     func(context.Context, int64, int64) (*domain.Order, error)
 	listFn    func(context.Context, int64, *int64, *domain.OrderStatus, *domain.PaymentStatus) ([]domain.Order, error)
 	updateFn  func(context.Context, usecase.UpdateOrderParams) (*domain.Order, error)
-	cancelFn  func(context.Context, int64, int64) (*domain.Order, error)
+	cancelFn  func(context.Context, usecase.CancelOrderParams) (*domain.Order, error)
 	paymentFn func(context.Context, usecase.AddPaymentParams) (*domain.Order, error)
 }
 
@@ -50,11 +50,11 @@ func (m *mockOrderSvc) List(ctx context.Context, merchantID int64, branchID *int
 	return []domain.Order{{ID: 1, MerchantID: merchantID, BranchID: 1, Status: domain.OrderStatusCompleted, PaymentStatus: domain.PaymentStatusPaid, Total: 30000}}, nil
 }
 
-func (m *mockOrderSvc) Cancel(ctx context.Context, id int64, merchantID int64) (*domain.Order, error) {
+func (m *mockOrderSvc) Cancel(ctx context.Context, params usecase.CancelOrderParams) (*domain.Order, error) {
 	if m.cancelFn != nil {
-		return m.cancelFn(ctx, id, merchantID)
+		return m.cancelFn(ctx, params)
 	}
-	return &domain.Order{ID: id, MerchantID: merchantID, BranchID: 1, Status: domain.OrderStatusCancelled, Total: 30000}, nil
+	return &domain.Order{ID: params.OrderID, MerchantID: params.MerchantID, BranchID: 1, Status: domain.OrderStatusCancelled, Total: 30000}, nil
 }
 
 func (m *mockOrderSvc) Update(ctx context.Context, p usecase.UpdateOrderParams) (*domain.Order, error) {

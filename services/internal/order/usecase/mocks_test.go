@@ -130,6 +130,7 @@ func (m *mockOrderRepo) UpdateStatus(_ context.Context, id int64, merchantID int
 	}
 	o.Status = status
 	o.UpdatedAt = time.Now().UTC()
+	o.PaymentStatus = o.ComputePaymentStatus()
 	return o, nil
 }
 

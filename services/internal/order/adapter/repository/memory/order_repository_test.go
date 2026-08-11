@@ -90,4 +90,46 @@ func TestOrderRepository(t *testing.T) {
 			t.Errorf("expected cancelled, got %s", got.Status)
 		}
 	})
+
+	t.Run("sales report aggregates top products and payment breakdown", func(t *testing.T) {
+		repo := NewOrderRepository()
+		repo.Create(ctx, &domain.Order{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5, Status: domain.OrderStatusCompleted, Total: 30000,
+			Items: []domain.OrderItem{
+				{ProductItemID: 1, ItemName: "Es Teh", Quantity: 2, LineTotal: 20000},
+				{ProductItemID: 2, ItemName: "Marning", Quantity: 1, LineTotal: 10000},
+			},
+		})
+		repo.Create(ctx, &domain.Order{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5, Status: domain.OrderStatusCompleted, Total: 15000,
+			Items: []domain.OrderItem{
+				{ProductItemID: 1, ItemName: "Es Teh", Quantity: 1, LineTotal: 10000},
+			},
+		})
+		repo.AddPayment(ctx, 1, 1, &domain.PaymentRecord{Amount: 30000, Method: domain.PaymentMethodCash, CreatedBy: 5})
+		repo.AddPayment(ctx, 2, 1, &domain.PaymentRecord{Amount: 15000, Method: domain.PaymentMethodQRIS, CreatedBy: 5})
+
+		report, err := repo.SalesReport(ctx, 1, 1, nil, nil)
+		if err != nil {
+			t.Fatalf("SalesReport: %v", err)
+		}
+		if len(report.TopProducts) != 2 || report.TopProducts[0].ProductItemID != 1 || report.TopProducts[0].Quantity != 3 {
+			t.Errorf("expected Es Teh top with qty 3, got %+v", report.TopProducts)
+		}
+		if len(report.PaymentBreakdown) != 2 {
+			t.Fatalf("expected 2 payment methods, got %+v", report.PaymentBreakdown)
+		}
+		var cashTotal, qrisTotal float64
+		for _, m := range report.PaymentBreakdown {
+			switch m.Method {
+			case string(domain.PaymentMethodCash):
+				cashTotal = m.Amount
+			case string(domain.PaymentMethodQRIS):
+				qrisTotal = m.Amount
+			}
+		}
+		if cashTotal != 30000 || qrisTotal != 15000 {
+			t.Errorf("expected cash 30000 and qris 15000, got cash=%f qris=%f", cashTotal, qrisTotal)
+		}
+	})
 }

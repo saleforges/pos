@@ -55,6 +55,48 @@ func TestOrderUsecase_Create(t *testing.T) {
 		}
 	})
 
+	t.Run("discount reduces total but not subtotal", func(t *testing.T) {
+		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{})
+		order, err := uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5, Discount: 5000,
+			Items: []CreateOrderItemParams{{ProductItemID: 35, ItemName: "Es Teh", UnitPrice: 15000, Quantity: 2}},
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if order.Subtotal != 30000 {
+			t.Errorf("expected subtotal 30000, got %f", order.Subtotal)
+		}
+		if order.Discount != 5000 {
+			t.Errorf("expected discount 5000, got %f", order.Discount)
+		}
+		if order.Total != 25000 {
+			t.Errorf("expected total 25000, got %f", order.Total)
+		}
+	})
+
+	t.Run("negative discount rejected", func(t *testing.T) {
+		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{})
+		_, err := uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5, Discount: -1000,
+			Items: []CreateOrderItemParams{{ProductItemID: 35, ItemName: "Es Teh", UnitPrice: 15000, Quantity: 1}},
+		})
+		if err != domain.ErrInvalidOrder {
+			t.Errorf("expected ErrInvalidOrder, got %v", err)
+		}
+	})
+
+	t.Run("discount exceeding subtotal rejected", func(t *testing.T) {
+		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{})
+		_, err := uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5, Discount: 999999,
+			Items: []CreateOrderItemParams{{ProductItemID: 35, ItemName: "Es Teh", UnitPrice: 15000, Quantity: 1}},
+		})
+		if err != domain.ErrInvalidOrder {
+			t.Errorf("expected ErrInvalidOrder, got %v", err)
+		}
+	})
+
 	t.Run("empty items returns error", func(t *testing.T) {
 		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{})
 		_, err := uc.Create(ctx, CreateOrderParams{
@@ -208,7 +250,7 @@ func TestOrderUsecase_Update(t *testing.T) {
 			MerchantID: 1, BranchID: 1, CreatedBy: 5,
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 1000, Quantity: 1}},
 		})
-		uc.Cancel(ctx, 1, 1)
+		uc.Cancel(ctx, CancelOrderParams{OrderID: 1, MerchantID: 1})
 
 		note := "Nope"
 		_, err := uc.Update(ctx, UpdateOrderParams{ID: 1, MerchantID: 1, Note: &note})
@@ -266,7 +308,6 @@ func TestOrderUsecase_List(t *testing.T) {
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 10000, Quantity: 1}},
 		})
 
-		// pay half -> partial
 		uc.AddPayment(ctx, AddPaymentParams{OrderID: 1, MerchantID: 1, CreatedBy: 5, Amount: 5000, Method: domain.PaymentMethodCash})
 
 		paid := domain.PaymentStatusPartial
@@ -292,7 +333,7 @@ func TestOrderUsecase_Cancel(t *testing.T) {
 			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "X", UnitPrice: 1000, Quantity: 1}},
 		})
 
-		order, err := uc.Cancel(ctx, 1, 1)
+		order, err := uc.Cancel(ctx, CancelOrderParams{OrderID: 1, MerchantID: 1})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -303,9 +344,93 @@ func TestOrderUsecase_Cancel(t *testing.T) {
 
 	t.Run("cancel non-existent returns not found", func(t *testing.T) {
 		uc := NewOrderUsecase(&mockOrderRepo{}, newMockCustomerRepo(), &mockInventoryClient{})
-		_, err := uc.Cancel(ctx, 999, 1)
+		_, err := uc.Cancel(ctx, CancelOrderParams{OrderID: 999, MerchantID: 1})
 		if err != domain.ErrOrderNotFound {
 			t.Errorf("expected ErrOrderNotFound, got %v", err)
+		}
+	})
+
+	t.Run("cancelling a paid order reverses the payment", func(t *testing.T) {
+		repo := &mockOrderRepo{}
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5,
+			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "Es Teh", UnitPrice: 15000, Quantity: 1}},
+		})
+		if _, err := uc.AddPayment(ctx, AddPaymentParams{OrderID: 1, MerchantID: 1, CreatedBy: 5, Amount: 15000, Method: domain.PaymentMethodCash}); err != nil {
+			t.Fatalf("unexpected error paying: %v", err)
+		}
+
+		order, err := uc.Cancel(ctx, CancelOrderParams{OrderID: 1, MerchantID: 1, CancelledBy: 6})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if order.PaidAmount != 0 {
+			t.Errorf("expected paidAmount reversed to 0, got %f", order.PaidAmount)
+		}
+		if order.PaymentStatus != domain.PaymentStatusUnpaid {
+			t.Errorf("expected paymentStatus unpaid after reversal, got %s", order.PaymentStatus)
+		}
+
+		fresh, _ := uc.GetByID(ctx, 1, 1)
+		var sawRefund bool
+		for _, p := range fresh.Payments {
+			if p.Method == "refund" && p.Amount == -15000 {
+				sawRefund = true
+			}
+		}
+		if !sawRefund {
+			t.Errorf("expected a -15000 refund payment record, got %+v", fresh.Payments)
+		}
+	})
+
+	t.Run("cancelling a partially paid order reverses only what was paid", func(t *testing.T) {
+		repo := &mockOrderRepo{}
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5,
+			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "Es Teh", UnitPrice: 30000, Quantity: 1}},
+		})
+		uc.AddPayment(ctx, AddPaymentParams{OrderID: 1, MerchantID: 1, CreatedBy: 5, Amount: 10000, Method: domain.PaymentMethodCash})
+
+		order, err := uc.Cancel(ctx, CancelOrderParams{OrderID: 1, MerchantID: 1})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if order.PaidAmount != 0 {
+			t.Errorf("expected paidAmount reversed to 0, got %f", order.PaidAmount)
+		}
+	})
+
+	t.Run("cancelling an unpaid order adds no refund record", func(t *testing.T) {
+		repo := &mockOrderRepo{}
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5,
+			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "Es Teh", UnitPrice: 15000, Quantity: 1}},
+		})
+
+		if _, err := uc.Cancel(ctx, CancelOrderParams{OrderID: 1, MerchantID: 1}); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		fresh, _ := uc.GetByID(ctx, 1, 1)
+		if len(fresh.Payments) != 0 {
+			t.Errorf("expected no payment records for a never-paid order, got %+v", fresh.Payments)
+		}
+	})
+
+	t.Run("cancelling an already-cancelled order is rejected", func(t *testing.T) {
+		repo := &mockOrderRepo{}
+		uc := NewOrderUsecase(repo, newMockCustomerRepo(), &mockInventoryClient{})
+		uc.Create(ctx, CreateOrderParams{
+			MerchantID: 1, BranchID: 1, CreatedBy: 5,
+			Items: []CreateOrderItemParams{{ProductItemID: 1, ItemName: "Es Teh", UnitPrice: 15000, Quantity: 1}},
+		})
+		uc.Cancel(ctx, CancelOrderParams{OrderID: 1, MerchantID: 1})
+
+		_, err := uc.Cancel(ctx, CancelOrderParams{OrderID: 1, MerchantID: 1})
+		if err != domain.ErrInvalidTransition {
+			t.Errorf("expected ErrInvalidTransition, got %v", err)
 		}
 	})
 }
@@ -453,7 +578,6 @@ func TestOrderUsecase_StockDeduction(t *testing.T) {
 		if err != domain.ErrInsufficientStock {
 			t.Fatalf("expected ErrInsufficientStock, got %v", err)
 		}
-		// order was created then cancelled
 		order, _ := repo.GetByID(ctx, 1, 1)
 		if order == nil || order.Status != domain.OrderStatusCancelled {
 			t.Errorf("expected order auto-cancelled, got %+v", order)
@@ -468,7 +592,7 @@ func TestOrderUsecase_StockDeduction(t *testing.T) {
 			Items: []CreateOrderItemParams{{ProductItemID: 35, ItemName: "Es Teh", UnitPrice: 15000, Quantity: 2}},
 		})
 
-		_, err := uc.Cancel(ctx, 1, 1)
+		_, err := uc.Cancel(ctx, CancelOrderParams{OrderID: 1, MerchantID: 1})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -503,7 +627,6 @@ func TestOrderUsecase_Idempotency(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		// retry with the same client order id
 		second, err := uc.Create(ctx, CreateOrderParams{
 			MerchantID: 1, BranchID: 1, CreatedBy: 5, ClientOrderID: "uuid-abc-123",
 			Items: []CreateOrderItemParams{{ProductItemID: 35, ItemName: "Es Teh", UnitPrice: 15000, Quantity: 2}},
@@ -514,7 +637,6 @@ func TestOrderUsecase_Idempotency(t *testing.T) {
 		if second.ID != first.ID {
 			t.Errorf("expected same order id %d, got %d", first.ID, second.ID)
 		}
-		// stock deducted only once
 		if len(inv.deducted) != 1 {
 			t.Errorf("expected 1 deduction, got %d", len(inv.deducted))
 		}
@@ -552,7 +674,6 @@ func TestOrderUsecase_Idempotency(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		// same client order id, different merchant → new order
 		second, err := uc.Create(ctx, CreateOrderParams{
 			MerchantID: 2, BranchID: 1, CreatedBy: 5, ClientOrderID: "uuid-shared",
 			Items: []CreateOrderItemParams{{ProductItemID: 35, ItemName: "Es Teh", UnitPrice: 15000, Quantity: 1}},
@@ -629,7 +750,6 @@ func TestOrderUsecase_Create_AppliesCustomerCustomPrice(t *testing.T) {
 	if order.Items[0].LineTotal != 24000 {
 		t.Errorf("expected line total 24000, got %f", order.Items[0].LineTotal)
 	}
-	// Item 36 has no custom price — keeps client price.
 	if order.Items[1].UnitPrice != 8000 {
 		t.Errorf("expected default price 8000 for item 36, got %f", order.Items[1].UnitPrice)
 	}

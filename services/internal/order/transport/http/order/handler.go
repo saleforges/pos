@@ -53,6 +53,7 @@ func (h *Handler) Create(c echo.Context) error {
 		ClientOrderID: req.ClientOrderID,
 		DueDate:       dueDate,
 		Note:          req.Note,
+		Discount:      req.Discount,
 		Items:         items,
 	})
 	if err != nil {
@@ -191,7 +192,11 @@ func (h *Handler) Cancel(c echo.Context) error {
 	}
 
 	merchantID := httputil.GetMerchantID(c)
-	result, err := h.uc.Cancel(c.Request().Context(), id, merchantID)
+	result, err := h.uc.Cancel(c.Request().Context(), usecase.CancelOrderParams{
+		OrderID:     id,
+		MerchantID:  merchantID,
+		CancelledBy: getUserID(c),
+	})
 	if err != nil {
 		return mapError(c, err)
 	}

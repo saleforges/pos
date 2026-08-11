@@ -19,16 +19,12 @@ func NewOrderUsecase(orderRepo repository.OrderRepository, customerRepo reposito
 }
 
 func (uc *orderUsecase) Create(ctx context.Context, params CreateOrderParams) (*domain.Order, error) {
-	// Idempotency: a client-generated UUID identifies the order across
-	// retries (offline-first mobile). If the same client order id was
-	// already created, return the existing order instead of duplicating.
 	if params.ClientOrderID != "" {
 		if existing, err := uc.orderRepo.GetByClientOrderID(ctx, params.ClientOrderID, params.MerchantID); err == nil && existing != nil {
 			return existing, nil
 		}
 	}
 
-	// Validate customer belongs to this merchant if provided
 	if params.CustomerID != nil {
 		if _, err := uc.customerRepo.GetByID(ctx, *params.CustomerID, params.MerchantID); err != nil {
 			return nil, err
@@ -49,7 +45,6 @@ func (uc *orderUsecase) Create(ctx context.Context, params CreateOrderParams) (*
 		subtotal += items[i].LineTotal
 	}
 
-	// Apply the customer's custom prices (server-side source of truth).
 	if params.CustomerID != nil {
 		ids := make([]int64, len(items))
 		for i := range items {
@@ -69,6 +64,10 @@ func (uc *orderUsecase) Create(ctx context.Context, params CreateOrderParams) (*
 		}
 	}
 
+	if params.Discount < 0 || params.Discount > subtotal {
+		return nil, domain.ErrInvalidOrder
+	}
+
 	order := &domain.Order{
 		MerchantID:    params.MerchantID,
 		BranchID:      params.BranchID,
@@ -77,9 +76,9 @@ func (uc *orderUsecase) Create(ctx context.Context, params CreateOrderParams) (*
 		ClientOrderID: params.ClientOrderID,
 		Status:        domain.OrderStatusCompleted,
 		Subtotal:      subtotal,
-		Discount:      0,
+		Discount:      params.Discount,
 		Tax:           0,
-		Total:         subtotal,
+		Total:         subtotal - params.Discount,
 		PaidAmount:    0,
 		DueDate:       params.DueDate,
 		Note:          params.Note,
@@ -87,8 +86,6 @@ func (uc *orderUsecase) Create(ctx context.Context, params CreateOrderParams) (*
 		UpdatedAt:     now,
 		Items:         items,
 	}
-	// Default due date: credit sales (customer attached) without an explicit
-	// due date get H+7 from today.
 	if order.CustomerID != nil && order.DueDate == nil {
 		d := now.AddDate(0, 0, defaultDueDays)
 		order.DueDate = &d
@@ -100,8 +97,6 @@ func (uc *orderUsecase) Create(ctx context.Context, params CreateOrderParams) (*
 	}
 
 	if err := uc.orderRepo.Create(ctx, order); err != nil {
-		// Concurrent retry with the same client order id: the unique index
-		// rejected the duplicate insert — return the winner instead.
 		if params.ClientOrderID != "" {
 			if existing, getErr := uc.orderRepo.GetByClientOrderID(ctx, params.ClientOrderID, params.MerchantID); getErr == nil && existing != nil {
 				return existing, nil
@@ -110,8 +105,6 @@ func (uc *orderUsecase) Create(ctx context.Context, params CreateOrderParams) (*
 		return nil, err
 	}
 
-	// Completed orders deduct stock from inventory. If any line has
-	// insufficient stock the order is cancelled and the error returned.
 	if err := uc.deductOrder(ctx, order); err != nil {
 		_, _ = uc.orderRepo.UpdateStatus(ctx, order.ID, order.MerchantID, domain.OrderStatusCancelled)
 		return nil, err
@@ -127,19 +120,31 @@ func (uc *orderUsecase) List(ctx context.Context, merchantID int64, branchID *in
 	return uc.orderRepo.List(ctx, merchantID, branchID, status, paymentStatus)
 }
 
-func (uc *orderUsecase) Cancel(ctx context.Context, id int64, merchantID int64) (*domain.Order, error) {
-	order, err := uc.orderRepo.GetByID(ctx, id, merchantID)
+func (uc *orderUsecase) Cancel(ctx context.Context, params CancelOrderParams) (*domain.Order, error) {
+	order, err := uc.orderRepo.GetByID(ctx, params.OrderID, params.MerchantID)
 	if err != nil {
 		return nil, err
 	}
 	if order.Status != domain.OrderStatusCompleted {
 		return nil, domain.ErrInvalidTransition
 	}
-	// Restore the stock that was deducted when the order completed.
 	if err := uc.restoreOrder(ctx, order); err != nil {
 		return nil, err
 	}
-	return uc.orderRepo.UpdateStatus(ctx, id, merchantID, domain.OrderStatusCancelled)
+	if order.PaidAmount > 0 {
+		now := time.Now().UTC()
+		refund := &domain.PaymentRecord{
+			Amount:    -order.PaidAmount,
+			Method:    "refund",
+			CreatedBy: params.CancelledBy,
+			PaidAt:    now,
+			CreatedAt: now,
+		}
+		if err := uc.orderRepo.AddPayment(ctx, order.ID, params.MerchantID, refund); err != nil {
+			return nil, err
+		}
+	}
+	return uc.orderRepo.UpdateStatus(ctx, params.OrderID, params.MerchantID, domain.OrderStatusCancelled)
 }
 
 func (uc *orderUsecase) deductOrder(ctx context.Context, order *domain.Order) error {
@@ -158,8 +163,6 @@ func (uc *orderUsecase) restoreOrder(ctx context.Context, order *domain.Order) e
 	return uc.inventory.RestoreStock(ctx, order.MerchantID, order.BranchID, "order", order.ID, items)
 }
 
-// NotifyPaid is called by the payment service when the gateway confirms a
-// successful payment. Idempotent: already-settled orders are a no-op.
 func (uc *orderUsecase) NotifyPaid(ctx context.Context, params NotifyPaidParams) error {
 	order, err := uc.orderRepo.GetByID(ctx, params.OrderID, params.MerchantID)
 	if err != nil {

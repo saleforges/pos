@@ -39,10 +39,6 @@ func RunMigrations(databaseURL string) error {
 		return fmt.Errorf("schema_migrations table: %w", err)
 	}
 
-	// Check if order v200 migration is already applied.
-	// NOTE: schema_migrations is shared across services (IAM/merchant
-	// golang-migrate v1, catalog 1-7, inventory v100), so we check for our
-	// own version instead of the table being empty.
 	var v200exists bool
 	if err := pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = 200)`).Scan(&v200exists); err != nil {
 		return fmt.Errorf("check order v200 migration: %w", err)
@@ -114,8 +110,6 @@ func RunMigrations(databaseURL string) error {
 		}
 	}
 
-	// Heal migrations — run on every startup so existing deployments get
-	// new columns without a full re-init. Idempotent by design.
 	heal := `
 	CREATE TABLE IF NOT EXISTS customer_prices (
 		id              BIGSERIAL    PRIMARY KEY,
@@ -132,6 +126,25 @@ func RunMigrations(databaseURL string) error {
 	CREATE INDEX IF NOT EXISTS idx_customer_prices_merchant ON customer_prices(merchant_id);
 	ALTER TABLE orders ADD COLUMN IF NOT EXISTS client_order_id VARCHAR(36);
 	CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_client_order ON orders(client_order_id) WHERE client_order_id IS NOT NULL;
+
+	CREATE TABLE IF NOT EXISTS shifts (
+		id             BIGSERIAL    PRIMARY KEY,
+		merchant_id    BIGINT       NOT NULL,
+		branch_id      BIGINT       NOT NULL,
+		opened_by      BIGINT       NOT NULL,
+		closed_by      BIGINT,
+		status         VARCHAR(20)  NOT NULL DEFAULT 'open',
+		starting_cash  NUMERIC(14,2) NOT NULL DEFAULT 0,
+		expected_cash  NUMERIC(14,2),
+		actual_cash    NUMERIC(14,2),
+		variance       NUMERIC(14,2),
+		note           TEXT,
+		opened_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+		closed_at      TIMESTAMPTZ
+	);
+	CREATE INDEX IF NOT EXISTS idx_shifts_merchant ON shifts(merchant_id);
+	CREATE INDEX IF NOT EXISTS idx_shifts_branch ON shifts(branch_id);
+	CREATE UNIQUE INDEX IF NOT EXISTS idx_shifts_one_open_per_branch ON shifts(branch_id) WHERE status = 'open';
 	`
 	if _, err := pool.Exec(ctx, heal); err != nil {
 		return fmt.Errorf("order heal migration: %w", err)

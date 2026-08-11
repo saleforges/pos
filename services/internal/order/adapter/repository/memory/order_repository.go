@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"sort"
 	"sync"
 	"time"
 
@@ -132,10 +133,12 @@ func (r *OrderRepository) AddPayment(_ context.Context, orderID int64, merchantI
 	return nil
 }
 
-func (r *OrderRepository) SalesReport(_ context.Context, merchantID, branchID int64, _ *time.Time, _ *time.Time) (*domain.SalesReport, error) {
+func (r *OrderRepository) SalesReport(_ context.Context, merchantID, branchID int64, from, to *time.Time) (*domain.SalesReport, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	var report domain.SalesReport
+	report := domain.SalesReport{TopProducts: []domain.ProductSales{}, PaymentBreakdown: []domain.PaymentMethodTotal{}}
+	productTotals := map[int64]*domain.ProductSales{}
+	methodTotals := map[string]*domain.PaymentMethodTotal{}
 	for _, o := range r.orders {
 		if o.MerchantID != merchantID || o.Status != domain.OrderStatusCompleted {
 			continue
@@ -143,15 +146,50 @@ func (r *OrderRepository) SalesReport(_ context.Context, merchantID, branchID in
 		if branchID > 0 && o.BranchID != branchID {
 			continue
 		}
+		if from != nil && o.CreatedAt.Before(*from) {
+			continue
+		}
+		if to != nil && o.CreatedAt.After(*to) {
+			continue
+		}
 		report.TotalOrders++
+		report.TotalRevenue += o.PaidAmount
 		if o.PaymentStatus == domain.PaymentStatusPaid {
 			report.PaidOrders++
-			report.TotalRevenue += o.PaidAmount
 		} else {
 			report.DebtOrders++
 			report.Outstanding += o.Total - o.PaidAmount
 		}
+		for _, it := range o.Items {
+			p, ok := productTotals[it.ProductItemID]
+			if !ok {
+				p = &domain.ProductSales{ProductItemID: it.ProductItemID, Name: it.ItemName}
+				productTotals[it.ProductItemID] = p
+			}
+			p.Quantity += it.Quantity
+			p.Revenue += it.LineTotal
+		}
+		for _, pay := range o.Payments {
+			m, ok := methodTotals[string(pay.Method)]
+			if !ok {
+				m = &domain.PaymentMethodTotal{Method: string(pay.Method)}
+				methodTotals[string(pay.Method)] = m
+			}
+			m.Amount += pay.Amount
+			m.Count++
+		}
 	}
+	for _, p := range productTotals {
+		report.TopProducts = append(report.TopProducts, *p)
+	}
+	sort.Slice(report.TopProducts, func(i, j int) bool { return report.TopProducts[i].Quantity > report.TopProducts[j].Quantity })
+	if len(report.TopProducts) > 5 {
+		report.TopProducts = report.TopProducts[:5]
+	}
+	for _, m := range methodTotals {
+		report.PaymentBreakdown = append(report.PaymentBreakdown, *m)
+	}
+	sort.Slice(report.PaymentBreakdown, func(i, j int) bool { return report.PaymentBreakdown[i].Amount > report.PaymentBreakdown[j].Amount })
 	return &report, nil
 }
 

@@ -213,8 +213,6 @@ func (r *OrderRepository) AddPayment(ctx context.Context, orderID int64, merchan
 	return tx.Commit(ctx)
 }
 
-// internal helpers
-
 func (r *OrderRepository) loadItems(ctx context.Context, order *domain.Order) error {
 	rows, err := r.pool.Query(ctx,
 		`SELECT `+orderItemCols+` FROM order_items WHERE order_id = $1 ORDER BY id`, order.ID)
@@ -247,35 +245,109 @@ func (r *OrderRepository) loadPayments(ctx context.Context, order *domain.Order)
 	return nil
 }
 
+func salesFilterClause(alias string, merchantID, branchID int64, from, to *time.Time) (string, []interface{}) {
+	col := func(name string) string {
+		if alias == "" {
+			return name
+		}
+		return alias + "." + name
+	}
+	clause := col("merchant_id") + ` = $1 AND ` + col("status") + ` = 'completed'`
+	args := []interface{}{merchantID}
+	if branchID > 0 {
+		args = append(args, branchID)
+		clause += ` AND ` + col("branch_id") + ` = $` + fmt.Sprint(len(args))
+	}
+	if from != nil {
+		args = append(args, *from)
+		clause += ` AND ` + col("created_at") + ` >= $` + fmt.Sprint(len(args))
+	}
+	if to != nil {
+		args = append(args, *to)
+		clause += ` AND ` + col("created_at") + ` <= $` + fmt.Sprint(len(args))
+	}
+	return clause, args
+}
+
 func (r *OrderRepository) SalesReport(ctx context.Context, merchantID, branchID int64, from, to *time.Time) (*domain.SalesReport, error) {
+	where, args := salesFilterClause("", merchantID, branchID, from, to)
 	query := `SELECT
 		COALESCE(SUM(paid_amount), 0),
 		COUNT(*),
 		COUNT(*) FILTER (WHERE paid_amount >= total),
 		COUNT(*) FILTER (WHERE paid_amount < total),
 		COALESCE(SUM(total - paid_amount) FILTER (WHERE paid_amount < total), 0)
-	FROM orders WHERE merchant_id = $1 AND status = 'completed'`
-	args := []interface{}{merchantID}
-	if branchID > 0 {
-		query += ` AND branch_id = $2`
-		args = append(args, branchID)
-	}
-	if from != nil {
-		query += ` AND created_at >= $` + fmt.Sprint(len(args)+1)
-		args = append(args, *from)
-	}
-	if to != nil {
-		query += ` AND created_at <= $` + fmt.Sprint(len(args)+1)
-		args = append(args, *to)
-	}
+	FROM orders WHERE ` + where
 
 	var report domain.SalesReport
-	err := r.pool.QueryRow(ctx, query, args...).Scan(
-		&report.TotalRevenue, &report.TotalOrders, &report.PaidOrders, &report.DebtOrders, &report.Outstanding)
+	if err := r.pool.QueryRow(ctx, query, args...).Scan(
+		&report.TotalRevenue, &report.TotalOrders, &report.PaidOrders, &report.DebtOrders, &report.Outstanding,
+	); err != nil {
+		return nil, err
+	}
+
+	topProducts, err := r.topProducts(ctx, merchantID, branchID, from, to)
 	if err != nil {
 		return nil, err
 	}
+	report.TopProducts = topProducts
+
+	breakdown, err := r.paymentBreakdown(ctx, merchantID, branchID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	report.PaymentBreakdown = breakdown
+
 	return &report, nil
+}
+
+func (r *OrderRepository) topProducts(ctx context.Context, merchantID, branchID int64, from, to *time.Time) ([]domain.ProductSales, error) {
+	where, args := salesFilterClause("o", merchantID, branchID, from, to)
+	query := `SELECT oi.product_item_id, oi.item_name, SUM(oi.quantity), SUM(oi.line_total)
+		FROM order_items oi
+		JOIN orders o ON o.id = oi.order_id
+		WHERE ` + where + `
+		GROUP BY oi.product_item_id, oi.item_name
+		ORDER BY SUM(oi.quantity) DESC
+		LIMIT 5`
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := []domain.ProductSales{}
+	for rows.Next() {
+		var p domain.ProductSales
+		if err := rows.Scan(&p.ProductItemID, &p.Name, &p.Quantity, &p.Revenue); err != nil {
+			return nil, err
+		}
+		result = append(result, p)
+	}
+	return result, rows.Err()
+}
+
+func (r *OrderRepository) paymentBreakdown(ctx context.Context, merchantID, branchID int64, from, to *time.Time) ([]domain.PaymentMethodTotal, error) {
+	where, args := salesFilterClause("o", merchantID, branchID, from, to)
+	query := `SELECT pr.method, COALESCE(SUM(pr.amount), 0), COUNT(*)
+		FROM payment_records pr
+		JOIN orders o ON o.id = pr.order_id
+		WHERE ` + where + `
+		GROUP BY pr.method
+		ORDER BY SUM(pr.amount) DESC`
+	rows, err := r.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := []domain.PaymentMethodTotal{}
+	for rows.Next() {
+		var p domain.PaymentMethodTotal
+		if err := rows.Scan(&p.Method, &p.Amount, &p.Count); err != nil {
+			return nil, err
+		}
+		result = append(result, p)
+	}
+	return result, rows.Err()
 }
 
 func scanOrder(row pgx.Row) (*domain.Order, error) {

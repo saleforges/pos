@@ -39,7 +39,6 @@ type Order struct {
 	Payments      []PaymentRecord `json:"payments,omitempty"`
 }
 
-// ComputePaymentStatus derives the payment status from paid amount vs total.
 func (o *Order) ComputePaymentStatus() PaymentStatus {
 	switch {
 	case o.PaidAmount >= o.Total:
@@ -113,11 +112,25 @@ type PaymentRecord struct {
 	CreatedAt time.Time     `json:"createdAt"`
 }
 
-// SalesReport is the per-branch sales aggregation.
 type SalesReport struct {
-	TotalRevenue float64 `json:"totalRevenue"`
-	TotalOrders  int64   `json:"totalOrders"`
-	PaidOrders   int64   `json:"paidOrders"`
-	DebtOrders   int64   `json:"debtOrders"`
-	Outstanding  float64 `json:"outstanding"`
+	TotalRevenue     float64              `json:"totalRevenue"`
+	TotalOrders      int64                `json:"totalOrders"`
+	PaidOrders       int64                `json:"paidOrders"`
+	DebtOrders       int64                `json:"debtOrders"`
+	Outstanding      float64              `json:"outstanding"`
+	TopProducts      []ProductSales       `json:"topProducts"`
+	PaymentBreakdown []PaymentMethodTotal `json:"paymentBreakdown"`
+}
+
+type ProductSales struct {
+	ProductItemID int64   `json:"productItemId"`
+	Name          string  `json:"name"`
+	Quantity      float64 `json:"quantity"`
+	Revenue       float64 `json:"revenue"`
+}
+
+type PaymentMethodTotal struct {
+	Method string  `json:"method"`
+	Amount float64 `json:"amount"`
+	Count  int64   `json:"count"`
 }

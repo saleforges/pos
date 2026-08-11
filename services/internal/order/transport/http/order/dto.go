@@ -10,6 +10,7 @@ type createOrderReq struct {
 	ClientOrderID string               `json:"clientOrderId,omitempty"`
 	DueDate       *string              `json:"dueDate,omitempty"`
 	Note          string               `json:"note,omitempty"`
+	Discount      float64              `json:"discount,omitempty"`
 	Items         []createOrderItemReq `json:"items"`
 }
 

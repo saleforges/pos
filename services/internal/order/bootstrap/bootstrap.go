@@ -12,6 +12,7 @@ import (
 	httptransport "github.com/saleforge/pos/services/internal/order/transport/http"
 	"github.com/saleforge/pos/services/internal/order/transport/http/customer"
 	"github.com/saleforge/pos/services/internal/order/transport/http/order"
+	"github.com/saleforge/pos/services/internal/order/transport/http/shift"
 	"github.com/saleforge/pos/services/internal/order/usecase"
 	"github.com/saleforge/pos/services/pkg/jwks"
 	"github.com/saleforge/pos/services/pkg/logger"
@@ -53,6 +54,7 @@ func New(cfg Config) (*App, error) {
 	var (
 		orderRepo    por.OrderRepository
 		customerRepo por.CustomerRepository
+		shiftRepo    por.ShiftRepository
 	)
 
 	if cfg.DatabaseURL != "" {
@@ -66,10 +68,13 @@ func New(cfg Config) (*App, error) {
 		}
 		orderRepo = postgres.NewOrderRepository(pool)
 		customerRepo = postgres.NewCustomerRepository(pool)
+		shiftRepo = postgres.NewShiftRepository(pool)
 		logger.Info("using postgres storage")
 	} else {
-		orderRepo = memory.NewOrderRepository()
+		memOrderRepo := memory.NewOrderRepository()
+		orderRepo = memOrderRepo
 		customerRepo = memory.NewCustomerRepository()
+		shiftRepo = memory.NewShiftRepository(memOrderRepo)
 		logger.Info("using in-memory storage")
 	}
 
@@ -78,12 +83,14 @@ func New(cfg Config) (*App, error) {
 		APIKey:  cfg.InventoryAPIKey,
 	}))
 	customerUC := usecase.NewCustomerUsecase(customerRepo)
+	shiftUC := usecase.NewShiftUsecase(shiftRepo)
 
 	orderHandler := order.NewHandler(orderUC)
 	customerHandler := customer.NewHandler(customerUC)
+	shiftHandler := shift.NewHandler(shiftUC)
 	internalHandler := order.NewInternalHandler(orderUC)
 
-	e := httptransport.NewRouter(orderHandler, customerHandler, internalHandler, verifier, cfg.InventoryAPIKey)
+	e := httptransport.NewRouter(orderHandler, customerHandler, shiftHandler, internalHandler, verifier, cfg.InventoryAPIKey)
 
 	return &App{router: e, otelShutdown: otelShutdown}, nil
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/saleforge/pos/services/internal/order/transport/http/customer"
 	"github.com/saleforge/pos/services/internal/order/transport/http/middleware"
 	"github.com/saleforge/pos/services/internal/order/transport/http/order"
+	"github.com/saleforge/pos/services/internal/order/transport/http/shift"
 	"github.com/saleforge/pos/services/pkg/httputil"
 	"github.com/saleforge/pos/services/pkg/jwks"
 	"github.com/saleforge/pos/services/pkg/otel"
@@ -14,6 +15,7 @@ import (
 func NewRouter(
 	orderHandler *order.Handler,
 	customerHandler *customer.Handler,
+	shiftHandler *shift.Handler,
 	internalHandler *order.InternalHandler,
 	verifier *jwks.Verifier,
 	internalKey string,
@@ -32,7 +34,6 @@ func NewRouter(
 		return nil
 	})
 
-	// Internal service-to-service endpoints (called by payment service).
 	internal := e.Group("/internal", middleware.InternalAuth(internalKey))
 	internal.GET("/orders/:id", internalHandler.GetOrder)
 	internal.POST("/orders/:id/paid", internalHandler.NotifyPaid)
@@ -59,6 +60,12 @@ func NewRouter(
 	customerGroup.DELETE("/:id", customerHandler.Delete)
 	customerGroup.PUT("/:id/prices", customerHandler.SetPrices)
 	customerGroup.GET("/:id/prices", customerHandler.GetPrices)
+
+	shiftGroup := api.Group("/shifts", httputil.MerchantMiddleware())
+	shiftGroup.POST("/open", shiftHandler.Open)
+	shiftGroup.POST("/:id/close", shiftHandler.Close)
+	shiftGroup.GET("/active", shiftHandler.GetActive)
+	shiftGroup.GET("", shiftHandler.List)
 
 	return e
 }
