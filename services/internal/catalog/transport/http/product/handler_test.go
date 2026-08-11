@@ -55,7 +55,10 @@ func (m *mockProductItemRepo) SetBranchPrice(_ context.Context, _, _ int64, _ fl
 	return nil
 }
 func (m *mockProductItemRepo) DeleteBranchPrice(_ context.Context, _, _ int64) error { return nil }
-func (m *mockProductItemRepo) ListUpdatedAfter(_ context.Context, _ int64, _ time.Time) ([]domain.ProductItem, error) {
+func (m *mockProductItemRepo) GetBranchPrice(_ context.Context, _, _ int64) (*domain.Price, error) {
+	return nil, nil
+}
+func (m *mockProductItemRepo) ListUpdatedAfter(_ context.Context, _ int64, _ int64, _ time.Time) ([]domain.ProductItem, error) {
 	return nil, nil
 }
 

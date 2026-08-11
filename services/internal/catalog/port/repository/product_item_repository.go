@@ -15,9 +15,10 @@ type ProductItemRepository interface {
 	Update(ctx context.Context, item *domain.ProductItem) error
 	Delete(ctx context.Context, id int64, merchantID int64) error
 	Restore(ctx context.Context, id int64, merchantID int64) (*domain.ProductItem, error)
-	ListUpdatedAfter(ctx context.Context, merchantID int64, after time.Time) ([]domain.ProductItem, error)
+	ListUpdatedAfter(ctx context.Context, merchantID int64, branchID int64, after time.Time) ([]domain.ProductItem, error)
 	SetBranchPrice(ctx context.Context, productItemID, branchID int64, amount float64, currency string) error
 	DeleteBranchPrice(ctx context.Context, productItemID, branchID int64) error
+	GetBranchPrice(ctx context.Context, productItemID, branchID int64) (*domain.Price, error)
 }
 
 type ProductItemBarcodeRepository interface {

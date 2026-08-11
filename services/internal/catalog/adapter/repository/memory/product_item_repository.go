@@ -31,7 +31,6 @@ func (r *ProductItemRepository) Create(_ context.Context, item *domain.ProductIt
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// Check SKU uniqueness within merchant scope
 	if item.SKU != "" {
 		for _, existing := range r.items {
 			if existing.SKU == item.SKU && existing.MerchantID == item.MerchantID && existing.DeletedAt == nil {
@@ -95,7 +94,6 @@ func (r *ProductItemRepository) Update(_ context.Context, item *domain.ProductIt
 		return domain.ErrProductItemNotFound
 	}
 
-	// Check SKU uniqueness within merchant scope (skip if same item)
 	if item.SKU != "" {
 		for _, other := range r.items {
 			if other.ID != item.ID && other.SKU == item.SKU && other.MerchantID == item.MerchantID && other.DeletedAt == nil {
@@ -129,7 +127,7 @@ func (r *ProductItemRepository) Restore(_ context.Context, id int64, merchantID 
 	return item, nil
 }
 
-func (r *ProductItemRepository) ListUpdatedAfter(_ context.Context, merchantID int64, after time.Time) ([]domain.ProductItem, error) {
+func (r *ProductItemRepository) ListUpdatedAfter(_ context.Context, merchantID int64, branchID int64, after time.Time) ([]domain.ProductItem, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	var result []domain.ProductItem
@@ -138,7 +136,13 @@ func (r *ProductItemRepository) ListUpdatedAfter(_ context.Context, merchantID i
 			continue
 		}
 		if item.UpdatedAt.After(after) || (item.DeletedAt != nil && item.DeletedAt.After(after)) {
-			result = append(result, *item)
+			copied := *item
+			if branchID != 0 {
+				if p, ok := r.branchPrices[fmt.Sprintf("%d-%d", copied.ID, branchID)]; ok {
+					copied.Price = p
+				}
+			}
+			result = append(result, copied)
 		}
 	}
 	if result == nil {
@@ -235,4 +239,14 @@ func (r *ProductItemRepository) DeleteBranchPrice(_ context.Context, productItem
 	defer r.mu.Unlock()
 	delete(r.branchPrices, fmt.Sprintf("%d-%d", productItemID, branchID))
 	return nil
+}
+
+func (r *ProductItemRepository) GetBranchPrice(_ context.Context, productItemID, branchID int64) (*domain.Price, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	p, ok := r.branchPrices[fmt.Sprintf("%d-%d", productItemID, branchID)]
+	if !ok {
+		return nil, nil
+	}
+	return &p, nil
 }

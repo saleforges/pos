@@ -104,6 +104,20 @@ func (h *Handler) DeleteBranchPrice(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, map[string]bool{"ok": true})
 }
 
+func (h *Handler) GetBranchPrice(c echo.Context) error {
+	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		return httputil.WriteError(c, http.StatusBadRequest, httputil.ErrInvalidBody)
+	}
+	branchID, _ := strconv.ParseInt(c.QueryParam("branchId"), 10, 64)
+	merchantID := httputil.GetMerchantID(c)
+	price, err := h.uc.GetBranchPrice(c.Request().Context(), id, branchID, merchantID)
+	if err != nil {
+		return mapError(c, err)
+	}
+	return httputil.WriteJSON(c, http.StatusOK, price)
+}
+
 func (h *Handler) GetByID(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -141,7 +155,6 @@ func (h *Handler) ListByMerchant(c echo.Context) error {
 		return httputil.WriteError(c, http.StatusInternalServerError, domain.ErrInternal)
 	}
 
-	// Enrich response with product and unit info
 	type productBrief struct {
 		ID   int64  `json:"id"`
 		Name string `json:"name"`

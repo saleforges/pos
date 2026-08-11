@@ -290,3 +290,6 @@ func (m *mockItemSvc) SetBranchPrice(ctx context.Context, _, _, _ int64, _ float
 	return nil
 }
 func (m *mockItemSvc) DeleteBranchPrice(ctx context.Context, _, _, _ int64) error { return nil }
+func (m *mockItemSvc) GetBranchPrice(ctx context.Context, _, _, _ int64) (*domain.Price, error) {
+	return nil, nil
+}

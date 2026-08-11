@@ -23,7 +23,6 @@ func (uc *productItemUsecase) Create(ctx context.Context, params CreateProductIt
 		return nil, domain.ErrInvalidProductItem
 	}
 
-	// Verify product exists and belongs to the merchant
 	product, err := uc.prodRepo.GetByID(ctx, params.ProductID, params.MerchantID)
 	if err != nil {
 		return nil, err
@@ -145,6 +144,13 @@ func (uc *productItemUsecase) DeleteBranchPrice(ctx context.Context, productItem
 		return err
 	}
 	return uc.itemRepo.DeleteBranchPrice(ctx, productItemID, branchID)
+}
+
+func (uc *productItemUsecase) GetBranchPrice(ctx context.Context, productItemID, branchID, merchantID int64) (*domain.Price, error) {
+	if _, err := uc.itemRepo.GetByID(ctx, productItemID, merchantID); err != nil {
+		return nil, err
+	}
+	return uc.itemRepo.GetBranchPrice(ctx, productItemID, branchID)
 }
 
 var _ ProductItemUsecase = (*productItemUsecase)(nil)

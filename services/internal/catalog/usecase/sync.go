@@ -39,24 +39,21 @@ func (uc *syncUsecase) Sync(ctx context.Context, params SyncParams) (*SyncResult
 
 	merchantID := params.MerchantID
 
-	// Step 1: Apply incoming changes from mobile (push)
 	if err := uc.applyChanges(ctx, merchantID, params); err != nil {
 		return nil, err
 	}
 
-	// Step 2: Determine sync time window
 	since := time.Time{}
 	if params.LastSync != nil {
 		since = *params.LastSync
 	}
 
-	// Step 3: Pull changes since lastSync
 	products, err := uc.prodRepo.ListUpdatedAfter(ctx, merchantID, since)
 	if err != nil {
 		return nil, err
 	}
 
-	items, err := uc.itemRepo.ListUpdatedAfter(ctx, merchantID, since)
+	items, err := uc.itemRepo.ListUpdatedAfter(ctx, merchantID, params.BranchID, since)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +73,6 @@ func (uc *syncUsecase) Sync(ctx context.Context, params SyncParams) (*SyncResult
 		return nil, err
 	}
 
-	// Step 4: Return sync token (server's current time)
 	syncToken := time.Now().UTC().Format(time.RFC3339Nano)
 
 	return &SyncResult{
@@ -94,7 +90,6 @@ func (uc *syncUsecase) applyChanges(ctx context.Context, merchantID int64, param
 
 	for _, p := range params.Products {
 		if p.ID == 0 {
-			// Create new product
 			product := &domain.Product{
 				MerchantID:  merchantID,
 				CategoryID:  p.CategoryID,
@@ -105,10 +100,8 @@ func (uc *syncUsecase) applyChanges(ctx context.Context, merchantID int64, param
 				CreatedAt:   now,
 				UpdatedAt:   now,
 			}
-			// Ignore per-item errors to allow partial sync
 			_ = uc.prodRepo.Create(ctx, product)
 		} else {
-			// Update existing product
 			existing, err := uc.prodRepo.GetByID(ctx, p.ID, merchantID)
 			if err != nil {
 				continue
@@ -131,7 +124,6 @@ func (uc *syncUsecase) applyChanges(ctx context.Context, merchantID int64, param
 			currency = "IDR"
 		}
 		if item.ID == 0 {
-			// Create new item
 			it := &domain.ProductItem{
 				ProductID:      item.ProductID,
 				MerchantID:     merchantID,
@@ -147,7 +139,6 @@ func (uc *syncUsecase) applyChanges(ctx context.Context, merchantID int64, param
 			}
 			_ = uc.itemRepo.Create(ctx, it)
 		} else {
-			// Update existing item
 			existing, err := uc.itemRepo.GetByID(ctx, item.ID, merchantID)
 			if err != nil {
 				continue

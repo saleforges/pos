@@ -39,7 +39,6 @@ func (r *ProductItemRepository) Create(ctx context.Context, item *domain.Product
 		return err
 	}
 
-	// Insert price
 	_, err = r.pool.Exec(ctx,
 		`INSERT INTO prices (product_item_id, amount, currency, created_at, updated_at)
 		 VALUES ($1, $2, $3, $4, $5)`,
@@ -54,7 +53,6 @@ func (r *ProductItemRepository) GetByID(ctx context.Context, id int64, merchantI
 	if err != nil {
 		return nil, err
 	}
-	// Load price
 	price, err := r.getPrice(ctx, id)
 	if err != nil {
 		return nil, err
@@ -104,7 +102,6 @@ func (r *ProductItemRepository) Update(ctx context.Context, item *domain.Product
 		}
 		return err
 	}
-	// Upsert price
 	_, err = r.pool.Exec(ctx,
 		`INSERT INTO prices (product_item_id, amount, currency, created_at, updated_at)
 		 VALUES ($1, $2, $3, NOW(), NOW())
@@ -113,7 +110,7 @@ func (r *ProductItemRepository) Update(ctx context.Context, item *domain.Product
 	return err
 }
 
-func (r *ProductItemRepository) ListUpdatedAfter(ctx context.Context, merchantID int64, after time.Time) ([]domain.ProductItem, error) {
+func (r *ProductItemRepository) ListUpdatedAfter(ctx context.Context, merchantID int64, branchID int64, after time.Time) ([]domain.ProductItem, error) {
 	rows, err := r.pool.Query(ctx,
 		`SELECT pi.`+piCols+` FROM product_items pi
 		 WHERE pi.merchant_id = $1 AND (pi.updated_at > $2 OR pi.deleted_at > $2)
@@ -126,7 +123,14 @@ func (r *ProductItemRepository) ListUpdatedAfter(ctx context.Context, merchantID
 	if err != nil {
 		return nil, err
 	}
-	return r.loadPrices(ctx, items)
+	items, err = r.loadPrices(ctx, items)
+	if err != nil {
+		return nil, err
+	}
+	if branchID == 0 {
+		return items, nil
+	}
+	return r.applyBranchPrices(ctx, branchID, items)
 }
 
 func (r *ProductItemRepository) Delete(ctx context.Context, id int64, merchantID int64) error {
@@ -142,8 +146,6 @@ func (r *ProductItemRepository) Restore(ctx context.Context, id int64, merchantI
 	return r.GetByID(ctx, id, merchantID)
 }
 
-// internal helpers
-
 func (r *ProductItemRepository) getPrice(ctx context.Context, productItemID int64) (*domain.Price, error) {
 	var p domain.Price
 	err := r.pool.QueryRow(ctx,
@@ -154,7 +156,7 @@ func (r *ProductItemRepository) getPrice(ctx context.Context, productItemID int6
 	return &p, nil
 }
 
-func (r *ProductItemRepository) getBranchPrice(ctx context.Context, productItemID, branchID int64) (*domain.Price, error) {
+func (r *ProductItemRepository) GetBranchPrice(ctx context.Context, productItemID, branchID int64) (*domain.Price, error) {
 	var p domain.Price
 	err := r.pool.QueryRow(ctx,
 		`SELECT amount, currency FROM branch_prices WHERE product_item_id = $1 AND branch_id = $2`, productItemID, branchID).Scan(&p.Amount, &p.Currency)
@@ -218,6 +220,40 @@ func (r *ProductItemRepository) loadPrices(ctx context.Context, items []domain.P
 	return items, nil
 }
 
+func (r *ProductItemRepository) applyBranchPrices(ctx context.Context, branchID int64, items []domain.ProductItem) ([]domain.ProductItem, error) {
+	if len(items) == 0 {
+		return items, nil
+	}
+	ids := make([]int64, len(items))
+	for i, it := range items {
+		ids[i] = it.ID
+	}
+	rows, err := r.pool.Query(ctx,
+		`SELECT product_item_id, amount, currency FROM branch_prices WHERE branch_id = $1 AND product_item_id = ANY($2)`, branchID, ids)
+	if err != nil {
+		return items, err
+	}
+	defer rows.Close()
+	overrides := make(map[int64]domain.Price)
+	for rows.Next() {
+		var pid int64
+		var p domain.Price
+		if err := rows.Scan(&pid, &p.Amount, &p.Currency); err != nil {
+			return items, err
+		}
+		overrides[pid] = p
+	}
+	if rows.Err() != nil {
+		return items, rows.Err()
+	}
+	for i := range items {
+		if p, ok := overrides[items[i].ID]; ok {
+			items[i].Price = p
+		}
+	}
+	return items, nil
+}
+
 func scanProductItem(row pgx.Row) (*domain.ProductItem, error) {
 	var (
 		s        domain.ProductItem
@@ -250,8 +286,6 @@ func scanProductItems(rows pgx.Rows) ([]domain.ProductItem, error) {
 	}
 	return result, rows.Err()
 }
-
-// ProductItemBarcodeRepository
 
 type ProductItemBarcodeRepository struct {
 	pool *otel.TracedPool

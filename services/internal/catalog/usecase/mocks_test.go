@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/saleforge/pos/services/internal/catalog/domain"
@@ -194,8 +195,9 @@ func (m *mockCategoryRepo) ListUpdatedAfter(_ context.Context, merchantID int64,
 }
 
 type mockProductItemRepo struct {
-	items map[int64]*domain.ProductItem
-	err   error
+	items        map[int64]*domain.ProductItem
+	branchPrices map[string]domain.Price
+	err          error
 }
 
 func (m *mockProductItemRepo) Create(_ context.Context, item *domain.ProductItem) error {
@@ -206,7 +208,6 @@ func (m *mockProductItemRepo) Create(_ context.Context, item *domain.ProductItem
 		m.items = make(map[int64]*domain.ProductItem)
 	}
 
-	// Check SKU uniqueness within merchant scope
 	if item.SKU != "" {
 		for _, existing := range m.items {
 			if existing.SKU == item.SKU && existing.MerchantID == item.MerchantID && existing.DeletedAt == nil {
@@ -266,7 +267,6 @@ func (m *mockProductItemRepo) Update(_ context.Context, item *domain.ProductItem
 		return domain.ErrProductItemNotFound
 	}
 
-	// Check SKU uniqueness within merchant scope (skip if same item)
 	if item.SKU != "" {
 		for _, other := range m.items {
 			if other.ID != item.ID && other.SKU == item.SKU && other.MerchantID == item.MerchantID && other.DeletedAt == nil {
@@ -302,14 +302,20 @@ func (m *mockProductItemRepo) Restore(_ context.Context, id int64, merchantID in
 	return item, nil
 }
 
-func (m *mockProductItemRepo) ListUpdatedAfter(_ context.Context, merchantID int64, _ time.Time) ([]domain.ProductItem, error) {
+func (m *mockProductItemRepo) ListUpdatedAfter(_ context.Context, merchantID int64, branchID int64, _ time.Time) ([]domain.ProductItem, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
 	var result []domain.ProductItem
 	for _, item := range m.items {
 		if item.MerchantID == merchantID {
-			result = append(result, *item)
+			copied := *item
+			if branchID != 0 {
+				if p, ok := m.branchPrices[fmt.Sprintf("%d-%d", copied.ID, branchID)]; ok {
+					copied.Price = p
+				}
+			}
+			result = append(result, copied)
 		}
 	}
 	return result, nil
@@ -363,7 +369,23 @@ func (m *mockUnitRepo) GetByCode(_ context.Context, code string) (*domain.Unit, 
 	return nil, domain.ErrUnitNotFound
 }
 
-func (m *mockProductItemRepo) SetBranchPrice(_ context.Context, _, _ int64, _ float64, _ string) error {
+func (m *mockProductItemRepo) SetBranchPrice(_ context.Context, productItemID, branchID int64, amount float64, currency string) error {
+	if m.branchPrices == nil {
+		m.branchPrices = make(map[string]domain.Price)
+	}
+	m.branchPrices[fmt.Sprintf("%d-%d", productItemID, branchID)] = domain.Price{Amount: amount, Currency: currency}
 	return nil
 }
-func (m *mockProductItemRepo) DeleteBranchPrice(_ context.Context, _, _ int64) error { return nil }
+
+func (m *mockProductItemRepo) DeleteBranchPrice(_ context.Context, productItemID, branchID int64) error {
+	delete(m.branchPrices, fmt.Sprintf("%d-%d", productItemID, branchID))
+	return nil
+}
+
+func (m *mockProductItemRepo) GetBranchPrice(_ context.Context, productItemID, branchID int64) (*domain.Price, error) {
+	p, ok := m.branchPrices[fmt.Sprintf("%d-%d", productItemID, branchID)]
+	if !ok {
+		return nil, nil
+	}
+	return &p, nil
+}

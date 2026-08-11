@@ -41,6 +41,7 @@ type SyncCategoryChange struct {
 
 type SyncParams struct {
 	MerchantID int64
+	BranchID   int64
 	LastSync   *time.Time
 	Products   []SyncProductChange
 	Items      []SyncItemChange

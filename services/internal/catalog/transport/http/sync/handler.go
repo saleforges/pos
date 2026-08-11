@@ -27,6 +27,7 @@ func (h *Handler) Sync(c echo.Context) error {
 
 	params := usecase.SyncParams{
 		MerchantID: merchantID,
+		BranchID:   req.BranchID,
 	}
 	if req.LastSync != nil {
 		t, err := time.Parse(time.RFC3339Nano, *req.LastSync)

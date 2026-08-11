@@ -5,15 +5,14 @@ import (
 	"github.com/saleforge/pos/services/internal/catalog/usecase"
 )
 
-// Request DTO
 type syncReq struct {
+	BranchID   int64                        `json:"branchId,omitempty"`
 	LastSync   *string                      `json:"lastSync,omitempty"`
 	Products   []usecase.SyncProductChange  `json:"products,omitempty"`
 	Items      []usecase.SyncItemChange     `json:"items,omitempty"`
 	Categories []usecase.SyncCategoryChange `json:"categories,omitempty"`
 }
 
-// Response DTO
 type syncResp struct {
 	SyncToken  string                      `json:"syncToken"`
 	Products   []domain.Product            `json:"products"`

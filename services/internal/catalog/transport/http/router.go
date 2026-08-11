@@ -64,26 +64,23 @@ func NewRouter(
 	prod.PATCH("/:id", productHandler.Update, requireUpdate)
 	prod.DELETE("/:id", productHandler.Delete, requireDelete)
 
-	// Product items nested under product
 	prod.POST("/:productId/items", itemHandler.Create, requireCreate)
 	prod.GET("/:productId/items", itemHandler.ListByProduct)
 
-	// Standalone product-item endpoints
 	api.GET("/product-items", itemHandler.ListByMerchant)
 	api.GET("/product-items/:id", itemHandler.GetByID)
 	api.PATCH("/product-items/:id", itemHandler.Update, requireUpdate)
 	api.PATCH("/product-items/:id/restore", itemHandler.Restore, requireUpdate)
 	api.DELETE("/product-items/:id", itemHandler.Delete, requireDelete)
+	api.GET("/product-items/:id/branch-price", itemHandler.GetBranchPrice)
 	api.PUT("/product-items/:id/branch-price", itemHandler.SetBranchPrice, requireUpdate)
 	api.DELETE("/product-items/:id/branch-price", itemHandler.DeleteBranchPrice, requireUpdate)
 
-	// Image upload
 	if imgHandler != nil {
 		img := api.Group("/images", httputil.MerchantMiddleware())
 		img.POST("", imgHandler.Upload, requireUpdate)
 	}
 
-	// Mobile sync endpoint
 	api.POST("/sync", syncHandler.Sync, httputil.MerchantMiddleware())
 
 	return e
