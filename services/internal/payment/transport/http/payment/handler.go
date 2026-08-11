@@ -13,8 +13,6 @@ import (
 	"github.com/saleforge/pos/services/pkg/logger"
 )
 
-// Handler exposes the internal payment creation API (called by the order
-// service) and the public gateway callback.
 type Handler struct {
 	uc usecase.PaymentUsecase
 	va string
@@ -70,6 +68,7 @@ func (h *Handler) ConfirmCash(c echo.Context) error {
 	result, err := h.uc.ConfirmCash(c.Request().Context(), usecase.CreatePaymentParams{
 		MerchantID: merchantID,
 		OrderID:    req.OrderID,
+		Method:     req.Method,
 		Amount:     req.Amount,
 	})
 	if err != nil {
@@ -78,7 +77,6 @@ func (h *Handler) ConfirmCash(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, result)
 }
 
-// GetByID returns one payment transaction for the merchant (auth required).
 func (h *Handler) GetByID(c echo.Context) error {
 	id, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -93,7 +91,6 @@ func (h *Handler) GetByID(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, result)
 }
 
-// Callback is the public gateway webhook. Security = signature verification.
 func (h *Handler) Callback(c echo.Context) error {
 	signature := c.Request().Header.Get("X-Signature")
 
@@ -130,7 +127,6 @@ func (h *Handler) Callback(c echo.Context) error {
 	return httputil.WriteJSON(c, http.StatusOK, map[string]string{"message": "ok"})
 }
 
-// GetStaticQR returns the merchant's permanent counter QRIS.
 func (h *Handler) GetStaticQR(c echo.Context) error {
 	merchantID := httputil.GetMerchantID(c)
 	branchID := branchFromQuery(c)
@@ -173,8 +169,6 @@ func branchFromQuery(c echo.Context) int64 {
 	return branchID
 }
 
-// Sync returns payments changed since lastSync — the offline-first
-// incremental payload for the mobile app (same pattern as stock/customer).
 func (h *Handler) Sync(c echo.Context) error {
 	merchantID := httputil.GetMerchantID(c)
 	branchID := branchFromQuery(c)

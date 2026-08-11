@@ -163,7 +163,6 @@ func TestPaymentUsecase_HandleCallback(t *testing.T) {
 		if orderClient.notified {
 			notifiedCount++
 		}
-		// second callback with same gateway ref → no-op
 		err = uc.HandleCallback(ctx, CallbackParams{
 			ReferenceID: "5", StatusCode: 1, Amount: "30000", Via: "qris", PaymentRef: "TRX123",
 		})
@@ -327,6 +326,28 @@ func TestPaymentUsecase_ConfirmCash(t *testing.T) {
 		}
 		if result.Amount != 5000 {
 			t.Errorf("expected amount 5000, got %f", result.Amount)
+		}
+	})
+
+	t.Run("method defaults to cash when omitted", func(t *testing.T) {
+		orderClient := &mockOrderClient{order: &repository.OrderInfo{ID: 5, MerchantID: 1, Status: "completed", Total: 30000}}
+		uc := NewPaymentUsecase(newMockPaymentRepo(), &mockGateway{}, orderClient)
+		if _, err := uc.ConfirmCash(ctx, CreatePaymentParams{MerchantID: 1, OrderID: 5}); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if orderClient.notifiedMethod != "cash" {
+			t.Errorf("expected default method cash, got %q", orderClient.notifiedMethod)
+		}
+	})
+
+	t.Run("selected method is passed through to the order", func(t *testing.T) {
+		orderClient := &mockOrderClient{order: &repository.OrderInfo{ID: 5, MerchantID: 1, Status: "completed", Total: 30000}}
+		uc := NewPaymentUsecase(newMockPaymentRepo(), &mockGateway{}, orderClient)
+		if _, err := uc.ConfirmCash(ctx, CreatePaymentParams{MerchantID: 1, OrderID: 5, Method: "Bank Transfer"}); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if orderClient.notifiedMethod != "Bank Transfer" {
+			t.Errorf("expected method 'Bank Transfer', got %q", orderClient.notifiedMethod)
 		}
 	})
 

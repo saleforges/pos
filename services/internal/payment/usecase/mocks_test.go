@@ -150,10 +150,11 @@ func (m *mockGateway) CreatePayment(_ context.Context, _ repository.CreatePaymen
 }
 
 type mockOrderClient struct {
-	notified bool
-	err      error
-	order    *repository.OrderInfo
-	orderErr error
+	notified       bool
+	notifiedMethod string
+	err            error
+	order          *repository.OrderInfo
+	orderErr       error
 }
 
 func (m *mockOrderClient) GetOrder(_ context.Context, orderID, _ int64) (*repository.OrderInfo, error) {
@@ -172,7 +173,8 @@ func (m *mockOrderClient) GetOrder(_ context.Context, orderID, _ int64) (*reposi
 	}, nil
 }
 
-func (m *mockOrderClient) NotifyPaid(_ context.Context, _, _ int64, _ float64, _ string) error {
+func (m *mockOrderClient) NotifyPaid(_ context.Context, _, _ int64, _ float64, method string) error {
 	m.notified = true
+	m.notifiedMethod = method
 	return m.err
 }

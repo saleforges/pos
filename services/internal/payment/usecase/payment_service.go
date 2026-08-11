@@ -20,9 +20,7 @@ func NewPaymentUsecase(paymentRepo repository.PaymentRepository, gateway reposit
 	return &paymentUsecase{paymentRepo: paymentRepo, gateway: gateway, orderClient: orderClient}
 }
 
-// Create opens a gateway payment for an order and records the transaction.
 func (uc *paymentUsecase) Create(ctx context.Context, params CreatePaymentParams) (*domain.PaymentTransaction, error) {
-	// Fetch the order snapshot to validate state and size the payment.
 	order, err := uc.orderClient.GetOrder(ctx, params.OrderID, params.MerchantID)
 	if err != nil {
 		return nil, err
@@ -84,10 +82,7 @@ func (uc *paymentUsecase) Create(ctx context.Context, params CreatePaymentParams
 	return payment, nil
 }
 
-// HandleCallback processes a gateway webhook. Idempotent: duplicates are
-// detected via gateway_ref uniqueness; already-settled payments are no-ops.
 func (uc *paymentUsecase) HandleCallback(ctx context.Context, params CallbackParams) error {
-	// Locate the transaction by order reference (reference_id = order id).
 	orderID, err := strconv.ParseInt(params.ReferenceID, 10, 64)
 	if err != nil {
 		return domain.ErrInvalidCallback
@@ -98,13 +93,10 @@ func (uc *paymentUsecase) HandleCallback(ctx context.Context, params CallbackPar
 		return domain.ErrPaymentNotFound
 	}
 
-	// Only successful payments settle the order.
 	if params.StatusCode != 1 {
 		return nil
 	}
 
-	// Idempotency: gateway retries callbacks until 200. If we already
-	// recorded this payment ref, it's a duplicate — no-op.
 	if payment.PaymentRef != "" && payment.PaymentRef == params.PaymentRef && payment.Status == domain.PaymentStatusPaid {
 		return nil
 	}
@@ -140,6 +132,10 @@ func (uc *paymentUsecase) ConfirmCash(ctx context.Context, params CreatePaymentP
 	if amount <= 0 || amount > remaining {
 		amount = remaining
 	}
+	method := params.Method
+	if method == "" {
+		method = "cash"
+	}
 
 	now := time.Now().UTC()
 	payment := &domain.PaymentTransaction{
@@ -159,13 +155,12 @@ func (uc *paymentUsecase) ConfirmCash(ctx context.Context, params CreatePaymentP
 	if err := uc.paymentRepo.Create(ctx, payment); err != nil {
 		return nil, err
 	}
-	if err := uc.orderClient.NotifyPaid(ctx, order.ID, params.MerchantID, amount, "cash"); err != nil {
+	if err := uc.orderClient.NotifyPaid(ctx, order.ID, params.MerchantID, amount, method); err != nil {
 		return nil, err
 	}
 	return payment, nil
 }
 
-// gatewayMethod maps gateway 'via' values to our payment method enum.
 func gatewayMethod(via, channel string) string {
 	switch via {
 	case "qris":
@@ -185,8 +180,6 @@ func (uc *paymentUsecase) GetByID(ctx context.Context, id int64, merchantID int6
 		return nil, err
 	}
 	if payment.Status == domain.PaymentStatusPending && payment.ExpiredAt != "" {
-		// iPaymu sends expiry in WIB (UTC+7); parse as fixed zone so the
-		// comparison is correct regardless of server timezone.
 		jakarta := time.FixedZone("WIB", 7*60*60)
 		if t, perr := time.ParseInLocation("2006-01-02 15:04:05", payment.ExpiredAt, jakarta); perr == nil && time.Now().After(t) {
 			_ = uc.paymentRepo.MarkExpired(ctx, payment.ID)
