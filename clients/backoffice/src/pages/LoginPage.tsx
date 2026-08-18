@@ -40,8 +40,8 @@ export default function LoginPage() {
   return (
     <div className="relative flex min-h-screen">
       {/* Brand panel */}
-      <div className="hidden w-1/2 flex-col justify-between bg-primary p-12 lg:flex">
-        <Logo />
+      <div className="hidden w-1/2 flex-col items-start justify-between bg-primary p-12 lg:flex">
+        <Logo variant="white" />
         <div>
           <h2 className="font-display text-3xl font-bold text-white">
             {t('login.heroTitle1')}
