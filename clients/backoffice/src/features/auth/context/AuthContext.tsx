@@ -112,7 +112,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const selectContext = async (context: BranchContext) => {
-    await authApi.switchContext(context.userRoleId)
+    try {
+      await authApi.switchContext(context.userRoleId)
+    } catch {
+      // staff roles may not map to a scoped IAM role — keep the context locally
+    }
     localStorage.setItem(ACTIVE_CONTEXT_KEY, JSON.stringify(context))
     setActiveContext(context)
   }

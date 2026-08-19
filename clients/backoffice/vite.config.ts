@@ -13,6 +13,7 @@ export default defineConfig(({ mode }) => {
       dedupe: ['react', 'react-dom'], // Force Vite to use the root installation for these packages
     },
     server: {
+      port: 5173,
       proxy: {
         '/api': {
           target: env.VITE_API_PROXY_TARGET,

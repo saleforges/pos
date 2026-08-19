@@ -14,6 +14,7 @@ export default function BranchSelectPage() {
   const navigate = useNavigate();
   const [error, setError] = useState('');
   const [submittingId, setSubmittingId] = useState<number | null>(null);
+  const [autoSelecting, setAutoSelecting] = useState(false);
 
   const groups = useMemo(() => {
     const map = new Map<number, { name: string; branches: typeof contexts }>();
@@ -37,9 +38,20 @@ export default function BranchSelectPage() {
       navigate('/dashboard', { replace: true });
       return;
     }
-  }, [isLoading, user, contexts, navigate]);
+    if (contexts.length === 1) {
+      // single branch — auto-select it and go straight to the dashboard
+      if (autoSelecting) return;
+      setAutoSelecting(true);
+      selectContext(contexts[0])
+        .then(() => navigate('/dashboard', { replace: true }))
+        .catch(() => {
+          setAutoSelecting(false);
+          setError(t('branchSelect.selectError'));
+        });
+    }
+  }, [isLoading, user, contexts, navigate, selectContext, autoSelecting, t]);
 
-  if (isLoading) return <div>{t('branchSelect.loading')}</div>;
+  if (isLoading || autoSelecting) return <div>{t('branchSelect.loading')}</div>;
 
   const handleSelect = async (ctx: (typeof contexts)[number]) => {
     if (submittingId !== null) return;

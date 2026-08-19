@@ -1,17 +1,5 @@
-import { useState } from 'react';
-import { Users, Package, ShoppingCart, DollarSign, Store, ChevronDown } from 'lucide-react';
-
-interface Branch {
-  id: number;
-  name: string;
-  address: string;
-}
-
-const BRANCHES: Branch[] = [
-  { id: 1, name: 'Main Branch', address: '123 Main St, Downtown' },
-  { id: 2, name: 'Downtown', address: '456 Oak Ave, Downtown' },
-  { id: 3, name: 'Uptown', address: '789 Pine Rd, Uptown' },
-];
+import { Users, Package, ShoppingCart, DollarSign, Store } from 'lucide-react';
+import { useAuth } from '@/features/auth/hooks/useAuth';
 
 const STATS = [
   { label: 'Total Revenue', value: '$12,340', icon: DollarSign, change: '+12.5%', up: true },
@@ -36,65 +24,17 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export default function DashboardPage() {
-  const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
-  const [showBranchPicker, setShowBranchPicker] = useState(false);
-
-  if (!selectedBranch) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="w-full max-w-md">
-          <div className="mb-8 text-center">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-secondary/10">
-              <Store size={28} className="text-secondary" />
-            </div>
-            <h2 className="font-display text-lg font-semibold text-neutral-900">Select a Branch</h2>
-            <p className="mt-1 text-sm text-neutral-500">Choose a branch to view its dashboard.</p>
-          </div>
-          <div className="space-y-3">
-            {BRANCHES.map((branch) => (
-              <button
-                key={branch.id}
-                onClick={() => setSelectedBranch(branch)}
-                className="w-full rounded-lg border border-neutral-200 bg-white p-4 text-left transition-colors hover:border-secondary hover:shadow-sm"
-              >
-                <span className="font-medium text-neutral-900">{branch.name}</span>
-                <p className="mt-0.5 text-sm text-neutral-500">{branch.address}</p>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const { activeContext } = useAuth();
 
   return (
     <div className="space-y-6">
       <div className="relative">
-        <button
-          onClick={() => setShowBranchPicker(!showBranchPicker)}
-          className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-600 hover:bg-neutral-50"
-        >
+        <div className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm text-neutral-600">
           <Store size={16} className="text-secondary" />
-          <span className="font-medium text-neutral-900">{selectedBranch.name}</span>
-          <ChevronDown size={14} />
-        </button>
-        {showBranchPicker && (
-          <>
-            <div className="fixed inset-0 z-10" onClick={() => setShowBranchPicker(false)} />
-            <div className="absolute left-0 top-full z-20 mt-1 w-64 rounded-lg border border-neutral-200 bg-white shadow-lg">
-              {BRANCHES.filter((b) => b.id !== selectedBranch.id).map((branch) => (
-                <button
-                  key={branch.id}
-                  onClick={() => { setSelectedBranch(branch); setShowBranchPicker(false); }}
-                  className="w-full px-3 py-2.5 text-left text-sm hover:bg-neutral-50 first:rounded-t-lg last:rounded-b-lg"
-                >
-                  <span className="font-medium text-neutral-900">{branch.name}</span>
-                  <p className="text-xs text-neutral-400">{branch.address}</p>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
+          <span className="font-medium text-neutral-900">{activeContext?.branch.name}</span>
+          <span className="text-neutral-400">·</span>
+          <span>{activeContext?.merchant.name}</span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

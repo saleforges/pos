@@ -1,6 +1,7 @@
 import { api } from '@/lib/api';
 import { rolesApi } from '@/features/roles/api/rolesApi';
-import { branchesApi } from '@/features/branches/api/branchesApi';
+import { branchesApi, type BranchResponse } from '@/features/branches/api/branchesApi';
+import { merchantsApi } from '@/features/merchants/api/merchantsApi';
 
 export interface MerchantRef {
   id: number;
@@ -40,6 +41,19 @@ export interface BranchContext {
   branch: BranchRef;
 }
 
+/** Merchant-service response for /v1/me/assignments (requires X-Merchant-Id). */
+export interface StaffAssignmentResponse {
+  id: number;
+  merchantId: number;
+  branchId: number;
+  userId: number;
+  role: string;
+  status: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface RoleDefinition {
   id: number;
   name: string;
@@ -50,7 +64,12 @@ export interface RoleDefinition {
 
 /** Build the list of merchant/branch contexts the user can select from.
  *  Branch-scoped roles expose their branch directly; merchant-wide roles
- *  (branchScope === 'all') expose every branch of that merchant. */
+ *  (branchScope === 'all') expose every branch of that merchant.
+ *  When /auth/me roles carry no merchant/branch info (staff accounts whose
+ *  assignments live in the merchant service), fall back to the existing
+ *  merchant-service endpoints: list all merchants, read /v1/me/assignments
+ *  per merchant, and resolve branch names via /v1/branches. A user assigned
+ *  as an "owner" is granted every branch of that merchant. */
 export async function resolveBranchContexts(user: User): Promise<BranchContext[]> {
   const contexts: BranchContext[] = [];
   const seen = new Set<string>();
@@ -86,6 +105,57 @@ export async function resolveBranchContexts(user: User): Promise<BranchContext[]
       } catch {
         // branch fetch failed — skip; the user can still pick from their roles
       }
+    }
+  }
+
+  if (contexts.length === 0 && user.roles.length > 0) {
+    try {
+      const roleIdByName = new Map(user.roles.map((r) => [r.name, r.id]));
+      const merchants = await merchantsApi.list();
+      for (const merchant of merchants) {
+        const assignments = await authApi.myAssignments(merchant.id);
+        if (assignments.length === 0) continue;
+        let branches: BranchResponse[] = [];
+        try {
+          branches = await branchesApi.list(merchant.id);
+        } catch {
+          // branch list unavailable — fall back to assigned branch ids
+        }
+        const branchById = new Map(branches.map((b) => [b.id, b]));
+
+        // An owner manages the whole merchant, so every branch is selectable.
+        const ownerRoleId = roleIdByName.get('owner');
+        const isOwner = assignments.some((a) => a.role === 'owner');
+        const candidates: { branchId: number; name: string; roleId: number }[] =
+          isOwner && ownerRoleId != null
+            ? branches.map((b) => ({ branchId: b.id, name: b.name, roleId: ownerRoleId }))
+            : [];
+
+        if (candidates.length === 0) {
+          for (const a of assignments) {
+            const roleId = roleIdByName.get(a.role);
+            if (roleId == null) continue;
+            candidates.push({
+              branchId: a.branchId,
+              name: branchById.get(a.branchId)?.name ?? `Branch ${a.branchId}`,
+              roleId,
+            });
+          }
+        }
+
+        for (const c of candidates) {
+          const key = `${merchant.id}:${c.branchId}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          contexts.push({
+            userRoleId: c.roleId,
+            merchant: { id: merchant.id, name: merchant.name },
+            branch: { id: c.branchId, name: c.name },
+          });
+        }
+      }
+    } catch {
+      // merchant service unavailable — no contexts resolved
     }
   }
 
@@ -169,6 +239,13 @@ export const authApi = {
       return await api<User>('/auth/me');
     }
   },
+
+  /** The user's staff assignments for a merchant, from the merchant service.
+   *  Requires the merchant context header. */
+  myAssignments: (merchantId: number) =>
+    api<StaffAssignmentResponse[]>(`/me/assignments`, {
+      headers: { 'X-Merchant-Id': String(merchantId) } as Record<string, string>,
+    }),
 };
 
 // Exported for backward compat — no longer stores tokens client-side
