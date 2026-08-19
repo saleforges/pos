@@ -13,7 +13,7 @@ export function Sidebar() {
   return (
     <aside className="flex h-screen w-64 flex-col bg-primary">
       <div className="flex h-16 items-center border-b border-white/10 px-6">
-        <Logo />
+        <Logo variant="white" />
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">

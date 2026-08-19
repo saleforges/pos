@@ -1,0 +1,12 @@
+{
+  "name": "@saleforges/assets",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate-favicons": "bun run scripts/generate-favicons.js"
+  },
+  "exports": {
+    "./brand/*": "./brand/*"
+  }
+}
