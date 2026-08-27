@@ -5,7 +5,7 @@ import LoginPage from '@/pages/LoginPage';
 import BranchSelectPage from '@/pages/BranchSelectPage';
 import DashboardPage from '@/pages/DashboardPage';
 import OrdersPage from '@/pages/OrdersPage';
-import ProductsPage from '@/pages/ProductsPage';
+import CatalogPage from '@/pages/CatalogPage';
 import MerchantsPage from '@/pages/MerchantsPage';
 import MerchantDetailPage from '@/pages/MerchantDetailPage';
 import RolesPage from '@/pages/RolesPage';
@@ -26,7 +26,7 @@ export const router = createBrowserRouter([
         children: [
           { path: '/dashboard', element: <DashboardPage /> },
           { path: '/orders', element: <OrdersPage /> },
-          { path: '/products', element: <ProductsPage /> },
+          { path: '/catalog', element: <CatalogPage /> },
         ],
       },
     ],

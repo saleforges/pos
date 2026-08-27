@@ -43,7 +43,7 @@ export type Translations = {
   pages: {
     dashboard: string
     orders: string
-    products: string
+    catalog: string
     staff: string
     users: string
     roles: string

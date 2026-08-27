@@ -14,7 +14,7 @@ export function Header() {
   const titles: Record<string, string> = {
     dashboard: t('pages.dashboard'),
     orders: t('pages.orders'),
-    products: t('pages.products'),
+    catalog: t('pages.catalog'),
     staff: t('pages.staff'),
     roles: t('pages.roles'),
     merchants: t('pages.merchants'),
