@@ -4,7 +4,7 @@ localhost {
         reverse_proxy localhost:{env.IAM_PORT}
     }
 
-    @merchant path /api/v1/merchants/* /api/v1/branches/*
+    @merchant path /api/v1/merchants* /api/v1/branches* /api/v1/staff* /api/v1/me*
     handle @merchant {
         reverse_proxy localhost:{env.MERCHANT_PORT}
     }
