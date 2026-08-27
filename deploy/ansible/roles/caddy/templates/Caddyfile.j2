@@ -9,7 +9,7 @@
         reverse_proxy iam-service:8080
     }
 
-    @merchant path /v1/merchants* /v1/branches* /v1/staff*
+    @merchant path /v1/merchants* /v1/branches* /v1/staff* /v1/me*
     handle @merchant {
         rewrite * /api{path}
         reverse_proxy merchant-service:8081
