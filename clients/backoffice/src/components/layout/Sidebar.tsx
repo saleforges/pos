@@ -38,13 +38,13 @@ export function Sidebar() {
         </NavLink>
 
         <NavLink
-          to="/products"
+          to="/catalog"
           className={({ isActive }) =>
             `flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${isActive ? 'bg-secondary text-white' : 'text-neutral-300 hover:bg-white/5 hover:text-white'}`
           }
         >
           <Package size={18} />
-          {t('pages.products')}
+          {t('pages.catalog')}
         </NavLink>
 
         {isSuperadmin && (

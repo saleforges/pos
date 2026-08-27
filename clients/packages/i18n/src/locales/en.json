@@ -35,7 +35,7 @@
   "pages": {
     "dashboard": "Dashboard",
     "orders": "Orders",
-    "products": "Products",
+    "catalog": "Catalog",
     "staff": "Staff",
     "users": "Users",
     "roles": "Roles",
