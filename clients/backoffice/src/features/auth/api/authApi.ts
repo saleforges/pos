@@ -62,6 +62,54 @@ export interface RoleDefinition {
   is_system: boolean;
 }
 
+const CONTEXT_CACHE_KEY = 'backoffice.contextCache';
+const CONTEXT_CACHE_TTL_MS = 5 * 60 * 1000;
+
+interface ContextCacheEntry {
+  userId: number;
+  rolesSignature: string;
+  contexts: BranchContext[];
+  ts: number;
+}
+
+function readContextCache(user: User): BranchContext[] | null {
+  try {
+    const raw = localStorage.getItem(CONTEXT_CACHE_KEY);
+    if (!raw) return null;
+    const entry = JSON.parse(raw) as ContextCacheEntry;
+    const sig = JSON.stringify(user.roles);
+    if (entry.userId !== user.id || entry.rolesSignature !== sig) return null;
+    if (Date.now() - entry.ts > CONTEXT_CACHE_TTL_MS) return null;
+    return entry.contexts;
+  } catch {
+    return null;
+  }
+}
+
+function writeContextCache(user: User, contexts: BranchContext[]): void {
+  if (contexts.length === 0) return;
+  try {
+    const entry: ContextCacheEntry = {
+      userId: user.id,
+      rolesSignature: JSON.stringify(user.roles),
+      contexts,
+      ts: Date.now(),
+    };
+    localStorage.setItem(CONTEXT_CACHE_KEY, JSON.stringify(entry));
+  } catch {
+    // storage unavailable — ignore
+  }
+}
+
+/** Invalidate the cached branch contexts, e.g. on logout. */
+export function clearContextCache(): void {
+  try {
+    localStorage.removeItem(CONTEXT_CACHE_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 /** Build the list of merchant/branch contexts the user can select from.
  *  Branch-scoped roles expose their branch directly; merchant-wide roles
  *  (branchScope === 'all') expose every branch of that merchant.
@@ -71,6 +119,9 @@ export interface RoleDefinition {
  *  per merchant, and resolve branch names via /v1/branches. A user assigned
  *  as an "owner" is granted every branch of that merchant. */
 export async function resolveBranchContexts(user: User): Promise<BranchContext[]> {
+  const cached = readContextCache(user);
+  if (cached) return cached;
+
   const contexts: BranchContext[] = [];
   const seen = new Set<string>();
 
@@ -159,6 +210,7 @@ export async function resolveBranchContexts(user: User): Promise<BranchContext[]
     }
   }
 
+  writeContextCache(user, contexts);
   return contexts;
 }
 

@@ -2,6 +2,7 @@ import { createContext, useState, useEffect, useRef, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import {
   authApi,
+  clearContextCache,
   resolveUserPermissions,
   resolveBranchContexts,
   type User,
@@ -44,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const resolvedManually = useRef(false) // tracks if login() already settled auth state
 
-  const settleUser = useCallback(async (u: User) => {
+  const settleUser = useCallback(async (u: User): Promise<BranchContext[]> => {
     u.permissions = await resolveUserPermissions(u)
     const resolved = await resolveBranchContexts(u)
     setUser(u)
@@ -57,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       setActiveContext(null)
     }
+    return resolved
   }, [])
 
   /** Apply the selected context to the backend so the access token carries the
@@ -95,8 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password: string) => {
     const res = await authApi.login(username, password)
     resolvedManually.current = true
-    const stored = readStoredContext(await resolveBranchContexts(res.user))
-    await settleUser(res.user)
+    const resolved = await settleUser(res.user)
+    const stored = readStoredContext(resolved)
     if (stored) {
       await applyContextToBackend(stored)
     }
@@ -105,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await authApi.logout()
+    clearContextCache()
     localStorage.removeItem(ACTIVE_CONTEXT_KEY)
     setUser(null)
     setContexts([])
